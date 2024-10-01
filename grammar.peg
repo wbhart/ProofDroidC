@@ -1,0 +1,153 @@
+%prefix "parser"               # Define the parser prefix
+
+%value "node *"                # Set the return type for the parser actions (node*)
+
+%auxil "manager_t *"               # For parser context
+
+%header {
+#include "symbol_enum.h"
+#include "node.h"
+
+typedef struct {
+    const char *input;  // Input buffer
+    size_t pos;         // Current position in the buffer
+} manager_t;
+}
+
+%source {
+#include <iostream>
+
+using namespace std;
+
+#define PCC_GETCHAR(auxil) get_character(auxil)
+#define PCC_BUFFERSIZE 1024
+
+// Custom function to get one character at a time
+static int get_character(manager_t *ctx) {
+    if (ctx->input[ctx->pos] != '\0') {
+        return ctx->input[ctx->pos++];  // Return the next character
+    }
+    return -1;  // End of input (EOF)
+}
+
+}
+
+statement
+  <- _ formula:Formula _ EOL { $$ = formula; }
+   / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = NULL; }
+
+Formula
+  <- EqualPredicate
+
+EqualPredicate
+  <- t1:Term _ e:EQUALS _ t2:Term {
+      $$ = node_create_application(e, node_list_create2(t1, t2), 2);
+  }
+
+Term
+  <- Variable
+
+TOP
+  <- '\\top' { $$ = node_create_const(SYMBOL_TOP); }
+
+BOT
+  <- '\\bot' { $$ = node_create_const(SYMBOL_BOT); }
+
+CAP
+  <- '\\cap' { $$ = node_create_binary_op(SYMBOL_CAP); }
+
+CUP
+  <- '\\cup' { $$ = node_create_binary_op(SYMBOL_CUP); }
+
+SETMINUS
+  <- '\\setminus' { $$ = node_create_binary_op(SYMBOL_SETMINUS); }
+
+TIMES
+  <- '\\times' { $$ = node_create_binary_op(SYMBOL_TIMES); }
+
+POWERSET
+  <- '\\powerset' { $$ = node_create_unary_op(SYMBOL_POWERSET); }
+
+FORALL
+  <- '\\forall' { $$ = SYMBOL_FORALL; }
+
+EXISTS
+  <- '\\exists' { $$ = SYMBOL_EXISTS; }
+
+SUBSET
+  <- '\\subset' { $$ = node_create_binary_op(SYMBOL_SUBSET); }
+
+SUBSETEQ
+  <- '\\subseteq' { $$ = node_create_binary_op(SYMBOL_SUBSETEQ); }
+
+EQUALS
+  <- '=' { $$ = node_create_binary_op(SYMBOL_EQUALS); }
+
+NEG
+  <- '\\neg' { $$ = node_create_unary_op(SYMBOL_NOT); }
+
+AND
+  <- '\\wedge' { $$ = node_create_binary_op(SYMBOL_AND); }
+
+OR
+  <- '\\vee' { $$ = node_create_binary_op(SYMBOL_OR); }
+
+OPEN
+  <- '('
+
+CLOSE
+  <- ')'
+
+DOT
+  <- '.'
+
+COMMA
+  <- ','
+
+Variable
+  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = node_create_variable($0); }
+
+_
+  <- [ \t]*
+
+EOL
+  <- '\n' / '\r' / '\r\n'
+
+%%
+
+// Main function for the parser
+int main(int argc, char** argv) {
+    manager_t mgr;
+    string input;
+
+    {
+        parser_context_t *ctx = parser_create(&mgr);
+        node *ast = NULL;
+
+        cout << "> ";
+
+        while (getline(std::cin, input)) {
+            input.push_back('\n');  // Add a newline at the end of input
+
+            // Set the input buffer and reset position
+            mgr.input = input.c_str();
+            mgr.pos = 0;
+            
+            parser_parse(ctx, &ast);
+
+            cout << "> ";
+              
+            if (ast) {
+                delete ast;
+                ast = NULL;
+            }
+        }
+
+        cout << endl;
+
+        parser_destroy(ctx);
+    }
+
+    return 0;
+}
+
