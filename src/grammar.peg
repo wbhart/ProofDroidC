@@ -32,11 +32,19 @@ static int get_character(manager_t *ctx) {
     }
     return -1;  // End of input (EOF)
 }
+
+// Override the PCC_ERROR macro to handle syntax errors without exiting
+#define PCC_ERROR(auxil) custom_syntax_error(auxil)
+
+static void custom_syntax_error(manager_t *ctx) {
+    fprintf(stderr, "Syntax error near position %zu: %s\n", ctx->pos, &ctx->input[ctx->pos]);
+    // Optionally return to avoid exiting the program
+}
 }
 
 statement
   <- _ formula:Formula _ EOL { $$ = formula; }
-   / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = nullptr; }
+   / ( !EOL . )* EOL { $$ = nullptr; }
 
 Formula
   <- e:EqualPredicate { $$ = e; }

@@ -1,3 +1,5 @@
+.vscode/
+build/
 src/grammar.c
 src/grammar.h
 proof_droid

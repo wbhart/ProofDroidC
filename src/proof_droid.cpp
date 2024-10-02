@@ -24,10 +24,11 @@ int main(int argc, char** argv) {
 
             if (ast) {
                 // Use the enum to select the string format for printing
-                ast->print(OutputFormat::REPR);   // For re-parsable format
-                // ast->print(OutputFormat::UNICODE);  // For Unicode output
+                ast->print(OutputFormat::REPR);
                 delete ast;  // Manually free the AST
                 ast = nullptr;
+            } else {
+                std::cout << "Syntax error" << std::endl;
             }
 
             std::cout << "> ";
