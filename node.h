@@ -1,13 +1,10 @@
-#ifndef NODE_H
-#define NODE_H
-
-#include "symbol_enum.h"
 #include <vector>
 #include <string>
 #include <iostream>
 
 class node {
 public:
+    // Enum for node types
     enum node_type {
         VARIABLE,
         CONSTANT,
@@ -22,23 +19,31 @@ public:
     node_type type;
     symbol_enum symbol;
     std::string var_name;
-    std::vector<node*> children;  // Raw pointers to children nodes
+    std::vector<node*> children;
 
     // Constructor for a variable node
-    node(const std::string& var_name) 
-        : type(VARIABLE), var_name(var_name) {}
+    node(node_type t, const std::string& var_name) 
+        : type(t), var_name(var_name) {}
 
     // Constructor for a constant or operator node (without children)
-    node(symbol_enum sym, node_type t) 
+    node(node_type t, symbol_enum sym) 
         : type(t), symbol(sym) {}
 
     // Constructor for operator nodes (with children)
-    node(symbol_enum sym, node_type t, const std::vector<node*>& children)
+    node(node_type t, symbol_enum sym, const std::vector<node*>& children)
         : type(t), symbol(sym), children(children) {}
+
+    // Constructor for application or tuple nodes (without symbol_enum)
+    node(node_type t, const std::vector<node*>& children)
+        : type(t), children(children) {}
+
+    // Constructor for unary operators (with operator as a node and children)
+    node(node_type t, node* op, const std::vector<node*>& children)
+        : type(t), symbol(op->symbol), children(children) {}
 
     // Destructor to free child nodes
     ~node() {
-        for (node* child : children) {
+        for (auto child : children) {
             delete child;
         }
     }
@@ -67,5 +72,3 @@ public:
         }
     }
 };
-
-#endif // NODE_H

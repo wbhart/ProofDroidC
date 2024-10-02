@@ -7,8 +7,9 @@
 %header {
 #include "symbol_enum.h"
 #include "node.h"
-#include <vector>
+#include <string>
 #include <iostream>
+#include <vector>
 
 typedef struct {
     const char *input;  // Input buffer
@@ -38,39 +39,68 @@ statement
    / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = nullptr; }
 
 Formula
-  <- e:EqualPredicate { $$ = e; }  # Explicitly set $$ to pass EqualPredicate result
+  <- e:EqualPredicate { $$ = e; }
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
       std::vector<node*> children;
       children.push_back(t1);
       children.push_back(t2);
-      $$ = new node(SYMBOL_EQUALS, node::APPLICATION, children);
+      $$ = new node(node::APPLICATION, SYMBOL_EQUALS, children);
   }
 
 Term
-  <- v:Variable { $$ = v; }  # Explicitly return the Variable node
+  <- t:Application { $$ = t; }
+   / t:UnaryOp { $$ = t; }
+   / t:Variable { $$ = t; }
+
+Application
+  <- i:Variable _ OPEN _ args:TermList _ CLOSE {
+        std::vector<node*> children = args->children;  // Extract children from TermList
+        children.insert(children.begin(), i);  // Insert the function/variable name at the start
+        
+        // Clear the args node's children to prevent it from deleting them
+        args->children.clear();
+        
+        $$ = new node(node::APPLICATION, children);  // Initialize the APPLICATION node after modifying children
+        
+        delete args;  // Clean up the args node after extracting its children
+    }
+
+UnaryOp
+  <- p:POWERSET _ OPEN _ t:Term _ CLOSE {
+        std::vector<node*> children;
+        children.push_back(t);  // Add the term as a child
+        $$ = new node(node::UNARY_OP, p, children);  // Create a UNARY_OP node
+    }
+
+TermList
+  <- head:Term {
+        $$ = new node(node::TUPLE, std::vector<node*>());  // Initialize an empty vector
+        $$->children.push_back(head);  // Add the head term to the children
+    }
+    (_ COMMA _ t:Term { $$->children.push_back(t); })*
 
 TOP
-  <- '\\top' { $$ = new node(SYMBOL_TOP, node::CONSTANT); }
+  <- '\\top' { $$ = new node(node::CONSTANT, SYMBOL_TOP); }
 
 BOT
-  <- '\\bot' { $$ = new node(SYMBOL_BOT, node::CONSTANT); }
+  <- '\\bot' { $$ = new node(node::CONSTANT, SYMBOL_BOT); }
 
 CAP
-  <- '\\cap' { $$ = new node(SYMBOL_CAP, node::BINARY_OP); }
+  <- '\\cap' { $$ = new node(node::BINARY_OP, SYMBOL_CAP); }
 
 CUP
-  <- '\\cup' { $$ = new node(SYMBOL_CUP, node::BINARY_OP); }
+  <- '\\cup' { $$ = new node(node::BINARY_OP, SYMBOL_CUP); }
 
 SETMINUS
-  <- '\\setminus' { $$ = new node(SYMBOL_SETMINUS, node::BINARY_OP); }
+  <- '\\setminus' { $$ = new node(node::BINARY_OP, SYMBOL_SETMINUS); }
 
 TIMES
-  <- '\\times' { $$ = new node(SYMBOL_TIMES, node::BINARY_OP); }
+  <- '\\times' { $$ = new node(node::BINARY_OP, SYMBOL_TIMES); }
 
 POWERSET
-  <- '\\powerset' { $$ = new node(SYMBOL_POWERSET, node::UNARY_OP); }
+  <- '\\mathcal{P}' { $$ = new node(node::UNARY_OP, SYMBOL_POWERSET); }
 
 FORALL
   <- '\\forall' { $$ = SYMBOL_FORALL; }
@@ -79,22 +109,22 @@ EXISTS
   <- '\\exists' { $$ = SYMBOL_EXISTS; }
 
 SUBSET
-  <- '\\subset' { $$ = new node(SYMBOL_SUBSET, node::BINARY_OP); }
+  <- '\\subset' { $$ = new node(node::BINARY_OP, SYMBOL_SUBSET); }
 
 SUBSETEQ
-  <- '\\subseteq' { $$ = new node(SYMBOL_SUBSETEQ, node::BINARY_OP); }
+  <- '\\subseteq' { $$ = new node(node::BINARY_OP, SYMBOL_SUBSETEQ); }
 
 EQUALS
-  <- '=' { $$ = new node(SYMBOL_EQUALS, node::BINARY_OP); }
+  <- '=' { $$ = new node(node::BINARY_OP, SYMBOL_EQUALS); }
 
 NEG
-  <- '\\neg' { $$ = new node(SYMBOL_NOT, node::UNARY_OP); }
+  <- '\\neg' { $$ = new node(node::UNARY_OP, SYMBOL_NOT); }
 
 AND
-  <- '\\wedge' { $$ = new node(SYMBOL_AND, node::BINARY_OP); }
+  <- '\\wedge' { $$ = new node(node::BINARY_OP, SYMBOL_AND); }
 
 OR
-  <- '\\vee' { $$ = new node(SYMBOL_OR, node::BINARY_OP); }
+  <- '\\vee' { $$ = new node(node::BINARY_OP, SYMBOL_OR); }
 
 OPEN
   <- '('
@@ -106,10 +136,10 @@ COMMA
   <- ','
 
 Variable
-  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(std::string($0)); }
+  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(node::VARIABLE, std::string($0)); }
 
 _
-  <- [ \t]*
+  <- [ \t]*  # Whitespace
 
 EOL
   <- '\n' / '\r\n' / '\r'
@@ -138,7 +168,7 @@ int main(int argc, char** argv) {
 
             if (ast) {
                 ast->print();
-                delete ast;  // Manually free the AST
+                delete ast;  // Manually free the AST (which will recursively free child nodes)
                 ast = nullptr;
             }
 
