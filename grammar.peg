@@ -38,7 +38,7 @@ statement
    / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = nullptr; }
 
 Formula
-  <- EqualPredicate
+  <- e:EqualPredicate { $$ = e; }  # Explicitly set $$ to pass EqualPredicate result
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
@@ -49,7 +49,7 @@ EqualPredicate
   }
 
 Term
-  <- Variable
+  <- v:Variable { $$ = v; }  # Explicitly return the Variable node
 
 TOP
   <- '\\top' { $$ = new node(SYMBOL_TOP, node::CONSTANT); }
@@ -101,9 +101,6 @@ OPEN
 
 CLOSE
   <- ')'
-
-DOT
-  <- '.'
 
 COMMA
   <- ','
