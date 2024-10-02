@@ -2,14 +2,12 @@
 CXX = g++
 CXXFLAGS = -Wall
 
-# PackCC tool for PEG parsing
-PACKCC = packcc
-
 # Source files and output
-PEG_FILE = grammar.peg
-GENERATED_C = grammar.c
-GENERATED_H = grammar.h
-H_FILES = symbol_enum.h node.h
+SRC_DIR = src
+PEG_FILE = $(SRC_DIR)/grammar.peg
+GENERATED_C = $(SRC_DIR)/grammar.c
+GENERATED_H = $(SRC_DIR)/grammar.h
+H_FILES = $(SRC_DIR)/symbol_enum.h $(SRC_DIR)/node.h $(SRC_DIR)/precedence.h
 TARGET = proof_droid
 
 # Default target: build the application
@@ -17,15 +15,14 @@ all: $(TARGET)
 
 # Rule to create grammar.c and grammar.h from grammar.peg
 $(GENERATED_C) $(GENERATED_H): $(PEG_FILE)
-	$(PACKCC) $(PEG_FILE)
+	packcc $(PEG_FILE)
 
 # Rule to compile the application
-$(TARGET): $(GENERATED_C) $(H_FILES)
-	$(CXX) $(CXXFLAGS) $(GENERATED_C) -o $(TARGET)
+$(TARGET): $(GENERATED_C) $(H_FILES) $(SRC_DIR)/proof_droid.cpp
+	$(CXX) $(CXXFLAGS) $(GENERATED_C) $(SRC_DIR)/proof_droid.cpp -o $(TARGET) -I$(SRC_DIR)
 
 # Clean up generated files, but don't remove manually created headers
 clean:
 	rm -f $(GENERATED_C) $(GENERATED_H) $(TARGET)
 
 .PHONY: all clean
-

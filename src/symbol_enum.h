@@ -11,13 +11,14 @@ typedef enum {
     SYMBOL_SHEFFER,
     SYMBOL_EQUALS,
     SYMBOL_SUBSET,
+    SYMBOL_SUBSETEQ,    // Add this missing symbol
     SYMBOL_TOP,
     SYMBOL_BOT,
     SYMBOL_POWERSET,
     SYMBOL_CAP,
     SYMBOL_CUP,
     SYMBOL_TIMES,
+    SYMBOL_SETMINUS     // Add this missing symbol
 } symbol_enum;
 
 #endif // SYMBOL_ENUM_H
-
