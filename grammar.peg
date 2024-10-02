@@ -1,12 +1,15 @@
 %prefix "parser"               # Define the parser prefix
 
-%value "node *"                # Set the return type for the parser actions (node*)
+%value "std::unique_ptr<node>"  # Return unique_ptr for node management
 
-%auxil "manager_t *"               # For parser context
+%auxil "manager_t *"            # For parser context
 
 %header {
 #include "symbol_enum.h"
 #include "node.h"
+#include <memory>
+#include <vector>
+#include <iostream>
 
 typedef struct {
     const char *input;  // Input buffer
@@ -33,40 +36,43 @@ static int get_character(manager_t *ctx) {
 }
 
 statement
-  <- _ formula:Formula _ EOL { $$ = formula; }
-   / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = NULL; }
+  <- _ formula:Formula _ EOL { $$ = std::move(formula); }
+   / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = nullptr; }
 
 Formula
   <- EqualPredicate
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
-      $$ = node_create_application(e, node_list_create2(t1, t2), 2);
+      std::vector<std::unique_ptr<node>> children;
+      children.push_back(std::move(t1));
+      children.push_back(std::move(t2));
+      $$ = std::make_unique<node>(SYMBOL_EQUALS, node::APPLICATION, std::move(children));
   }
 
 Term
   <- Variable
 
 TOP
-  <- '\\top' { $$ = node_create_const(SYMBOL_TOP); }
+  <- '\\top' { $$ = std::make_unique<node>(SYMBOL_TOP, node::CONSTANT); }
 
 BOT
-  <- '\\bot' { $$ = node_create_const(SYMBOL_BOT); }
+  <- '\\bot' { $$ = std::make_unique<node>(SYMBOL_BOT, node::CONSTANT); }
 
 CAP
-  <- '\\cap' { $$ = node_create_binary_op(SYMBOL_CAP); }
+  <- '\\cap' { $$ = std::make_unique<node>(SYMBOL_CAP, node::BINARY_OP); }
 
 CUP
-  <- '\\cup' { $$ = node_create_binary_op(SYMBOL_CUP); }
+  <- '\\cup' { $$ = std::make_unique<node>(SYMBOL_CUP, node::BINARY_OP); }
 
 SETMINUS
-  <- '\\setminus' { $$ = node_create_binary_op(SYMBOL_SETMINUS); }
+  <- '\\setminus' { $$ = std::make_unique<node>(SYMBOL_SETMINUS, node::BINARY_OP); }
 
 TIMES
-  <- '\\times' { $$ = node_create_binary_op(SYMBOL_TIMES); }
+  <- '\\times' { $$ = std::make_unique<node>(SYMBOL_TIMES, node::BINARY_OP); }
 
 POWERSET
-  <- '\\powerset' { $$ = node_create_unary_op(SYMBOL_POWERSET); }
+  <- '\\powerset' { $$ = std::make_unique<node>(SYMBOL_POWERSET, node::UNARY_OP); }
 
 FORALL
   <- '\\forall' { $$ = SYMBOL_FORALL; }
@@ -75,22 +81,22 @@ EXISTS
   <- '\\exists' { $$ = SYMBOL_EXISTS; }
 
 SUBSET
-  <- '\\subset' { $$ = node_create_binary_op(SYMBOL_SUBSET); }
+  <- '\\subset' { $$ = std::make_unique<node>(SYMBOL_SUBSET, node::BINARY_OP); }
 
 SUBSETEQ
-  <- '\\subseteq' { $$ = node_create_binary_op(SYMBOL_SUBSETEQ); }
+  <- '\\subseteq' { $$ = std::make_unique<node>(SYMBOL_SUBSETEQ, node::BINARY_OP); }
 
 EQUALS
-  <- '=' { $$ = node_create_binary_op(SYMBOL_EQUALS); }
+  <- '=' { $$ = std::make_unique<node>(SYMBOL_EQUALS, node::BINARY_OP); }
 
 NEG
-  <- '\\neg' { $$ = node_create_unary_op(SYMBOL_NOT); }
+  <- '\\neg' { $$ = std::make_unique<node>(SYMBOL_NOT, node::UNARY_OP); }
 
 AND
-  <- '\\wedge' { $$ = node_create_binary_op(SYMBOL_AND); }
+  <- '\\wedge' { $$ = std::make_unique<node>(SYMBOL_AND, node::BINARY_OP); }
 
 OR
-  <- '\\vee' { $$ = node_create_binary_op(SYMBOL_OR); }
+  <- '\\vee' { $$ = std::make_unique<node>(SYMBOL_OR, node::BINARY_OP); }
 
 OPEN
   <- '('
@@ -105,26 +111,26 @@ COMMA
   <- ','
 
 Variable
-  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = node_create_variable($0); }
+  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = std::make_unique<node>(std::string($0)); }
 
 _
   <- [ \t]*
 
 EOL
-  <- '\n' / '\r' / '\r\n'
+  <- '\n' / '\r\n' / '\r'
 
 %%
 
 // Main function for the parser
 int main(int argc, char** argv) {
     manager_t mgr;
-    string input;
+    std::string input;
 
     {
         parser_context_t *ctx = parser_create(&mgr);
-        node *ast = NULL;
+        std::unique_ptr<node> ast = nullptr;
 
-        cout << "> ";
+        std::cout << "> ";
 
         while (getline(std::cin, input)) {
             input.push_back('\n');  // Add a newline at the end of input
@@ -135,19 +141,18 @@ int main(int argc, char** argv) {
             
             parser_parse(ctx, &ast);
 
-            cout << "> ";
-              
             if (ast) {
-                delete ast;
-                ast = NULL;
+                ast->print();
+                ast.reset();  // Automatically free the memory
             }
+
+            std::cout << "> ";
         }
 
-        cout << endl;
+        std::cout << std::endl;
 
         parser_destroy(ctx);
     }
 
     return 0;
 }
-

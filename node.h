@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <memory>  // For unique_ptr
 
 class node {
 public:
@@ -20,21 +21,21 @@ public:
 
     // Node properties
     node_type type;
-    symbol_enum symbol;   // For operators/quantifiers/constants
-    std::string var_name; // Only used for VARIABLE nodes
-    std::vector<node*> children; // Children nodes (for binary/unary/applications)
+    symbol_enum symbol;   
+    std::string var_name;  
+    std::vector<std::unique_ptr<node>> children;  // Children as unique_ptr for automatic memory management
 
     // Constructor for a variable node
     node(const std::string& var_name) 
-        : type(VARIABLE), symbol(SYMBOL_VARIABLE), var_name(var_name) {}
+        : type(VARIABLE), var_name(var_name) {}
 
     // Constructor for a constant or operator node (without children)
     node(symbol_enum sym, node_type t) 
         : type(t), symbol(sym) {}
 
     // Constructor for operator nodes (with children)
-    node(symbol_enum sym, node_type t, const std::vector<node*>& children)
-        : type(t), symbol(sym), children(children) {}
+    node(symbol_enum sym, node_type t, std::vector<std::unique_ptr<node>> children)
+        : type(t), symbol(sym), children(std::move(children)) {}
 
     // Debug print function
     void print(int indent = 0) const {
@@ -61,54 +62,4 @@ public:
     }
 };
 
-// Factory functions for creating nodes
-inline node* node_create_variable(const char* name) {
-    return new node(std::string(name));
-}
-
-inline node* node_create_const(symbol_enum sym) {
-    return new node(sym, node::CONSTANT);
-}
-
-inline node* node_create_binary_op(symbol_enum sym) {
-    return new node(sym, node::BINARY_OP);
-}
-
-inline node* node_create_unary_op(symbol_enum sym) {
-    return new node(sym, node::UNARY_OP);
-}
-
-inline node* node_create_quantifier(symbol_enum sym, node* variable, node* formula) {
-    return new node(sym, node::QUANTIFIER, { variable, formula });
-}
-
-inline node* node_create_application(node* symbol, node** args, int count) {
-    std::vector<node*> children(args, args + count);
-    return new node(symbol->symbol, node::APPLICATION, children);
-}
-
-inline node* node_create_tuple(node** terms, int count) {
-    std::vector<node*> children(terms, terms + count);
-    return new node(SYMBOL_VARIABLE, node::TUPLE, children); // Assuming a tuple has a default symbol
-}
-
-// List creation helpers for arguments (used in application)
-inline node** node_list_create0() {
-    return nullptr;
-}
-
-inline node** node_list_create1(node* node1) {
-    node** list = new node*[1];
-    list[0] = node1;
-    return list;
-}
-
-inline node** node_list_create2(node* node1, node* node2) {
-    node** list = new node*[2];
-    list[0] = node1;
-    list[1] = node2;
-    return list;
-}
-
 #endif // NODE_H
-

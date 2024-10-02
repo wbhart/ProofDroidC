@@ -17,7 +17,6 @@ typedef enum {
     SYMBOL_CAP,
     SYMBOL_CUP,
     SYMBOL_TIMES,
-    SYMBOL_VARIABLE,
 } symbol_enum;
 
 #endif // SYMBOL_ENUM_H
