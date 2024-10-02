@@ -79,8 +79,8 @@ Application
 UnaryOp
   <- p:POWERSET _ OPEN _ t:Term _ CLOSE {
         std::vector<node*> children;
-        children.push_back(new node(node::UNARY_OP, SYMBOL_POWERSET));  // First child: powerset operator
-        children.push_back(t);  // Second child: the argument (e.g., S)
+        children.push_back(p);  // Use the POWERSET node directly
+        children.push_back(t);  // Add the term (argument)
         $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
     }
 
@@ -113,10 +113,10 @@ POWERSET
   <- '\\mathcal{P}' { $$ = new node(node::UNARY_OP, SYMBOL_POWERSET); }
 
 FORALL
-  <- '\\forall' { $$ = SYMBOL_FORALL; }
+  <- '\\forall' { $$ = new node(node::QUANTIFIER, SYMBOL_FORALL); }
 
 EXISTS
-  <- '\\exists' { $$ = SYMBOL_EXISTS; }
+  <- '\\exists' { $$ = new node(node::QUANTIFIER, SYMBOL_EXISTS); }
 
 SUBSET
   <- '\\subset' { $$ = new node(node::BINARY_OP, SYMBOL_SUBSET); }
