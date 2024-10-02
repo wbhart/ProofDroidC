@@ -1,13 +1,12 @@
 %prefix "parser"               # Define the parser prefix
 
-%value "std::unique_ptr<node>"  # Return unique_ptr for node management
+%value "node*"                 # Set the return type for the parser actions (node*)
 
-%auxil "manager_t *"            # For parser context
+%auxil "manager_t *"           # For parser context
 
 %header {
 #include "symbol_enum.h"
 #include "node.h"
-#include <memory>
 #include <vector>
 #include <iostream>
 
@@ -32,11 +31,10 @@ static int get_character(manager_t *ctx) {
     }
     return -1;  // End of input (EOF)
 }
-
 }
 
 statement
-  <- _ formula:Formula _ EOL { $$ = std::move(formula); }
+  <- _ formula:Formula _ EOL { $$ = formula; }
    / ( !EOL . )* EOL { cout << "Syntax error!" << endl; $$ = nullptr; }
 
 Formula
@@ -44,35 +42,35 @@ Formula
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
-      std::vector<std::unique_ptr<node>> children;
-      children.push_back(std::move(t1));
-      children.push_back(std::move(t2));
-      $$ = std::make_unique<node>(SYMBOL_EQUALS, node::APPLICATION, std::move(children));
+      std::vector<node*> children;
+      children.push_back(t1);
+      children.push_back(t2);
+      $$ = new node(SYMBOL_EQUALS, node::APPLICATION, children);
   }
 
 Term
   <- Variable
 
 TOP
-  <- '\\top' { $$ = std::make_unique<node>(SYMBOL_TOP, node::CONSTANT); }
+  <- '\\top' { $$ = new node(SYMBOL_TOP, node::CONSTANT); }
 
 BOT
-  <- '\\bot' { $$ = std::make_unique<node>(SYMBOL_BOT, node::CONSTANT); }
+  <- '\\bot' { $$ = new node(SYMBOL_BOT, node::CONSTANT); }
 
 CAP
-  <- '\\cap' { $$ = std::make_unique<node>(SYMBOL_CAP, node::BINARY_OP); }
+  <- '\\cap' { $$ = new node(SYMBOL_CAP, node::BINARY_OP); }
 
 CUP
-  <- '\\cup' { $$ = std::make_unique<node>(SYMBOL_CUP, node::BINARY_OP); }
+  <- '\\cup' { $$ = new node(SYMBOL_CUP, node::BINARY_OP); }
 
 SETMINUS
-  <- '\\setminus' { $$ = std::make_unique<node>(SYMBOL_SETMINUS, node::BINARY_OP); }
+  <- '\\setminus' { $$ = new node(SYMBOL_SETMINUS, node::BINARY_OP); }
 
 TIMES
-  <- '\\times' { $$ = std::make_unique<node>(SYMBOL_TIMES, node::BINARY_OP); }
+  <- '\\times' { $$ = new node(SYMBOL_TIMES, node::BINARY_OP); }
 
 POWERSET
-  <- '\\powerset' { $$ = std::make_unique<node>(SYMBOL_POWERSET, node::UNARY_OP); }
+  <- '\\powerset' { $$ = new node(SYMBOL_POWERSET, node::UNARY_OP); }
 
 FORALL
   <- '\\forall' { $$ = SYMBOL_FORALL; }
@@ -81,22 +79,22 @@ EXISTS
   <- '\\exists' { $$ = SYMBOL_EXISTS; }
 
 SUBSET
-  <- '\\subset' { $$ = std::make_unique<node>(SYMBOL_SUBSET, node::BINARY_OP); }
+  <- '\\subset' { $$ = new node(SYMBOL_SUBSET, node::BINARY_OP); }
 
 SUBSETEQ
-  <- '\\subseteq' { $$ = std::make_unique<node>(SYMBOL_SUBSETEQ, node::BINARY_OP); }
+  <- '\\subseteq' { $$ = new node(SYMBOL_SUBSETEQ, node::BINARY_OP); }
 
 EQUALS
-  <- '=' { $$ = std::make_unique<node>(SYMBOL_EQUALS, node::BINARY_OP); }
+  <- '=' { $$ = new node(SYMBOL_EQUALS, node::BINARY_OP); }
 
 NEG
-  <- '\\neg' { $$ = std::make_unique<node>(SYMBOL_NOT, node::UNARY_OP); }
+  <- '\\neg' { $$ = new node(SYMBOL_NOT, node::UNARY_OP); }
 
 AND
-  <- '\\wedge' { $$ = std::make_unique<node>(SYMBOL_AND, node::BINARY_OP); }
+  <- '\\wedge' { $$ = new node(SYMBOL_AND, node::BINARY_OP); }
 
 OR
-  <- '\\vee' { $$ = std::make_unique<node>(SYMBOL_OR, node::BINARY_OP); }
+  <- '\\vee' { $$ = new node(SYMBOL_OR, node::BINARY_OP); }
 
 OPEN
   <- '('
@@ -111,7 +109,7 @@ COMMA
   <- ','
 
 Variable
-  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = std::make_unique<node>(std::string($0)); }
+  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(std::string($0)); }
 
 _
   <- [ \t]*
@@ -128,7 +126,7 @@ int main(int argc, char** argv) {
 
     {
         parser_context_t *ctx = parser_create(&mgr);
-        std::unique_ptr<node> ast = nullptr;
+        node* ast = nullptr;
 
         std::cout << "> ";
 
@@ -143,7 +141,8 @@ int main(int argc, char** argv) {
 
             if (ast) {
                 ast->print();
-                ast.reset();  // Automatically free the memory
+                delete ast;  // Manually free the AST
+                ast = nullptr;
             }
 
             std::cout << "> ";

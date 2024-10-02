@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include <memory>  // For unique_ptr
 
 class node {
 public:
@@ -21,9 +20,9 @@ public:
 
     // Node properties
     node_type type;
-    symbol_enum symbol;   
-    std::string var_name;  
-    std::vector<std::unique_ptr<node>> children;  // Children as unique_ptr for automatic memory management
+    symbol_enum symbol;
+    std::string var_name;
+    std::vector<node*> children;  // Raw pointers to children nodes
 
     // Constructor for a variable node
     node(const std::string& var_name) 
@@ -34,8 +33,15 @@ public:
         : type(t), symbol(sym) {}
 
     // Constructor for operator nodes (with children)
-    node(symbol_enum sym, node_type t, std::vector<std::unique_ptr<node>> children)
-        : type(t), symbol(sym), children(std::move(children)) {}
+    node(symbol_enum sym, node_type t, const std::vector<node*>& children)
+        : type(t), symbol(sym), children(children) {}
+
+    // Destructor to free child nodes
+    ~node() {
+        for (node* child : children) {
+            delete child;
+        }
+    }
 
     // Debug print function
     void print(int indent = 0) const {
