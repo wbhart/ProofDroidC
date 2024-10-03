@@ -48,7 +48,10 @@ int main() {
     std::vector<std::string> test_cases = {
         "a = b",
         "f(a) = b",
-        "\\mathcal{P}(S) = T"
+        "\\mathcal{P}(S) = T",
+        "f(g(t)) = (a, f(t), \\emptyset)",
+        "A = \\emptyset",
+        "() = f(g(\\emptyset))"
     };
 
     std::cout << "Running tests..." << std::endl;
