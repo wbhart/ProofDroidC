@@ -58,7 +58,10 @@ int main() {
         "A \\subseteq B",
         "A \\subset B",
         "A \\cap B \\subseteq \\emptyset",
-        "A \\cap (B \\cup C) \\subset f(T) \\cup \\mathcal{P}(S)"
+        "A \\cap (B \\cup C) \\subset f(T) \\cup \\mathcal{P}(S)",
+        "P(x)",
+        "Q(A \\cup B)",
+        "P(f(x))"
     };
 
     std::cout << "Running tests..." << std::endl;
