@@ -62,6 +62,7 @@ Term
   <- t:Application { $$ = t; }
    / t:UnaryOp { $$ = t; }
    / t:Variable { $$ = t; }
+   / t:Tuple { $$ = t; }
 
 Application
   <- i:Variable _ OPEN _ args:TermList _ CLOSE {
@@ -71,9 +72,26 @@ Application
         // Clear the args node's children to prevent it from deleting them
         args->children.clear();
         
-        $$ = new node(node::APPLICATION, children);  // Initialize the APPLICATION node after modifying children
+        $$ = new node(node::APPLICATION, children);
         
         delete args;  // Clean up the args node after extracting its children
+    }
+
+  Tuple
+    <- OPEN _ args:TermList _ CLOSE {
+        std::vector<node*> children = args->children;  // Extract children from TermList
+      
+        // Clear the args node's children to prevent it from deleting them
+        args->children.clear();
+        
+        $$ = new node(node::TUPLE, children);
+        
+        delete args;  // Clean up the args node after extracting its children
+      } 
+    / OPEN _ CLOSE {
+        std::vector<node*> children;
+
+        $$ = new node(node::TUPLE, children);
     }
 
 UnaryOp
