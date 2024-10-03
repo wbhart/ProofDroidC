@@ -74,7 +74,9 @@ int main() {
         "P(x) = \\emptyset \\vee \\mathcal{P}(S) \\subseteq T",
         "x \\neq y",
         "A \\cup B \\neq \\emptyset",
-        "A \\cup (B \\cap C) \\neq \\mathcal{P}(\\emptyset)"
+        "A \\cup (B \\cap C) \\neq \\mathcal{P}(\\emptyset)",
+        "A = B \\implies P(x)",
+        "(P(x) \\implies Q(y)) \\iff Q(x)"
     };
 
     std::cout << "Running tests..." << std::endl;

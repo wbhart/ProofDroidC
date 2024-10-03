@@ -47,7 +47,19 @@ statement
    / ( !EOL . )* EOL { $$ = nullptr; }
 
 Formula
-  <- f:AndFormula { $$ = f; }
+  <- f:IffFormula { $$ = f; }
+   / f:AndFormula { $$ = f; }
+
+IffFormula
+  <- l:Formula _ o:ImpliesOp _ r:Formula {
+      o->children.push_back(l); // Push the left formula
+      o->children.push_back(r); // Push the right formula
+      $$ = o;
+  }
+
+ImpliesOp
+  <- o:IMPLIES { $$ = o; }
+   / o:IFF { $$ = o; }
 
 AndFormula
   <- l:OrFormula { $$ = l; }
@@ -224,6 +236,12 @@ WEDGE
 
 VEE
   <- '\\vee' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_OR); }
+
+IMPLIES
+  <- '\\implies' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_IMPLIES); }
+
+IFF
+  <- '\\iff' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_IFF); }
 
 EMPTYSET
   <- '\\emptyset' { $$ = new node(node::CONSTANT, SYMBOL_EMPTYSET); }

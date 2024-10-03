@@ -33,6 +33,8 @@ struct PrecedenceInfo {
 const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_FORALL, {0, Associativity::NONE, Fixity::NONE, "\\forall", "∀"} },
     { SYMBOL_EXISTS, {0, Associativity::NONE, Fixity::NONE, "\\exists", "∃"} },
+    { SYMBOL_IFF, {4, Associativity::RIGHT, Fixity::INFIX, "\\iff", "↔"} },
+    { SYMBOL_IMPLIES, {4, Associativity::NONE, Fixity::INFIX, "\\implies", "→"} },
     { SYMBOL_AND, {4, Associativity::LEFT, Fixity::INFIX, "\\wedge", "∧"} },
     { SYMBOL_OR, {4, Associativity::LEFT, Fixity::INFIX, "\\vee", "∨"} },
     { SYMBOL_NOT, {0, Associativity::NONE, Fixity::FUNCTIONAL, "\\neg", "¬"} },

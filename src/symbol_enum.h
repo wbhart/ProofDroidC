@@ -5,6 +5,8 @@
 typedef enum {
     SYMBOL_FORALL,
     SYMBOL_EXISTS,
+    SYMBOL_IMPLIES,
+    SYMBOL_IFF,
     SYMBOL_AND,
     SYMBOL_OR,
     SYMBOL_NOT,
