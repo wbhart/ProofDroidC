@@ -72,13 +72,13 @@ private:
                     PrecedenceInfo childPrecInfo = getPrecedenceInfo(children[0]->symbol);
 
                     // Handle binary operators
-                    if (childPrecInfo.fixity == "infix" && children.size() == 3) {
+                    if (childPrecInfo.fixity == Fixity::INFIX && children.size() == 3) {
                         oss << children[1]->to_string_format(format) << " ";
                         oss << (format == OutputFormat::REPR ? childPrecInfo.repr : childPrecInfo.unicode) << " "; // Print the operator
                         oss << children[2]->to_string_format(format);
                     }
                     // Handle unary operators
-                    else if (childPrecInfo.fixity == "functional" || children.size() == 2) {
+                    else if (childPrecInfo.fixity == Fixity::FUNCTIONAL || children.size() == 2) {
                         oss << (format == OutputFormat::REPR ? childPrecInfo.repr : childPrecInfo.unicode) << "(";
                         oss << children[1]->to_string_format(format);  // Print the argument
                         oss << ")";
@@ -127,8 +127,8 @@ private:
         }
 
         if (childPrecInfo.precedence == parentPrecInfo.precedence) {
-            if ((parentPrecInfo.associativity == "left" && childPosition == "right") ||
-                (parentPrecInfo.associativity == "right" && childPosition == "left")) {
+            if ((parentPrecInfo.associativity == Associativity::LEFT && childPosition == "right") ||
+                (parentPrecInfo.associativity == Associativity::RIGHT && childPosition == "left")) {
                 return "(" + child.to_string_format(format) + ")";
             }
         }
