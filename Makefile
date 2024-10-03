@@ -14,7 +14,7 @@ BUILD_DIR = build
 PEG_FILE = $(SRC_DIR)/grammar.peg
 GENERATED_C = $(SRC_DIR)/grammar.c
 GENERATED_H = $(SRC_DIR)/grammar.h
-H_FILES = $(SRC_DIR)/symbol_enum.h $(SRC_DIR)/node.h
+H_FILES = $(SRC_DIR)/symbol_enum.h $(SRC_DIR)/node.h $(SRC_DIR)/precedence.h
 TARGET = proof_droid
 
 # Test files and targets

@@ -56,6 +56,7 @@ SimpleFormula
    / f:Negation { $$ = f; }
    / f:TOP { $$ = f; }
    / f:BOT { $$ = f; }
+   / OPEN _ f:Formula _ CLOSE { $$ = f; }
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {

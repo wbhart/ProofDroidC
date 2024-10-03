@@ -4,6 +4,7 @@
 #include "symbol_enum.h"
 #include <string>
 #include <map>
+#include <iostream>
 
 // Enum for associativity
 enum class Associativity {
@@ -34,7 +35,6 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_EXISTS, {0, Associativity::NONE, Fixity::NONE, "\\exists", "∃"} },
     { SYMBOL_AND, {4, Associativity::LEFT, Fixity::INFIX, "\\wedge", "∧"} },
     { SYMBOL_OR, {4, Associativity::LEFT, Fixity::INFIX, "\\vee", "∨"} },
-    { SYMBOL_SHEFFER, {4, Associativity::LEFT, Fixity::INFIX, "\\uparrow", "↑"} },
     { SYMBOL_NOT, {0, Associativity::NONE, Fixity::FUNCTIONAL, "\\neg", "¬"} },
     { SYMBOL_TOP, {0, Associativity::NONE, Fixity::NONE, "\\top", "⊤"} },
     { SYMBOL_BOT, {0, Associativity::NONE, Fixity::NONE, "\\bot", "⊥"} },
@@ -55,7 +55,7 @@ inline PrecedenceInfo getPrecedenceInfo(symbol_enum sym) {
     if (it != precedenceTable.end()) {
         return it->second;
     }
-    return {0, Associativity::NONE, Fixity::NONE, "", ""}; // Default for unknown symbols
+    return {0, Associativity::NONE, Fixity::FUNCTIONAL, "", ""}; // Default for unknown symbols
 }
 
 #endif // PRECEDENCE_H

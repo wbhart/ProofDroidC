@@ -71,7 +71,7 @@ private:
                 break;
             case LOGICAL_UNARY:
                 oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
-                oss << children[0]->to_string_format(format);
+                oss << parenthesize(children[0], format, "left");
                 break;
             case LOGICAL_BINARY:
                 oss << children[0]->to_string_format(format) << " ";
@@ -123,28 +123,30 @@ private:
     }
 
     // Helper function to parenthesize based on precedence and associativity
-    std::string parenthesize(const node& parent, const node& child, OutputFormat format, const std::string& childPosition) const {
-        PrecedenceInfo parentPrecInfo = getPrecedenceInfo(parent.symbol);
-        PrecedenceInfo childPrecInfo = getPrecedenceInfo(child.symbol);
+    std::string parenthesize(const node *child, OutputFormat format, const std::string& childPosition) const {
+        PrecedenceInfo parentPrecInfo = getPrecedenceInfo(symbol);
+        PrecedenceInfo childPrecInfo = child->type == APPLICATION ?
+                getPrecedenceInfo(child->children[0]->symbol) : getPrecedenceInfo(child->symbol);
 
         // If the child is a simple variable or constant, return it as is
-        if (child.type == VARIABLE || child.type == CONSTANT || child.type == TUPLE) {
-            return child.to_string_format(format);
+        if (child->type == VARIABLE || child->type == CONSTANT || child->type == TUPLE || 
+             (child->type == APPLICATION && childPrecInfo.fixity == Fixity::FUNCTIONAL)) {
+            return child->to_string_format(format);
         }
 
         // Handle parentheses based on precedence and associativity
         if (childPrecInfo.precedence < parentPrecInfo.precedence) {
-            return child.to_string_format(format);
+            return child->to_string_format(format);
         }
 
         if (childPrecInfo.precedence == parentPrecInfo.precedence) {
             if ((parentPrecInfo.associativity == Associativity::LEFT && childPosition == "right") ||
                 (parentPrecInfo.associativity == Associativity::RIGHT && childPosition == "left")) {
-                return "(" + child.to_string_format(format) + ")";
+                return "(" + child->to_string_format(format) + ")";
             }
         }
 
-        return child.to_string_format(format);
+        return "(" + child->to_string_format(format) + ")";
     }
 };
 

@@ -65,7 +65,10 @@ int main() {
         "\\neg P(x)",
         "\\top",
         "\\bot",
-        "\\neg \\top"
+        "\\neg \\top",
+        "\\neg P(x)",
+        "\\neg (A \\subseteq B)",
+        "\\neg (A \\cup B = C)"
     };
 
     std::cout << "Running tests..." << std::endl;
