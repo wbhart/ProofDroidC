@@ -43,11 +43,15 @@ static void custom_syntax_error(manager_t *ctx) {
 }
 
 statement
-  <- _ formula:Formula _ EOL { $$ = formula; }
+  <- _ f:Formula _ EOL { $$ = f; }
    / ( !EOL . )* EOL { $$ = nullptr; }
 
 Formula
-  <- e:EqualPredicate { $$ = e; }
+  <- f:SimpleFormula { $$ = f; }
+
+SimpleFormula
+  <- f:EqualPredicate { $$ = f; }
+   / f:SubsetPredicate { $$ = f; }
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
@@ -57,6 +61,19 @@ EqualPredicate
         children.push_back(t2);  // Push the second term
         $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
     }
+
+SubsetPredicate
+  <- t1:Term _ o:SUBSETOP _ t2:Term {
+        std::vector<node*> children;
+        children.push_back(o);  // Push the subset operator node
+        children.push_back(t1);  // Push the first term
+        children.push_back(t2);  // Push the second term
+        $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
+  }
+
+SUBSETOP
+  <- o:SUBSETEQ { $$ = o; }
+   / o:SUBSET { $$ = o; }
 
 Term
   <- t1:SimpleTerm { $$ = t1; }

@@ -54,7 +54,11 @@ int main() {
         "S \\cup T = \\emptyset",
         "S \\cup T \\times (A \\cap B) = \\emptyset",
         "(S \\cup T) \\times (A \\cap B) = \\emptyset",
-        "A \\setminus B = f(U)"
+        "A \\setminus B = f(U)",
+        "A \\subseteq B",
+        "A \\subset B",
+        "A \\cap B \\subseteq \\emptyset",
+        "A \\cap (B \\cup C) \\subset f(T) \\cup \\mathcal{P}(S)"
     };
 
     std::cout << "Running tests..." << std::endl;
