@@ -75,13 +75,17 @@ SimpleFormula
    / OPEN _ f:Formula _ CLOSE { $$ = f; }
 
 EqualPredicate
-  <- t1:Term _ e:EQUALS _ t2:Term {
+  <- t1:Term _ e:EqOp _ t2:Term {
         std::vector<node*> children;
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
         $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
     }
+
+EqOp
+  <- o:EQUALS { $$ = o; }
+   / o:NEQ { $$ = o; }
 
 SubsetPredicate
   <- t1:Term _ o:SUBSETOP _ t2:Term {
@@ -208,6 +212,9 @@ SUBSETEQ
 
 EQUALS
   <- '=' { $$ = new node(node::BINARY_OP, SYMBOL_EQUALS); }
+
+NEQ
+  <- '\\neq' { $$ = new node(node::BINARY_OP, SYMBOL_NEQ); }
 
 NEG
   <- '\\neg' { $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT); }

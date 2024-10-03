@@ -71,7 +71,10 @@ int main() {
         "\\neg (A \\cup B = C)",
         "(P(x) \\vee Q(y)) \\wedge R(z)",
         "P(x) \\vee (Q(y) \\wedge R(z))",
-        "P(x) = \\emptyset \\vee \\mathcal{P}(S) \\subseteq T"
+        "P(x) = \\emptyset \\vee \\mathcal{P}(S) \\subseteq T",
+        "x \\neq y",
+        "A \\cup B \\neq \\emptyset",
+        "A \\cup (B \\cap C) \\neq \\mathcal{P}(\\emptyset)"
     };
 
     std::cout << "Running tests..." << std::endl;

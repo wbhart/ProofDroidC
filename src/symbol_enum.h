@@ -9,6 +9,7 @@ typedef enum {
     SYMBOL_OR,
     SYMBOL_NOT,
     SYMBOL_EQUALS,
+    SYMBOL_NEQ,
     SYMBOL_SUBSET,
     SYMBOL_SUBSETEQ,
     SYMBOL_TOP,
