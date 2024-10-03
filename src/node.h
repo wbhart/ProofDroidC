@@ -19,6 +19,8 @@ public:
         VARIABLE,
         CONSTANT,
         QUANTIFIER,
+        LOGICAL_UNARY,
+        LOGICAL_BINARY,
         BINARY_OP,
         UNARY_OP,
         APPLICATION,
@@ -66,6 +68,15 @@ private:
             case UNARY_OP:
             case BINARY_OP:
                 oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
+                break;
+            case LOGICAL_UNARY:
+                oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
+                oss << children[0]->to_string_format(format);
+                break;
+            case LOGICAL_BINARY:
+                oss << children[0]->to_string_format(format) << " ";
+                oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
+                oss << " " << children[1]->to_string_format(format);
                 break;
             case APPLICATION:
                 if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP) {

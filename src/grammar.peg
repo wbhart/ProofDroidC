@@ -53,6 +53,7 @@ SimpleFormula
   <- f:EqualPredicate { $$ = f; }
    / f:SubsetPredicate { $$ = f; }
    / f:Predicate { $$ = f; }
+   / f:Negation {$$ = f; }
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
@@ -78,6 +79,12 @@ SUBSETOP
 
 Predicate
   <- f:Application { $$ = f; }
+
+Negation
+  <- o:NEG _ f:SimpleFormula {
+        o->children.push_back(f); // Push the formula
+        $$ = o;
+  }
 
 Term
   <- t1:SimpleTerm { $$ = t1; }
@@ -184,7 +191,7 @@ EQUALS
   <- '=' { $$ = new node(node::BINARY_OP, SYMBOL_EQUALS); }
 
 NEG
-  <- '\\neg' { $$ = new node(node::UNARY_OP, SYMBOL_NOT); }
+  <- '\\neg' { $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT); }
 
 AND
   <- '\\wedge' { $$ = new node(node::BINARY_OP, SYMBOL_AND); }

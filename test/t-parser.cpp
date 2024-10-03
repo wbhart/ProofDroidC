@@ -61,7 +61,8 @@ int main() {
         "A \\cap (B \\cup C) \\subset f(T) \\cup \\mathcal{P}(S)",
         "P(x)",
         "Q(A \\cup B)",
-        "P(f(x))"
+        "P(f(x))",
+        "\\neg P(x)"
     };
 
     std::cout << "Running tests..." << std::endl;
