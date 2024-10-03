@@ -74,9 +74,9 @@ private:
                 oss << parenthesize(children[0], format, "left");
                 break;
             case LOGICAL_BINARY:
-                oss << children[0]->to_string_format(format) << " ";
+                oss << parenthesize(children[0], format, "left") + " ";
                 oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
-                oss << " " << children[1]->to_string_format(format);
+                oss << " " << parenthesize(children[1], format, "right");
                 break;
             case APPLICATION:
                 if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP) {

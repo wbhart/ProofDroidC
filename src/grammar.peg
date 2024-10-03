@@ -47,7 +47,23 @@ statement
    / ( !EOL . )* EOL { $$ = nullptr; }
 
 Formula
-  <- f:SimpleFormula { $$ = f; }
+  <- f:AndFormula { $$ = f; }
+
+AndFormula
+  <- l:OrFormula { $$ = l; }
+    (_ o:WEDGE _ r:OrFormula {
+        o->children.push_back($$); // Push the left formula
+        o->children.push_back(r); // Push the right formula
+        $$ = o;
+    })*
+
+OrFormula
+  <- l:SimpleFormula { $$ = l; }
+    (_ o:VEE _ r:SimpleFormula {
+        o->children.push_back($$); // Push the left formula
+        o->children.push_back(r); // Push the right formula
+        $$ = o;
+    })*
 
 SimpleFormula
   <- f:EqualPredicate { $$ = f; }
@@ -196,11 +212,11 @@ EQUALS
 NEG
   <- '\\neg' { $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT); }
 
-AND
-  <- '\\wedge' { $$ = new node(node::BINARY_OP, SYMBOL_AND); }
+WEDGE
+  <- '\\wedge' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_AND); }
 
-OR
-  <- '\\vee' { $$ = new node(node::BINARY_OP, SYMBOL_OR); }
+VEE
+  <- '\\vee' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_OR); }
 
 EMPTYSET
   <- '\\emptyset' { $$ = new node(node::CONSTANT, SYMBOL_EMPTYSET); }
