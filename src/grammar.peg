@@ -53,7 +53,9 @@ SimpleFormula
   <- f:EqualPredicate { $$ = f; }
    / f:SubsetPredicate { $$ = f; }
    / f:Predicate { $$ = f; }
-   / f:Negation {$$ = f; }
+   / f:Negation { $$ = f; }
+   / f:TOP { $$ = f; }
+   / f:BOT { $$ = f; }
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {

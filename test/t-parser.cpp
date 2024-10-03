@@ -62,7 +62,10 @@ int main() {
         "P(x)",
         "Q(A \\cup B)",
         "P(f(x))",
-        "\\neg P(x)"
+        "\\neg P(x)",
+        "\\top",
+        "\\bot",
+        "\\neg \\top"
     };
 
     std::cout << "Running tests..." << std::endl;
