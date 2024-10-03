@@ -3,6 +3,7 @@
 
 // Enum for representing various operators and constants in the AST
 typedef enum {
+    SYMBOL_NONE,
     SYMBOL_FORALL,
     SYMBOL_EXISTS,
     SYMBOL_IMPLIES,

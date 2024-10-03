@@ -33,7 +33,7 @@ public:
     std::vector<node*> children;
 
     node(node_type t, const std::string& var_name) 
-        : type(VARIABLE), var_name(var_name) {}
+        : type(VARIABLE), symbol(SYMBOL_NONE), var_name(var_name) {}
 
     node(node_type t, symbol_enum sym) 
         : type(t), symbol(sym) {}
@@ -42,7 +42,7 @@ public:
         : type(t), symbol(sym), children(children) {}
 
     node(node_type t, const std::vector<node*>& children) 
-        : type(t), children(children) {}
+        : type(t), symbol(SYMBOL_NONE), children(children) {}
 
     // Print function that accepts an OutputFormat enum
     void print(OutputFormat format = OutputFormat::REPR) const {
@@ -113,8 +113,8 @@ private:
                 oss << ")";
                 break;
             case QUANTIFIER:
-                oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
-                oss << " " << children[0]->to_string_format(format) << " (" << children[1]->to_string_format(format) << ")";
+                oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
+                oss << children[0]->to_string_format(format) << " " << parenthesize(children[1], format, "true");
                 break;
             default:
                 break;
@@ -129,7 +129,8 @@ private:
                 getPrecedenceInfo(child->children[0]->symbol) : getPrecedenceInfo(child->symbol);
 
         // If the child is a simple variable or constant, return it as is
-        if (child->type == VARIABLE || child->type == CONSTANT || child->type == TUPLE || 
+        if (child->type == VARIABLE || child->type == CONSTANT ||
+            child->type == TUPLE || child->type == QUANTIFIER ||
              (child->type == APPLICATION && childPrecInfo.fixity == Fixity::FUNCTIONAL)) {
             return child->to_string_format(format);
         }

@@ -76,7 +76,12 @@ int main() {
         "A \\cup B \\neq \\emptyset",
         "A \\cup (B \\cap C) \\neq \\mathcal{P}(\\emptyset)",
         "A = B \\implies P(x)",
-        "(P(x) \\implies Q(y)) \\iff Q(x)"
+        "(P(x) \\implies Q(y)) \\iff Q(x)",
+        "\\forall x (x = y)",
+        "\\exists x P(x)",
+        "\\forall x (P(x) \\vee Q(x))",
+        "\\forall x \\forall y P(x, y)",
+        "\\forall x \\forall y (P(x) \\vee Q(y))"  
     };
 
     std::cout << "Running tests..." << std::endl;

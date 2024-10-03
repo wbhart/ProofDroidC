@@ -47,8 +47,21 @@ statement
    / ( !EOL . )* EOL { $$ = nullptr; }
 
 Formula
-  <- f:IffFormula { $$ = f; }
+  <- f:Quantifier { $$ = f; }
+   / f:IffFormula { $$ = f; }
    / f:AndFormula { $$ = f; }
+
+Quantifier
+  <- q:QuantifierOp _ v:Variable _ f:SimpleFormula {
+      // bind variable here
+      q->children.push_back(v); // Push the variable
+      q->children.push_back(f); // Push the formula
+      $$ = q;
+  }
+
+QuantifierOp
+  <- op:FORALL { $$ = op; }
+   / op:EXISTS { $$ = op; }
 
 IffFormula
   <- l:Formula _ o:ImpliesOp _ r:Formula {
@@ -78,7 +91,8 @@ OrFormula
     })*
 
 SimpleFormula
-  <- f:EqualPredicate { $$ = f; }
+  <- f:Quantifier { $$ = f; }
+   / f:EqualPredicate { $$ = f; }
    / f:SubsetPredicate { $$ = f; }
    / f:Predicate { $$ = f; }
    / f:Negation { $$ = f; }
