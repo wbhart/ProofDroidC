@@ -63,6 +63,7 @@ Term
    / t:UnaryOp { $$ = t; }
    / t:Variable { $$ = t; }
    / t:Tuple { $$ = t; }
+   / t:EMPTYSET { $$ = t; }
 
 Application
   <- i:Variable _ OPEN _ args:TermList _ CLOSE {
@@ -153,6 +154,9 @@ AND
 
 OR
   <- '\\vee' { $$ = new node(node::BINARY_OP, SYMBOL_OR); }
+
+EMPTYSET
+  <- '\\emptyset' { $$ = new node(node::CONSTANT, SYMBOL_EMPTYSET); }
 
 OPEN
   <- '('

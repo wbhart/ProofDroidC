@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
 
             if (ast) {
                 // Use the enum to select the string format for printing
-                ast->print(OutputFormat::REPR);
+                ast->print(OutputFormat::UNICODE);
                 delete ast;  // Manually free the AST
                 ast = nullptr;
             } else {

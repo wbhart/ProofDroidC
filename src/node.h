@@ -64,8 +64,6 @@ private:
                 break;
             case CONSTANT:
             case UNARY_OP:
-                oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
-                break;
             case BINARY_OP:
                 oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
                 break;

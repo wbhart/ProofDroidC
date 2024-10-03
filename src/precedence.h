@@ -26,12 +26,13 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_BOT, {0, "none", "none", "\\bot", "⊥"} },
     { SYMBOL_EQUALS, {3, "none", "infix", "=", "="} },
     { SYMBOL_SUBSET, {3, "none", "infix", "\\subset", "⊂"} },
-    { SYMBOL_SUBSETEQ, {3, "none", "infix", "\\subseteq", "⊆"} },  // Corrected symbol
+    { SYMBOL_SUBSETEQ, {3, "none", "infix", "\\subseteq", "⊆"} },
     { SYMBOL_CAP, {2, "left", "infix", "\\cap", "∩"} },
     { SYMBOL_CUP, {2, "left", "infix", "\\cup", "∪"} },
-    { SYMBOL_SETMINUS, {2, "left", "infix", "\\setminus", "∖"} },  // Corrected symbol
+    { SYMBOL_SETMINUS, {2, "left", "infix", "\\setminus", "∖"} },
     { SYMBOL_TIMES, {2, "left", "infix", "\\times", "×"} },
-    { SYMBOL_POWERSET, {0, "none", "functional", "\\mathcal{P}", "𝒫"} }
+    { SYMBOL_POWERSET, {0, "none", "functional", "\\mathcal{P}", "𝒫"} },
+    { SYMBOL_EMPTYSET, {0, "none", "none", "\\emptyset", "∅"} }
 };
 
 // Function to retrieve precedence information based on the enum
