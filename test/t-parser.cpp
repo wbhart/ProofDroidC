@@ -22,9 +22,8 @@ bool test_parser(const std::string& input, int test_number) {
     parser_parse(ctx, &ast);
 
     if (!ast) {
-        std::cerr << "Syntax error near position " << mgr.pos << ":\n";
-        std::cerr << "Failed to parse expected string at position: " << mgr.pos << std::endl;
-        std::cerr << "Remaining input: '" << &mgr.input[mgr.pos] << "'" << std::endl;
+        std::cerr << "Syntax error near position " << mgr.pos << ":" << std::endl;
+        std::cerr << "Input string: " << input << std::endl;
         parser_destroy(ctx);
         return false;
     }
@@ -51,7 +50,11 @@ int main() {
         "\\mathcal{P}(S) = T",
         "f(g(t)) = (a, f(t), \\emptyset)",
         "A = \\emptyset",
-        "() = f(g(\\emptyset))"
+        "() = f(g(\\emptyset))",
+        "S \\cup T = \\emptyset",
+        "S \\cup T \\times (A \\cap B) = \\emptyset",
+        "(S \\cup T) \\times (A \\cap B) = \\emptyset",
+        "A \\setminus B = f(U)"
     };
 
     std::cout << "Running tests..." << std::endl;

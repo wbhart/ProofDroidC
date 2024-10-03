@@ -59,8 +59,21 @@ EqualPredicate
     }
 
 Term
-  <- t:SimpleTerm { $$ = t; }
-  
+  <- t1:SimpleTerm { $$ = t1; }
+     ( _ o:SetOp _ t2:SimpleTerm {
+         std::vector<node*> children;
+         children.push_back(o); // Push the operator node
+         children.push_back($$); // Push the left argument
+         children.push_back(t2); // Push the right argument
+         $$ = new node(node::APPLICATION, children); // Create an APPLICATION node
+       })*
+
+SetOp
+  <- o:CAP { $$ = o; }
+   / o:CUP { $$ = o; }
+   / o:SETMINUS { $$ = o; }
+   / o:TIMES { $$ = o; }
+
 SimpleTerm
   <- t:Application { $$ = t; }
    / t:UnaryOp { $$ = t; }
