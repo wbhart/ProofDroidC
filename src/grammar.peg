@@ -52,13 +52,16 @@ Formula
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
         std::vector<node*> children;
-        children.push_back(e);  // Push the EQUALS operator node (already parsed as a BINARY_OP)
+        children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
         $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
     }
 
 Term
+  <- t:SimpleTerm { $$ = t; }
+  
+SimpleTerm
   <- t:Application { $$ = t; }
    / t:UnaryOp { $$ = t; }
    / t:Variable { $$ = t; }
