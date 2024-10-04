@@ -29,6 +29,7 @@ public:
 
     node_type type;
     symbol_enum symbol;
+    bool bound; // for variables
     std::string var_name;
     std::vector<node*> children;
 
