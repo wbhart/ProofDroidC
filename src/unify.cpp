@@ -28,11 +28,6 @@ bool occurs_check(node* var, node* node) {
 
 // Function to unify a variable with a node
 std::optional<Substitution> unify_variable(node* var, node* term, Substitution& subst) {
-    // Ensure that the node being unified is actually a variable
-    if (var->type != node::node_type::VARIABLE) {
-        return std::nullopt;
-    }
-
     std::string var_name = var->var_name;
 
     // If the variable is already bound in the substitution map, unify the mapped value with the term
@@ -54,7 +49,8 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
     }
 
     // Add the substitution of the variable to the term only if the term is a valid type (variable or constant)
-    if (term->type == node::node_type::VARIABLE || term->type == node::node_type::CONSTANT) {
+    if (term->type == node::node_type::VARIABLE || term->type == node::node_type::CONSTANT ||
+        term->type == node::node_type::APPLICATION) {
         subst[var_name] = term;
     } else {
         return std::nullopt;
@@ -77,9 +73,25 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
 
     // If both nodes are applications, check if they can be unified
     if (node1->type == node::node_type::APPLICATION && node2->type == node::node_type::APPLICATION) {
-        // The first child is the function or predicate symbol, which should be unified
-        if (!unify(node1->children[0], node2->children[0], subst).has_value()) {
-            return std::nullopt; // Different function/predicate symbols
+        // First children are the symbols, which should be equal, for now
+        if (node1->children[0]->type != node2->children[0]->type) {
+            return std::nullopt; // We don't allow unification with functions for now
+        }
+        
+        switch (node1->children[0]->type) {
+         case node::node_type::VARIABLE:
+            if (node1->children[0]->var_name != node2->children[0]->var_name) {
+                return std::nullopt; // Functions must have the same name
+            }
+            break;
+        case node::node_type::BINARY_OP:
+        case node::node_type::UNARY_OP:
+            if (node1->children[0]->symbol != node2->children[0]->symbol) {
+                return std::nullopt; // Functions must have the same name
+            }
+            break;
+        default:
+            return std::nullopt; // Not dealt with currently
         }
 
         // Check if they have the same number of arguments

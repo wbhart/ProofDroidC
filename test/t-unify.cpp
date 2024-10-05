@@ -43,6 +43,11 @@ node* parse_formula(const std::string& formula) {
     return ast;
 }
 
+node* parse_term(const std::string& formula) {
+    node *f = parse_formula("P(" + formula + ")");
+    return f->children[1];
+}
+
 // Function to print the substitutions
 void print_substitution(const Substitution& subst) {
     for (const auto& [key, value] : subst) {
@@ -110,10 +115,12 @@ int main() {
     };
 
     std::vector<TestCase> test_cases = {
-        {"P(x)", "P(a)", { {"x", new node(node::node_type::CONSTANT, "a")} }},
-        {"f(x, y)", "f(a, b)", { {"x", new node(node::node_type::CONSTANT, "a" )}, {"y", new node(node::node_type::CONSTANT, "b")} }},
+        {"P(x)", "P(\\emptyset)", { {"x", parse_term("\\emptyset")} }},
+        {"P(x) = T", "P(\\emptyset) = T", { {"x", parse_term("\\emptyset")} }},
+        {"f(x, y)", "f(\\emptyset, \\emptyset)", { {"x", parse_term("\\emptyset")}, {"y", parse_term("\\emptyset")} }},
         {"\\forall x P(x)", "\\forall y P(y)", {}}, // Expected empty substitution since they match structurally
-        {"P(f(x))", "P(f(a))", { {"x", new node(node::node_type::CONSTANT, "a")} }}
+        {"P(f(x))", "P(f(\\emptyset))", { {"x", parse_term("\\emptyset")} }},
+        {"P(f(x, \\emptyset))", "P(f(g(y), z))", { {"x", parse_term("g(y)")}, {"z", parse_term("\\emptyset")} }}
     };
 
     std::cout << "Running tests..." << std::endl;
