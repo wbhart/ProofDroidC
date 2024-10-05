@@ -120,7 +120,8 @@ int main() {
         {"f(x, y)", "f(\\emptyset, \\emptyset)", { {"x", parse_term("\\emptyset")}, {"y", parse_term("\\emptyset")} }},
         {"\\forall x P(x)", "\\forall y P(y)", {}}, // Expected empty substitution since they match structurally
         {"P(f(x))", "P(f(\\emptyset))", { {"x", parse_term("\\emptyset")} }},
-        {"P(f(x, \\emptyset))", "P(f(g(y), z))", { {"x", parse_term("g(y)")}, {"z", parse_term("\\emptyset")} }}
+        {"P(f(x, \\emptyset))", "P(f(g(y), z))", { {"x", parse_term("g(y)")}, {"z", parse_term("\\emptyset")} }},
+        {"P(x)", "P((y, z))", { {"x", parse_term("(y, z)")} }}
     };
 
     std::cout << "Running tests..." << std::endl;
