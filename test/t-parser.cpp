@@ -68,7 +68,7 @@ int main() {
         "\\neg \\top",
         "\\neg P(x)",
         "\\neg (A \\subseteq B)",
-        "\\neg (A \\cup B = C)",
+        "A \\cup B \\neq C",
         "(P(x) \\vee Q(y)) \\wedge R(z)",
         "P(x) \\vee (Q(y) \\wedge R(z))",
         "P(x) = \\emptyset \\vee \\mathcal{P}(S) \\subseteq T",

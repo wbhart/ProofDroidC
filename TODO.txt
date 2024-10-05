@@ -1,0 +1,15 @@
+Critical:
+
+* Separate APPLICATION into FUNCTION and PREDICATE
+
+* Separare BINARY_OP into BINARY_OP and BINARY_PREDICATE
+
+* Separate UNARY_OP into UNARY_OP and UNARY_PREDICATE
+
+Noncritical:
+
+* print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,
+  e.g. partial orders), and \neg(A \subseteq B), \neg(a \leq b), etc. Must internally
+  canonicalise to \neg(blah) for negated literal purposes for resolution
+
+Maybe:

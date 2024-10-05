@@ -16,15 +16,17 @@ enum class OutputFormat {
 class node {
 public:
     enum node_type {
-        VARIABLE,
-        CONSTANT,
-        QUANTIFIER,
-        LOGICAL_UNARY,
-        LOGICAL_BINARY,
-        BINARY_OP,
-        UNARY_OP,
-        APPLICATION,
-        TUPLE
+        VARIABLE, // node(VARIABLE, "x")
+        CONSTANT, // node(CONSTANT, SYMBOL_EMPTYSET)
+        QUANTIFIER, // node(QUANTIFIER, node(VARIABLE, "x"), [formula])
+        LOGICAL_UNARY, // node(LOGICAL_UNARY, SYMBOL_NOT, [formula])
+        LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
+        UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
+        BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
+        APPLICATION, // node(APPLICATION, node(VARIABLE, "f"), [term1, term2, ...])
+                     // node(APPLICATION, node(UNARY_OP, SYMBOL_POWERSET), [term])
+                     // node(APPLICATION, node(BINARY_OP, SYMBOL_CAP), [term1, term2])
+        TUPLE // node(TUPLE, [term1, term2, ...])
     };
 
     node_type type;
@@ -71,8 +73,16 @@ private:
                 oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
                 break;
             case LOGICAL_UNARY:
-                oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
-                oss << parenthesize(children[0], format, "left");
+                if (symbol == SYMBOL_NOT && children[0]->type == node_type::APPLICATION &&
+                    children[0]->children[0]->type == node_type::BINARY_OP &&
+                    children[0]->children[0]->symbol == SYMBOL_EQUALS) { // neq
+                        oss << children[0]->children[1]->to_string_format(format) <<
+                           (format == OutputFormat::REPR ? " \\neq " : " ≠ ") <<
+                           children[0]->children[2]->to_string_format(format);
+                } else {
+                    oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
+                    oss << parenthesize(children[0], format, "left");
+                }
                 break;
             case LOGICAL_BINARY:
                 oss << parenthesize(children[0], format, "left") + " ";
