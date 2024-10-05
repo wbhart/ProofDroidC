@@ -50,7 +50,7 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
 
     // Add the substitution of the variable to the term only if the term is a valid type (variable or constant)
     if (term->type == node::node_type::VARIABLE || term->type == node::node_type::CONSTANT ||
-        term->type == node::node_type::APPLICATION) {
+        term->type == node::node_type::APPLICATION || term->type == node::node_type::TUPLE) {
         subst[var_name] = term;
     } else {
         return std::nullopt;
