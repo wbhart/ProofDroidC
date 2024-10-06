@@ -72,7 +72,7 @@ bool run_test_case(const std::string& formula1, const std::string& formula2, con
     if (result.has_value()) {
         // Verify against expected substitution
         for (const auto& [key, value] : expected_subst) {
-            if (result.value().find(key) == result.value().end() || result.value().at(key)->var_name != value->var_name) {
+            if (result.value().find(key) == result.value().end() || result.value().at(key)->to_string() != value->to_string()) {
                 passed = false;
                 break;
             }

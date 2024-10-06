@@ -28,7 +28,7 @@ bool occurs_check(node* var, node* node) {
 
 // Function to unify a variable with a node
 std::optional<Substitution> unify_variable(node* var, node* term, Substitution& subst) {
-    std::string var_name = var->var_name;
+    std::string var_name = var->name();
 
     // If the variable is already bound in the substitution map, unify the mapped value with the term
     if (subst.find(var_name) != subst.end()) {
@@ -37,7 +37,7 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
 
     // If the term is already a variable mapped in the substitution, unify them
     if (is_variable(term)) {
-        std::string term_name = term->var_name;
+        std::string term_name = term->name();
         if (subst.find(term_name) != subst.end()) {
             return unify(var, subst[term_name], subst);
         }
@@ -80,7 +80,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
         
         switch (node1->children[0]->type) {
          case node::node_type::VARIABLE:
-            if (node1->children[0]->var_name != node2->children[0]->var_name) {
+            if (node1->children[0]->name() != node2->children[0]->name()) {
                 return std::nullopt; // Functions must have the same name
             }
             break;
