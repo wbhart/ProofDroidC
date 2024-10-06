@@ -13,11 +13,17 @@ enum class OutputFormat {
     UNICODE  // Unicode format for user display
 };
 
+enum class VariableKind {
+    VARIABLE,
+    FUNCTION,
+    PREDICATE,
+    CONSTANT
+};
+
 struct variable_data {
-    bool bound; // for variables
-    bool function; // for variables
-    bool predicate; // for variables
-    int arity; // for variable functions/predicates
+    VariableKind kind;
+    bool bound;
+    int arity;
     std::string name;
 };
 
@@ -45,7 +51,7 @@ public:
     std::vector<node*> children;
 
     node(node_type t, const std::string& name)
-        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{false, false, false, 0, name}), children() {}
+        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{VariableKind::VARIABLE, false, 0, name}), children() {}
 
     node(node_type t, symbol_enum sym)
         : type(t), symbol(sym), vdata(nullptr), children() {}

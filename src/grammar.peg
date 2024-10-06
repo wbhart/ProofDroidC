@@ -136,7 +136,7 @@ SUBSETOP
    / o:SUBSET { $$ = o; }
 
 Predicate
-  <- f:Application { $$ = f; }
+  <- f:Application { f->children[0]->vdata->kind = VariableKind::PREDICATE; $$ = f; }
 
 Negation
   <- o:NEG _ f:SimpleFormula {
@@ -151,7 +151,7 @@ Term
          children.push_back(o); // Push the operator node
          children.push_back($$); // Push the left argument
          children.push_back(t2); // Push the right argument
-         $$ = new node(node::APPLICATION, children); // Create an APPLICATION node
+         $$ = new node(node::APPLICATION, children);
        })*
 
 SetOp
@@ -170,6 +170,7 @@ SimpleTerm
 Application
   <- i:Variable _ OPEN _ args:TermList _ CLOSE {
         std::vector<node*> children = args->children;  // Extract children from TermList
+        i->vdata->kind = VariableKind::FUNCTION;
         children.insert(children.begin(), i);  // Insert the function/variable name at the start
         
         // Clear the args node's children to prevent it from deleting them
@@ -202,7 +203,7 @@ UnaryOp
         std::vector<node*> children;
         children.push_back(p);  // Use the POWERSET node directly
         children.push_back(t);  // Add the term (argument)
-        $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
+        $$ = new node(node::APPLICATION, children);
     }
 
 TermList
