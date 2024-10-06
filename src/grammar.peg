@@ -107,17 +107,17 @@ EqualPredicate
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
+        $$ = new node(node::APPLICATION, children);
     }
 
 NeqPredicate
   <- t1:Term _ NEQ _ t2:Term {
-        node *e = new node(node::BINARY_OP, SYMBOL_EQUALS);
+        node *e = new node(node::BINARY_PRED, SYMBOL_EQUALS);
         std::vector<node*> children, children2;
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        e = new node(node::APPLICATION, children);  // Create an APPLICATION node
+        e = new node(node::APPLICATION, children);
         children2.push_back(e);
         $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT, children2); // Negate node
     }
@@ -128,7 +128,7 @@ SubsetPredicate
         children.push_back(o);  // Push the subset operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        $$ = new node(node::APPLICATION, children);  // Create an APPLICATION node
+        $$ = new node(node::APPLICATION, children);
   }
 
 SUBSETOP
@@ -240,13 +240,13 @@ EXISTS
   <- '\\exists' { $$ = new node(node::QUANTIFIER, SYMBOL_EXISTS); }
 
 SUBSET
-  <- '\\subset' { $$ = new node(node::BINARY_OP, SYMBOL_SUBSET); }
+  <- '\\subset' { $$ = new node(node::BINARY_PRED, SYMBOL_SUBSET); }
 
 SUBSETEQ
-  <- '\\subseteq' { $$ = new node(node::BINARY_OP, SYMBOL_SUBSETEQ); }
+  <- '\\subseteq' { $$ = new node(node::BINARY_PRED, SYMBOL_SUBSETEQ); }
 
 EQUALS
-  <- '=' { $$ = new node(node::BINARY_OP, SYMBOL_EQUALS); }
+  <- '=' { $$ = new node(node::BINARY_PRED, SYMBOL_EQUALS); }
 
 NEQ
   <- '\\neq'

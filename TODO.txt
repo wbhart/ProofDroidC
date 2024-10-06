@@ -1,10 +1,14 @@
 Critical:
 
-* Separate APPLICATION into FUNCTION and PREDICATE
+* Separate VARIABLE into VARIABLE, FUNCTION and PREDICATE
 
-* Separare BINARY_OP into BINARY_OP and BINARY_PREDICATE
+* Separare BINARY_OP into BINARY_OP and BINARY_PRED
 
-* Separate UNARY_OP into UNARY_OP and UNARY_PREDICATE
+* Separate UNARY_OP into UNARY_OP and UNARY_PRED
+
+* Implement and use node->negate in grammar.peg
+
+* Implement node->is_predicate, etc. and esp. use in printing
 
 Noncritical:
 

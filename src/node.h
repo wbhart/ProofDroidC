@@ -23,6 +23,8 @@ public:
         LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
         UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
         BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
+        UNARY_PRED, // node(UNARY_PRED, ??)
+        BINARY_PRED, // node(BINARY_PRED, SYMBOL_EQUALS)
         APPLICATION, // node(APPLICATION, node(VARIABLE, "f"), [term1, term2, ...])
                      // node(APPLICATION, node(UNARY_OP, SYMBOL_POWERSET), [term])
                      // node(APPLICATION, node(BINARY_OP, SYMBOL_CAP), [term1, term2])
@@ -70,11 +72,13 @@ private:
             case CONSTANT:
             case UNARY_OP:
             case BINARY_OP:
+            case UNARY_PRED:
+            case BINARY_PRED:
                 oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
                 break;
             case LOGICAL_UNARY:
                 if (symbol == SYMBOL_NOT && children[0]->type == node_type::APPLICATION &&
-                    children[0]->children[0]->type == node_type::BINARY_OP &&
+                    children[0]->children[0]->type == node_type::BINARY_PRED &&
                     children[0]->children[0]->symbol == SYMBOL_EQUALS) { // neq
                         oss << children[0]->children[1]->to_string_format(format) <<
                            (format == OutputFormat::REPR ? " \\neq " : " ≠ ") <<
@@ -90,7 +94,8 @@ private:
                 oss << " " << parenthesize(children[1], format, "right");
                 break;
             case APPLICATION:
-                if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP) {
+                if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP ||
+                    children[0]->type == BINARY_PRED || children[0]->type == UNARY_PRED) {
                     PrecedenceInfo childPrecInfo = getPrecedenceInfo(children[0]->symbol);
 
                     // Handle binary operators

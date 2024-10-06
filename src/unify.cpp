@@ -86,6 +86,8 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
             break;
         case node::node_type::BINARY_OP:
         case node::node_type::UNARY_OP:
+        case node::node_type::BINARY_PRED:
+        case node::node_type::UNARY_PRED:
             if (node1->children[0]->symbol != node2->children[0]->symbol) {
                 return std::nullopt; // Functions must have the same name
             }
