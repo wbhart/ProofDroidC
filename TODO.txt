@@ -1,9 +1,5 @@
 Critical:
 
-* Implement and use node->negate in grammar.peg
-
-* Implement node->is_predicate, etc. and esp. use in printing
-
 Noncritical:
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,

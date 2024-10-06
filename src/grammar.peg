@@ -113,13 +113,12 @@ EqualPredicate
 NeqPredicate
   <- t1:Term _ NEQ _ t2:Term {
         node *e = new node(node::BINARY_PRED, SYMBOL_EQUALS);
-        std::vector<node*> children, children2;
+        std::vector<node*> children;
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
         e = new node(node::APPLICATION, children);
-        children2.push_back(e);
-        $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT, children2); // Negate node
+        $$ = negate_node(e); // Negate node
     }
 
 SubsetPredicate

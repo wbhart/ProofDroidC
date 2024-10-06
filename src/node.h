@@ -68,6 +68,11 @@ public:
         }
     }
 
+    bool is_predicate() const {
+        return (type == BINARY_PRED || type == UNARY_PRED ||
+                (type == VARIABLE && vdata->kind == VariableKind::PREDICATE));
+    }
+    
     // Function to get the variable name if the node is of type VARIABLE
     std::string name() const {
         if (type == VARIABLE && vdata) {
@@ -189,5 +194,9 @@ private:
         return "(" + child->to_string(format) + ")";
     }
 };
+
+node* deep_copy(const node* n);
+
+node* negate_node(node *n);
 
 #endif // NODE_H
