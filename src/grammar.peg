@@ -137,7 +137,7 @@ SUBSETOP
    / o:SUBSET { $$ = o; }
 
 Predicate
-  <- f:Application { f->children[0]->vdata->kind = PREDICATE; $$ = f; }
+  <- f:Application { f->children[0]->vdata->var_kind = PREDICATE; $$ = f; }
 
 Negation
   <- o:NEG _ f:SimpleFormula {
@@ -171,7 +171,7 @@ SimpleTerm
 Application
   <- i:Variable _ OPEN _ args:TermList _ CLOSE {
         std::vector<node*> children = args->children;  // Extract children from TermList
-        i->vdata->kind = VariableKind::FUNCTION;
+        i->vdata->var_kind = VariableKind::FUNCTION;
         children.insert(children.begin(), i);  // Insert the function/variable name at the start
         
         // Clear the args node's children to prevent it from deleting them

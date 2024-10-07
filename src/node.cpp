@@ -5,7 +5,7 @@
 #include <iostream>
 
 variable_data* deep_copy(variable_data* vdata) {
-    return new variable_data{vdata->kind, vdata->bound, vdata->arity, vdata->name};
+    return new variable_data{vdata->var_kind, vdata->bound, vdata->arity, vdata->name};
 }
 
 // Helper function to deep copy a node

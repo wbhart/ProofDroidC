@@ -36,7 +36,7 @@ enum node_type {
 };
 
 struct variable_data {
-    VariableKind kind;
+    VariableKind var_kind;
     bool bound;
     int arity;
     std::string name;
@@ -69,16 +69,16 @@ public:
 
     bool is_predicate() const {
         return (type == BINARY_PRED || type == UNARY_PRED ||
-                (type == VARIABLE && vdata->kind == PREDICATE) ||
+                (type == VARIABLE && vdata->var_kind == PREDICATE) ||
                 (type == CONSTANT && (symbol == SYMBOL_TOP || symbol == SYMBOL_BOT)));
     }
     
     bool is_variable() const {
-        return (type == VARIABLE && vdata->kind == INDIVIDUAL);
+        return (type == VARIABLE && vdata->var_kind == INDIVIDUAL);
     }
 
     bool is_free_variable() const {
-        return (type == VARIABLE && vdata->kind == INDIVIDUAL && !vdata->bound);
+        return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && !vdata->bound);
     }
 
     // Function to get the variable name if the node is of type VARIABLE
