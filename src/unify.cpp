@@ -7,11 +7,6 @@
 #include <string>
 #include <vector>
 
-// Utility function to check if a node is a variable
-bool is_variable(const node* node) {
-    return node->type == VARIABLE;
-}
-
 // Function to check if a variable occurs in a node (occurs check)
 bool occurs_check(node* var, node* node) {
     if (var == node) {
@@ -36,7 +31,7 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
     }
 
     // If the term is already a variable mapped in the substitution, unify them
-    if (is_variable(term)) {
+    if (term->is_variable()) {
         std::string term_name = term->name();
         if (subst.find(term_name) != subst.end()) {
             return unify(var, subst[term_name], subst);
@@ -62,12 +57,12 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
 // Function to unify two nodes
 std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst) {
     // If node1 is a variable, ensure it is a true variable before trying to unify
-    if (is_variable(node1)) {
+    if (node1->is_free_variable()) {
         return unify_variable(node1, node2, subst);
     }
 
     // If node2 is a variable, ensure it is a true variable before trying to unify
-    if (is_variable(node2)) {
+    if (node2->is_free_variable()) {
         return unify_variable(node2, node1, subst);
     }
 
@@ -179,9 +174,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
             // Unify the bound variables
             node* bound_var1 = node1->children[0];
             node* bound_var2 = node2->children[0];
-            if (!(is_variable(bound_var1) && is_variable(bound_var2))) {
-                return std::nullopt;
-            }
+
             auto bound_result = unify_variable(bound_var1, bound_var2, local_subst);
             if (!bound_result.has_value()) {
                 return std::nullopt; // Bound variables must match or unification failed

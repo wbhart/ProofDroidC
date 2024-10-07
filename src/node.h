@@ -73,6 +73,14 @@ public:
                 (type == CONSTANT && (symbol == SYMBOL_TOP || symbol == SYMBOL_BOT)));
     }
     
+    bool is_variable() const {
+        return (type == VARIABLE && vdata->kind == INDIVIDUAL);
+    }
+
+    bool is_free_variable() const {
+        return (type == VARIABLE && vdata->kind == INDIVIDUAL && !vdata->bound);
+    }
+
     // Function to get the variable name if the node is of type VARIABLE
     std::string name() const {
         if (type == VARIABLE && vdata) {

@@ -224,4 +224,3 @@ void bind_var(const std::string& var_name, node* current) {
     }
 }
 
-
