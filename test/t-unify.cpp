@@ -1,5 +1,4 @@
 #include "../src/node.h"
-#include "../src/symbol_enum.h"
 #include "../src/substitute.h"
 #include "../src/grammar.h"
 #include <iostream>
@@ -51,7 +50,7 @@ node* parse_term(const std::string& formula) {
 // Function to print the substitutions
 void print_substitution(const Substitution& subst) {
     for (const auto& [key, value] : subst) {
-        std::cout << key << " -> " << value->to_string(OutputFormat::REPR) << "\n";
+        std::cout << key << " -> " << value->to_string(REPR) << "\n";
     }
 }
 

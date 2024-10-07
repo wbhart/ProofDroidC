@@ -2,13 +2,14 @@
 
 #include "node.h"
 #include <stdexcept>
+#include <iostream>
+
+variable_data* deep_copy(variable_data* vdata) {
+    return new variable_data{vdata->kind, vdata->bound, vdata->arity, vdata->name};
+}
 
 // Helper function to deep copy a node
 node* deep_copy(const node* n) {
-    if (n == nullptr) {
-        throw std::invalid_argument("Cannot copy a null node");
-    }
-
     std::vector<node*> copied_children;
     for (const auto& child : n->children) {
         copied_children.push_back(deep_copy(child));
@@ -17,42 +18,39 @@ node* deep_copy(const node* n) {
     node* copied_node = nullptr;
 
     switch (n->type) {
-        case node::VARIABLE:
-            copied_node = new node(node::VARIABLE, n->name());
+        case VARIABLE:
+            copied_node = new node(VARIABLE, n->name());
+            copied_node->vdata = deep_copy(n->vdata);
             break;
-        case node::CONSTANT:
-            copied_node = new node(node::CONSTANT, n->symbol);
+        case CONSTANT:
+            copied_node = new node(CONSTANT, n->symbol);
             break;
-        case node::QUANTIFIER:
-            // Assuming QUANTIFIER nodes have exactly two children: variable and formula
-            if (n->children.size() != 2) {
-                throw std::logic_error("Quantifier node must have exactly two children");
-            }
-            copied_node = new node(node::QUANTIFIER, n->symbol, { deep_copy(n->children[0]), deep_copy(n->children[1]) });
+        case QUANTIFIER:
+            copied_node = new node(QUANTIFIER, n->symbol, copied_children);
             break;
-        case node::LOGICAL_UNARY:
-            copied_node = new node(node::LOGICAL_UNARY, n->symbol, copied_children);
+        case LOGICAL_UNARY:
+            copied_node = new node(LOGICAL_UNARY, n->symbol, copied_children);
             break;
-        case node::LOGICAL_BINARY:
-            copied_node = new node(node::LOGICAL_BINARY, n->symbol, copied_children);
+        case LOGICAL_BINARY:
+            copied_node = new node(LOGICAL_BINARY, n->symbol, copied_children);
             break;
-        case node::UNARY_OP:
-            copied_node = new node(node::UNARY_OP, n->symbol, copied_children);
+        case UNARY_OP:
+            copied_node = new node(UNARY_OP, n->symbol, copied_children);
             break;
-        case node::BINARY_OP:
-            copied_node = new node(node::BINARY_OP, n->symbol, copied_children);
+        case BINARY_OP:
+            copied_node = new node(BINARY_OP, n->symbol, copied_children);
             break;
-        case node::UNARY_PRED:
-            copied_node = new node(node::UNARY_PRED, n->symbol, copied_children);
+        case UNARY_PRED:
+            copied_node = new node(UNARY_PRED, n->symbol, copied_children);
             break;
-        case node::BINARY_PRED:
-            copied_node = new node(node::BINARY_PRED, n->symbol, copied_children);
+        case BINARY_PRED:
+            copied_node = new node(BINARY_PRED, n->symbol, copied_children);
             break;
-        case node::APPLICATION:
-            copied_node = new node(node::APPLICATION, n->symbol, copied_children);
+        case APPLICATION:
+            copied_node = new node(APPLICATION, n->symbol, copied_children);
             break;
-        case node::TUPLE:
-            copied_node = new node(node::TUPLE, copied_children);
+        case TUPLE:
+            copied_node = new node(TUPLE, copied_children);
             break;
         default:
             throw std::logic_error("Unsupported node type for deep copy");
@@ -64,7 +62,7 @@ node* deep_copy(const node* n) {
 // Helper function to create a negation node
 node* create_negation(node* child) {
     std::vector<node*> children = { child };
-    return new node(node::LOGICAL_UNARY, SYMBOL_NOT, children);
+    return new node(LOGICAL_UNARY, SYMBOL_NOT, children);
 }
 
 // The negate_node function implementation
@@ -74,13 +72,13 @@ node* negate_node(node* n) {
     }
 
     switch (n->type) {
-        case node::UNARY_PRED:
-        case node::BINARY_PRED: {
+        case UNARY_PRED:
+        case BINARY_PRED: {
             // Create a NOT node wrapping the predicate
             return create_negation(n);
         }
 
-        case node::LOGICAL_UNARY:
+        case LOGICAL_UNARY:
             if (n->symbol == SYMBOL_NOT) {
                 // Eliminate double negation: ¬¬φ ≡ φ
                 // Assume n->children[0] is φ
@@ -96,7 +94,7 @@ node* negate_node(node* n) {
                 return create_negation(n);
             }
 
-        case node::LOGICAL_BINARY: {
+        case LOGICAL_BINARY: {
             // Apply De Morgan's laws and other logical negations
             if (n->children.size() != 2) {
                 throw std::logic_error("Logical binary node must have exactly two children");
@@ -106,13 +104,19 @@ node* negate_node(node* n) {
                 // ¬(φ ∧ ψ) ≡ ¬φ ∨ ¬ψ
                 node* left_neg = negate_node(n->children[0]);
                 node* right_neg = negate_node(n->children[1]);
-                return new node(node::LOGICAL_BINARY, SYMBOL_OR, { left_neg, right_neg });
+                std::vector<node*> children;
+                children.push_back(left_neg);
+                children.push_back(right_neg);
+                return new node(LOGICAL_BINARY, SYMBOL_OR, children);
             }
             else if (n->symbol == SYMBOL_OR) {
                 // ¬(φ ∨ ψ) ≡ ¬φ ∧ ¬ψ
                 node* left_neg = negate_node(n->children[0]);
                 node* right_neg = negate_node(n->children[1]);
-                return new node(node::LOGICAL_BINARY, SYMBOL_AND, { left_neg, right_neg });
+                std::vector<node*> children;
+                children.push_back(left_neg);
+                children.push_back(right_neg);
+                return new node(LOGICAL_BINARY, SYMBOL_AND, children);
             }
             else if (n->symbol == SYMBOL_IMPLIES) {
                 // ¬(φ → ψ) ≡ φ ∧ ¬ψ
@@ -122,22 +126,34 @@ node* negate_node(node* n) {
                 // Clear children to prevent deletion
                 n->children.clear();
                 // Create AND node
-                return new node(node::LOGICAL_BINARY, SYMBOL_AND, { phi, negated_psi });
+                std::vector<node*> children;
+                children.push_back(phi);
+                children.push_back(negated_psi);
+                return new node(LOGICAL_BINARY, SYMBOL_AND, children);
             }
             else if (n->symbol == SYMBOL_IFF) {
                 // ¬(φ ↔ ψ) ≡ (φ ∧ ¬ψ) ∨ (¬φ ∧ ψ)
                 node* phi = n->children[0];
                 node* psi = n->children[1];
-                node* neg_phi = negate_node(phi);
-                node* neg_psi = negate_node(psi);
+                node* neg_phi = negate_node(deep_copy(phi));
+                node* neg_psi = negate_node(deep_copy(psi));
                 // Clear children to prevent deletion
                 n->children.clear();
                 // Create (φ ∧ ¬ψ)
-                node* left_clause = new node(node::LOGICAL_BINARY, SYMBOL_AND, { phi, neg_psi });
+                std::vector<node*> left_children;
+                left_children.push_back(phi);
+                left_children.push_back(neg_psi);
+                node* left_clause = new node(LOGICAL_BINARY, SYMBOL_AND, left_children);
                 // Create (¬φ ∧ ψ)
-                node* right_clause = new node(node::LOGICAL_BINARY, SYMBOL_AND, { neg_phi, psi });
+                std::vector<node*> right_children;
+                right_children.push_back(neg_phi);
+                right_children.push_back(psi);
+                node* right_clause = new node(LOGICAL_BINARY, SYMBOL_AND, right_children);
                 // Create OR node
-                return new node(node::LOGICAL_BINARY, SYMBOL_OR, { left_clause, right_clause });
+                std::vector<node*> children;
+                children.push_back(left_clause);
+                children.push_back(right_clause);
+                return new node(LOGICAL_BINARY, SYMBOL_OR, children);
             }
             else {
                 // For other binary operators, wrap with NOT
@@ -145,7 +161,7 @@ node* negate_node(node* n) {
             }
         }
 
-        case node::QUANTIFIER: {
+        case QUANTIFIER: {
             // Negate quantifiers: ¬∀x φ ≡ ∃x ¬φ and ¬∃x φ ≡ ∀x ¬φ
             symbol_enum new_quantifier = (n->symbol == SYMBOL_FORALL) ? SYMBOL_EXISTS : SYMBOL_FORALL;
 
@@ -162,25 +178,32 @@ node* negate_node(node* n) {
             // Negate the formula
             node* negated_formula = negate_node(formula);
 
-            return new node(node::QUANTIFIER, new_quantifier, { variable, negated_formula });
+            return new node(QUANTIFIER, new_quantifier, { variable, negated_formula });
         }
 
-        case node::APPLICATION: {
+        case APPLICATION: {
             if (n->children[0]->is_predicate()) {
                 // Negate the APPLICATION node by wrapping it with NOT
                 return create_negation(n);
-            }
-            else {
+            } else {
                 // For other APPLICATION nodes, do not allow negation
                 throw std::logic_error("Cannot negate an APPLICATION node unless its first child is a PREDICATE");
             }
         }
 
-        case node::UNARY_OP:
-        case node::BINARY_OP:
-        case node::VARIABLE:
-        case node::CONSTANT:
-        case node::TUPLE:
+        case CONSTANT: {
+            if (n->symbol == SYMBOL_TOP)
+                return new node(CONSTANT, SYMBOL_BOT);
+            else if (n->symbol == SYMBOL_BOT)
+                return new node(CONSTANT, SYMBOL_TOP);
+            else
+                throw std::logic_error("Cannot negate a term. Only predicates and logical formulas can be negated.");
+        }
+
+        case UNARY_OP:
+        case BINARY_OP:
+        case VARIABLE:
+        case TUPLE:
             // For all term node types, do not negate and throw an exception
             throw std::logic_error("Cannot negate a term. Only predicates and logical formulas can be negated.");
 

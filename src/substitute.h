@@ -11,5 +11,7 @@ using Substitution = std::unordered_map<std::string, node*>;
 // Function declarations (you may add additional ones here if needed)
 std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst);
 
+node* substitute(node* formula, const Substitution& subst);
+
 #endif // SUBSTITUTE_H
 

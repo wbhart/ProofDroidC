@@ -107,17 +107,17 @@ EqualPredicate
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        $$ = new node(node::APPLICATION, children);
+        $$ = new node(APPLICATION, children);
     }
 
 NeqPredicate
   <- t1:Term _ NEQ _ t2:Term {
-        node *e = new node(node::BINARY_PRED, SYMBOL_EQUALS);
+        node *e = new node(BINARY_PRED, SYMBOL_EQUALS);
         std::vector<node*> children;
         children.push_back(e);  // Push the EQUALS operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        e = new node(node::APPLICATION, children);
+        e = new node(APPLICATION, children);
         $$ = negate_node(e); // Negate node
     }
 
@@ -127,7 +127,7 @@ SubsetPredicate
         children.push_back(o);  // Push the subset operator node
         children.push_back(t1);  // Push the first term
         children.push_back(t2);  // Push the second term
-        $$ = new node(node::APPLICATION, children);
+        $$ = new node(APPLICATION, children);
   }
 
 SUBSETOP
@@ -135,7 +135,7 @@ SUBSETOP
    / o:SUBSET { $$ = o; }
 
 Predicate
-  <- f:Application { f->children[0]->vdata->kind = VariableKind::PREDICATE; $$ = f; }
+  <- f:Application { f->children[0]->vdata->kind = PREDICATE; $$ = f; }
 
 Negation
   <- o:NEG _ f:SimpleFormula {
@@ -150,7 +150,7 @@ Term
          children.push_back(o); // Push the operator node
          children.push_back($$); // Push the left argument
          children.push_back(t2); // Push the right argument
-         $$ = new node(node::APPLICATION, children);
+         $$ = new node(APPLICATION, children);
        })*
 
 SetOp
@@ -175,7 +175,7 @@ Application
         // Clear the args node's children to prevent it from deleting them
         args->children.clear();
         
-        $$ = new node(node::APPLICATION, children);
+        $$ = new node(APPLICATION, children);
         
         delete args;  // Clean up the args node after extracting its children
     }
@@ -187,14 +187,14 @@ Application
         // Clear the args node's children to prevent it from deleting them
         args->children.clear();
         
-        $$ = new node(node::TUPLE, children);
+        $$ = new node(TUPLE, children);
         
         delete args;  // Clean up the args node after extracting its children
       } 
     / OPEN _ CLOSE {
         std::vector<node*> children;
 
-        $$ = new node(node::TUPLE, children);
+        $$ = new node(TUPLE, children);
     }
 
 UnaryOp
@@ -202,72 +202,72 @@ UnaryOp
         std::vector<node*> children;
         children.push_back(p);  // Use the POWERSET node directly
         children.push_back(t);  // Add the term (argument)
-        $$ = new node(node::APPLICATION, children);
+        $$ = new node(APPLICATION, children);
     }
 
 TermList
   <- head:Term {
-        $$ = new node(node::TUPLE, std::vector<node*>());  // Initialize an empty vector
+        $$ = new node(TUPLE, std::vector<node*>());  // Initialize an empty vector
         $$->children.push_back(head);  // Add the head term to the children
     }
     (_ COMMA _ t:Term { $$->children.push_back(t); })*
 
 TOP
-  <- '\\top' { $$ = new node(node::CONSTANT, SYMBOL_TOP); }
+  <- '\\top' { $$ = new node(CONSTANT, SYMBOL_TOP); }
 
 BOT
-  <- '\\bot' { $$ = new node(node::CONSTANT, SYMBOL_BOT); }
+  <- '\\bot' { $$ = new node(CONSTANT, SYMBOL_BOT); }
 
 CAP
-  <- '\\cap' { $$ = new node(node::BINARY_OP, SYMBOL_CAP); }
+  <- '\\cap' { $$ = new node(BINARY_OP, SYMBOL_CAP); }
 
 CUP
-  <- '\\cup' { $$ = new node(node::BINARY_OP, SYMBOL_CUP); }
+  <- '\\cup' { $$ = new node(BINARY_OP, SYMBOL_CUP); }
 
 SETMINUS
-  <- '\\setminus' { $$ = new node(node::BINARY_OP, SYMBOL_SETMINUS); }
+  <- '\\setminus' { $$ = new node(BINARY_OP, SYMBOL_SETMINUS); }
 
 TIMES
-  <- '\\times' { $$ = new node(node::BINARY_OP, SYMBOL_TIMES); }
+  <- '\\times' { $$ = new node(BINARY_OP, SYMBOL_TIMES); }
 
 POWERSET
-  <- '\\mathcal{P}' { $$ = new node(node::UNARY_OP, SYMBOL_POWERSET); }
+  <- '\\mathcal{P}' { $$ = new node(UNARY_OP, SYMBOL_POWERSET); }
 
 FORALL
-  <- '\\forall' { $$ = new node(node::QUANTIFIER, SYMBOL_FORALL); }
+  <- '\\forall' { $$ = new node(QUANTIFIER, SYMBOL_FORALL); }
 
 EXISTS
-  <- '\\exists' { $$ = new node(node::QUANTIFIER, SYMBOL_EXISTS); }
+  <- '\\exists' { $$ = new node(QUANTIFIER, SYMBOL_EXISTS); }
 
 SUBSET
-  <- '\\subset' { $$ = new node(node::BINARY_PRED, SYMBOL_SUBSET); }
+  <- '\\subset' { $$ = new node(BINARY_PRED, SYMBOL_SUBSET); }
 
 SUBSETEQ
-  <- '\\subseteq' { $$ = new node(node::BINARY_PRED, SYMBOL_SUBSETEQ); }
+  <- '\\subseteq' { $$ = new node(BINARY_PRED, SYMBOL_SUBSETEQ); }
 
 EQUALS
-  <- '=' { $$ = new node(node::BINARY_PRED, SYMBOL_EQUALS); }
+  <- '=' { $$ = new node(BINARY_PRED, SYMBOL_EQUALS); }
 
 NEQ
   <- '\\neq'
 
 NEG
-  <- '\\neg' { $$ = new node(node::LOGICAL_UNARY, SYMBOL_NOT); }
+  <- '\\neg' { $$ = new node(LOGICAL_UNARY, SYMBOL_NOT); }
 
 WEDGE
-  <- '\\wedge' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_AND); }
+  <- '\\wedge' { $$ = new node(LOGICAL_BINARY, SYMBOL_AND); }
 
 VEE
-  <- '\\vee' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_OR); }
+  <- '\\vee' { $$ = new node(LOGICAL_BINARY, SYMBOL_OR); }
 
 IMPLIES
-  <- '\\implies' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_IMPLIES); }
+  <- '\\implies' { $$ = new node(LOGICAL_BINARY, SYMBOL_IMPLIES); }
 
 IFF
-  <- '\\iff' { $$ = new node(node::LOGICAL_BINARY, SYMBOL_IFF); }
+  <- '\\iff' { $$ = new node(LOGICAL_BINARY, SYMBOL_IFF); }
 
 EMPTYSET
-  <- '\\emptyset' { $$ = new node(node::CONSTANT, SYMBOL_EMPTYSET); }
+  <- '\\emptyset' { $$ = new node(CONSTANT, SYMBOL_EMPTYSET); }
 
 OPEN
   <- '('
@@ -279,7 +279,7 @@ COMMA
   <- ','
 
 Variable
-  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(node::VARIABLE, std::string($0)); }
+  <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(VARIABLE, std::string($0)); }
 
 _
   <- [ \t]*  # Whitespace

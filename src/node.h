@@ -8,16 +8,31 @@
 #include <sstream>
 #include <iostream>
 
-enum class OutputFormat {
+enum OutputFormat {
     REPR,    // Re-parsable string format
     UNICODE  // Unicode format for user display
 };
 
-enum class VariableKind {
-    VARIABLE,
+enum VariableKind {
+    INDIVIDUAL,
     FUNCTION,
-    PREDICATE,
-    CONSTANT
+    PREDICATE
+};
+
+enum node_type {
+    VARIABLE, // node(VARIABLE, "x")
+    CONSTANT, // node(CONSTANT, SYMBOL_EMPTYSET)
+    QUANTIFIER, // node(QUANTIFIER, node(VARIABLE, "x"), [formula])
+    LOGICAL_UNARY, // node(LOGICAL_UNARY, SYMBOL_NOT, [formula])
+    LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
+    UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
+    BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
+    UNARY_PRED, // node(UNARY_PRED, ??)
+    BINARY_PRED, // node(BINARY_PRED, SYMBOL_EQUALS)
+    APPLICATION, // node(APPLICATION, node(VARIABLE, "f"), [term1, term2, ...])
+                    // node(APPLICATION, node(UNARY_OP, SYMBOL_POWERSET), [term])
+                    // node(APPLICATION, node(BINARY_OP, SYMBOL_CAP), [term1, term2])
+    TUPLE // node(TUPLE, [term1, term2, ...])
 };
 
 struct variable_data {
@@ -29,29 +44,13 @@ struct variable_data {
 
 class node {
 public:
-    enum node_type {
-        VARIABLE, // node(VARIABLE, "x")
-        CONSTANT, // node(CONSTANT, SYMBOL_EMPTYSET)
-        QUANTIFIER, // node(QUANTIFIER, node(VARIABLE, "x"), [formula])
-        LOGICAL_UNARY, // node(LOGICAL_UNARY, SYMBOL_NOT, [formula])
-        LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
-        UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
-        BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
-        UNARY_PRED, // node(UNARY_PRED, ??)
-        BINARY_PRED, // node(BINARY_PRED, SYMBOL_EQUALS)
-        APPLICATION, // node(APPLICATION, node(VARIABLE, "f"), [term1, term2, ...])
-                     // node(APPLICATION, node(UNARY_OP, SYMBOL_POWERSET), [term])
-                     // node(APPLICATION, node(BINARY_OP, SYMBOL_CAP), [term1, term2])
-        TUPLE // node(TUPLE, [term1, term2, ...])
-    };
-
     node_type type;
     symbol_enum symbol;
     variable_data* vdata; // Pointer to vdata for VARIABLE nodes
     std::vector<node*> children;
 
     node(node_type t, const std::string& name)
-        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{VariableKind::VARIABLE, false, 0, name}), children() {}
+        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, 0, name}), children() {}
 
     node(node_type t, symbol_enum sym)
         : type(t), symbol(sym), vdata(nullptr), children() {}
@@ -70,7 +69,8 @@ public:
 
     bool is_predicate() const {
         return (type == BINARY_PRED || type == UNARY_PRED ||
-                (type == VARIABLE && vdata->kind == VariableKind::PREDICATE));
+                (type == VARIABLE && vdata->kind == PREDICATE) ||
+                (type == CONSTANT && (symbol == SYMBOL_TOP || symbol == SYMBOL_BOT)));
     }
     
     // Function to get the variable name if the node is of type VARIABLE
@@ -82,12 +82,12 @@ public:
     }
 
     // Print function that accepts an OutputFormat enum
-    void print(OutputFormat format = OutputFormat::REPR) const {
+    void print(OutputFormat format = REPR) const {
         std::cout << to_string(format) << std::endl;
     }
 
     // Helper to generate string based on format type ("repr" or "unicode")
-    std::string to_string(OutputFormat format = OutputFormat::REPR) const {
+    std::string to_string(OutputFormat format = REPR) const {
         std::ostringstream oss;
         PrecedenceInfo precInfo = getPrecedenceInfo(symbol);
 
@@ -100,23 +100,23 @@ public:
             case BINARY_OP:
             case UNARY_PRED:
             case BINARY_PRED:
-                oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
+                oss << (format == REPR ? precInfo.repr : precInfo.unicode);
                 break;
             case LOGICAL_UNARY:
-                if (symbol == SYMBOL_NOT && children[0]->type == node_type::APPLICATION &&
-                    children[0]->children[0]->type == node_type::BINARY_PRED &&
+                if (symbol == SYMBOL_NOT && children[0]->type == APPLICATION &&
+                    children[0]->children[0]->type == BINARY_PRED &&
                     children[0]->children[0]->symbol == SYMBOL_EQUALS) { // neq
                         oss << children[0]->children[1]->to_string(format) <<
-                           (format == OutputFormat::REPR ? " \\neq " : " ≠ ") <<
+                           (format == REPR ? " \\neq " : " ≠ ") <<
                            children[0]->children[2]->to_string(format);
                 } else {
-                    oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
+                    oss << (format == REPR ? precInfo.repr + " " : precInfo.unicode);
                     oss << parenthesize(children[0], format, "left");
                 }
                 break;
             case LOGICAL_BINARY:
                 oss << parenthesize(children[0], format, "left") + " ";
-                oss << (format == OutputFormat::REPR ? precInfo.repr : precInfo.unicode);
+                oss << (format == REPR ? precInfo.repr : precInfo.unicode);
                 oss << " " << parenthesize(children[1], format, "right");
                 break;
             case APPLICATION:
@@ -127,12 +127,12 @@ public:
                     // Handle binary operators
                     if (childPrecInfo.fixity == Fixity::INFIX && children.size() == 3) {
                         oss << children[1]->to_string(format) << " ";
-                        oss << (format == OutputFormat::REPR ? childPrecInfo.repr : childPrecInfo.unicode) << " "; // Print the operator
+                        oss << (format == REPR ? childPrecInfo.repr : childPrecInfo.unicode) << " "; // Print the operator
                         oss << children[2]->to_string(format);
                     }
                     // Handle unary operators
                     else if (childPrecInfo.fixity == Fixity::FUNCTIONAL || children.size() == 2) {
-                        oss << (format == OutputFormat::REPR ? childPrecInfo.repr : childPrecInfo.unicode) << "(";
+                        oss << (format == REPR ? childPrecInfo.repr : childPrecInfo.unicode) << "(";
                         oss << children[1]->to_string(format);  // Print the argument
                         oss << ")";
                     }
@@ -155,7 +155,7 @@ public:
                 oss << ")";
                 break;
             case QUANTIFIER:
-                oss << (format == OutputFormat::REPR ? precInfo.repr + " " : precInfo.unicode);
+                oss << (format == REPR ? precInfo.repr + " " : precInfo.unicode);
                 oss << children[0]->to_string(format) << " " << parenthesize(children[1], format, "true");
                 break;
             default:

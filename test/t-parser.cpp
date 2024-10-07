@@ -29,7 +29,7 @@ bool test_parser(const std::string& input, int test_number) {
     }
 
     // Compare the REPR output of the AST with the input
-    std::string repr_output = ast->to_string(OutputFormat::REPR);
+    std::string repr_output = ast->to_string(REPR);
     delete ast;  // Clean up the AST
     parser_destroy(ctx);
 

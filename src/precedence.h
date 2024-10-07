@@ -2,6 +2,7 @@
 #define PRECEDENCE_H
 
 #include "symbol_enum.h"
+#include "node.h"
 #include <string>
 #include <map>
 #include <iostream>

@@ -1,6 +1,6 @@
-#include "../src/node.h"
-#include "../src/symbol_enum.h"
-#include "../src/substitute.h"
+#include "symbol_enum.h"
+#include "node.h"
+#include "substitute.h"
 #include <iostream>
 #include <unordered_map>
 #include <optional>
@@ -9,7 +9,7 @@
 
 // Utility function to check if a node is a variable
 bool is_variable(const node* node) {
-    return node->type == node::node_type::VARIABLE;
+    return node->type == VARIABLE;
 }
 
 // Function to check if a variable occurs in a node (occurs check)
@@ -49,8 +49,8 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
     }
 
     // Add the substitution of the variable to the term only if the term is a valid type (variable or constant)
-    if (term->type == node::node_type::VARIABLE || term->type == node::node_type::CONSTANT ||
-        term->type == node::node_type::APPLICATION || term->type == node::node_type::TUPLE) {
+    if (term->type == VARIABLE || term->type == CONSTANT ||
+        term->type == APPLICATION || term->type == TUPLE) {
         subst[var_name] = term;
     } else {
         return std::nullopt;
@@ -72,23 +72,23 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are applications, check if they can be unified
-    if (node1->type == node::node_type::APPLICATION && node2->type == node::node_type::APPLICATION) {
+    if (node1->type == APPLICATION && node2->type == APPLICATION) {
         // First children are the symbols, which should be equal, for now
         if (node1->children[0]->type != node2->children[0]->type) {
             return std::nullopt; // We don't allow unification with functions for now
         }
         
         switch (node1->children[0]->type) {
-         case node::node_type::VARIABLE:
+         case VARIABLE:
             if (node1->children[0]->vdata->kind != node2->children[0]->vdata->kind ||
                 node1->children[0]->name() != node2->children[0]->name()) {
                 return std::nullopt; // Functions/predicates must have the same name
             }
             break;
-        case node::node_type::BINARY_OP:
-        case node::node_type::UNARY_OP:
-        case node::node_type::BINARY_PRED:
-        case node::node_type::UNARY_PRED:
+        case BINARY_OP:
+        case UNARY_OP:
+        case BINARY_PRED:
+        case UNARY_PRED:
             if (node1->children[0]->symbol != node2->children[0]->symbol) {
                 return std::nullopt; // Functions must have the same name
             }
@@ -113,7 +113,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are tuples, check if they can be unified
-    if (node1->type == node::node_type::TUPLE && node2->type == node::node_type::TUPLE) {
+    if (node1->type == TUPLE && node2->type == TUPLE) {
         // Check if they have the same number of elements
         if (node1->children.size() != node2->children.size()) {
             return std::nullopt; // Different arities
@@ -130,7 +130,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are constants, check if they can be unified
-    if (node1->type == node::node_type::CONSTANT && node2->type == node::node_type::CONSTANT) {
+    if (node1->type == CONSTANT && node2->type == CONSTANT) {
         // Check if they have the same symbol
         if (node1->symbol == node2->symbol) {
             return subst;
@@ -140,7 +140,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are logical unary operations, check if they can be unified
-    if (node1->type == node::node_type::LOGICAL_UNARY && node2->type == node::node_type::LOGICAL_UNARY) {
+    if (node1->type == LOGICAL_UNARY && node2->type == LOGICAL_UNARY) {
         // Both must be SYMBOL_NOT to unify
         if (node1->symbol == node2->symbol) {
             return unify(node1->children[0], node2->children[0], subst);
@@ -150,7 +150,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are logical binary operations, check if they can be unified
-    if (node1->type == node::node_type::LOGICAL_BINARY && node2->type == node::node_type::LOGICAL_BINARY) {
+    if (node1->type == LOGICAL_BINARY && node2->type == LOGICAL_BINARY) {
         // The symbols must match (IFF, IMPLIES, AND, OR)
         if (node1->symbol == node2->symbol) {
             // Unify both left and right children
@@ -169,7 +169,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     }
 
     // If both nodes are quantifiers, check if they can be unified
-    if (node1->type == node::node_type::QUANTIFIER && node2->type == node::node_type::QUANTIFIER) {
+    if (node1->type == QUANTIFIER && node2->type == QUANTIFIER) {
         // The symbols must match (FORALL or EXISTS)
         if (node1->symbol == node2->symbol &&
             (node1->symbol == SYMBOL_FORALL || node1->symbol == SYMBOL_EXISTS)) {
