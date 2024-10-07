@@ -199,4 +199,6 @@ node* deep_copy(const node* n);
 
 node* negate_node(node *n);
 
+void bind_var(const std::string& var_name, node* current);
+
 #endif // NODE_H

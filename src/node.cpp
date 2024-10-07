@@ -211,3 +211,17 @@ node* negate_node(node* n) {
             throw std::logic_error("Unsupported node type for negation");
     }
 }
+
+void bind_var(const std::string& var_name, node* current) {
+    // Check if the current node is a VARIABLE with the given name
+    if (current->type == VARIABLE && current->name() == var_name) {
+        current->vdata->bound = true;
+    }
+
+    // Recursively traverse all child nodes
+    for (auto& child : current->children) {
+        bind_var(var_name, child);
+    }
+}
+
+

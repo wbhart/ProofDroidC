@@ -56,7 +56,9 @@ Quantifier
       // bind variable here
       q->children.push_back(v); // Push the variable
       q->children.push_back(f); // Push the formula
+      bind_var(v->name(), q);
       $$ = q;
+
   }
 
 QuantifierOp
