@@ -7,6 +7,8 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <set>
+#include <algorithm>
 
 enum OutputFormat {
     REPR,    // Re-parsable string format
@@ -89,6 +91,14 @@ public:
         throw std::logic_error("Node is not of type VARIABLE");
     }
 
+    void set_name(std::string name) const {
+        if (type != VARIABLE) {
+           throw std::logic_error("Node is not of type VARIABLE");
+        }
+
+        vdata->name = name;
+    }
+    
     // Print function that accepts an OutputFormat enum
     void print(OutputFormat format = REPR) const {
         std::cout << to_string(format) << std::endl;
@@ -208,5 +218,13 @@ node* deep_copy(const node* n);
 node* negate_node(node *n);
 
 void bind_var(const std::string& var_name, node* current);
+
+void vars_used(std::set<std::string>& variables, const node* root);
+
+std::string remove_subscript(const std::string& var_name);
+
+std::string append_subscript(const std::string& base, int index);
+
+void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
 #endif // NODE_H

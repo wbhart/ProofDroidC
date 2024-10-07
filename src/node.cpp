@@ -224,3 +224,91 @@ void bind_var(const std::string& var_name, node* current) {
     }
 }
 
+void vars_used(std::set<std::string>& variables, const node* root) {
+    // If the current node is a VARIABLE, add its name to the set
+    if (root->type == VARIABLE) {
+        variables.insert(root->name());
+    }
+
+    // Recursively traverse all child nodes
+    for (const auto& child : root->children) {
+        vars_used(variables, child);
+    }
+}
+
+// Function to find common variables between two formulas
+std::set<std::string> find_common_variables(const node* formula1, const node* formula2) {
+    std::set<std::string> vars1;
+    std::set<std::string> vars2;
+
+    // Collect variables from both formulas
+    vars_used(vars1, formula1);
+    vars_used(vars2, formula2);
+
+    // For debugging: Print collected variables
+    std::cout << "Variables in Formula 1:\n";
+    for (const auto& var : vars1) {
+        std::cout << var << " ";
+    }
+    std::cout << "\nVariables in Formula 2:\n";
+    for (const auto& var : vars2) {
+        std::cout << var << " ";
+    }
+    std::cout << "\n";
+
+    // Find the intersection of vars1 and vars2
+    std::set<std::string> common_vars;
+    std::set_intersection(
+        vars1.begin(), vars1.end(),
+        vars2.begin(), vars2.end(),
+        std::inserter(common_vars, common_vars.begin())
+    );
+
+    return common_vars;
+}
+
+std::string remove_subscript(const std::string& var_name) {
+    size_t pos = var_name.rfind('_');
+    if (pos == std::string::npos) {
+        // No underscore found; return the original name
+        return var_name;
+    }
+
+    // Extract the substring after the last '_'
+    std::string suffix = var_name.substr(pos + 1);
+
+    // Check if the suffix is entirely composed of digits
+    bool all_digits = !suffix.empty() && std::all_of(suffix.begin(), suffix.end(), ::isdigit);
+
+    if (all_digits) {
+        // Subscript detected; remove it
+        return var_name.substr(0, pos);
+    } else {
+        // '_' is part of the base name; do not remove
+        return var_name;
+    }
+}
+
+std::string append_subscript(const std::string& base, int index) {
+    return base + "_" + std::to_string(index);
+}
+
+// Implementing rename_vars
+void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs) {
+    // Check if the current node is a VARIABLE and needs renaming
+    if (root->type == VARIABLE) {
+        for (const auto& pair : renaming_pairs) {
+            if (root->name() == pair.first) {
+                // Rename the variable
+                root->set_name(pair.second);
+                
+                break; // Assuming no duplicate original names
+            }
+        }
+    }
+
+    // Recursively traverse and rename all child nodes
+    for (auto& child : root->children) {
+        rename_vars(child, renaming_pairs);
+    }
+}
