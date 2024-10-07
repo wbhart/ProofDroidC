@@ -293,6 +293,33 @@ std::string append_subscript(const std::string& base, int index) {
     return base + "_" + std::to_string(index);
 }
 
+int get_subscript(const std::string& var_name) {
+    size_t pos = var_name.rfind('_');
+    if (pos == std::string::npos) {
+        return -1; // No subscript
+    }
+
+    std::string suffix = var_name.substr(pos + 1);
+    if (std::all_of(suffix.begin(), suffix.end(), ::isdigit)) {
+        return std::stoi(suffix);
+    }
+    return -1; // Not a valid subscript
+}
+
+std::string append_unicode_subscript(const std::string& base, int index) {
+    // Append Unicode subscript for 0-9
+    if (index < 0 || index > 9) {
+        // If index is not between 0-9, fall back to regular subscript
+        return base + "_" + std::to_string(index);
+    }
+    
+    std::string subscript;
+    subscript += static_cast<char>(0xE2);
+    subscript += static_cast<char>(0x82);
+    subscript += static_cast<char>(0x80 + index);
+    return base + subscript;
+}
+
 // Implementing rename_vars
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs) {
     // Check if the current node is a VARIABLE and needs renaming

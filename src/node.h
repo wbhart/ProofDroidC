@@ -37,6 +37,14 @@ enum node_type {
     TUPLE // node(TUPLE, [term1, term2, ...])
 };
 
+std::string remove_subscript(const std::string& var_name);
+
+std::string append_subscript(const std::string& base, int index);
+
+int get_subscript(const std::string& var_name);
+
+std::string append_unicode_subscript(const std::string& base, int index);
+
 struct variable_data {
     VariableKind var_kind;
     bool bound;
@@ -111,7 +119,18 @@ public:
 
         switch (type) {
             case VARIABLE:
-                oss << vdata->name;
+                if (format == UNICODE) {
+                    int subscript = get_subscript(name());
+                    if (subscript >= 0 && subscript <= 9) {
+                        std::string base = remove_subscript(name());
+                        std::string subscript_unicode = append_unicode_subscript(base, subscript);
+                        oss << subscript_unicode;
+                    } else {
+                        oss << name();
+                    }
+                } else { // REPR
+                    oss << name();
+                }
                 break;
             case CONSTANT:
             case UNARY_OP:
@@ -220,10 +239,6 @@ node* negate_node(node *n);
 void bind_var(const std::string& var_name, node* current);
 
 void vars_used(std::set<std::string>& variables, const node* root);
-
-std::string remove_subscript(const std::string& var_name);
-
-std::string append_subscript(const std::string& base, int index);
 
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
