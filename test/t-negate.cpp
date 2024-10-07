@@ -126,9 +126,7 @@ int main() {
     bool all_tests_passed = true;
     for (size_t i = 0; i < test_cases.size(); ++i) {
         bool result = test_double_negation(test_cases[i], i + 1);
-        if (result) {
-            std::cout << "Test " << i << " passed" << std::endl;
-        } else {
+        if (!result) {
             all_tests_passed = false;
         }
     }
