@@ -18,22 +18,24 @@ enum OutputFormat {
 enum VariableKind {
     INDIVIDUAL,
     FUNCTION,
-    PREDICATE
+    PREDICATE,
+    METAVAR, // accepts formulas
+    PARAMETER // constant variable
 };
 
 enum node_type {
     VARIABLE, // node(VARIABLE, "x")
     CONSTANT, // node(CONSTANT, SYMBOL_EMPTYSET)
-    QUANTIFIER, // node(QUANTIFIER, node(VARIABLE, "x"), [formula])
+    QUANTIFIER, // node(QUANTIFIER, [node(VARIABLE, "x"), formula])
     LOGICAL_UNARY, // node(LOGICAL_UNARY, SYMBOL_NOT, [formula])
     LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
     UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
     BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
     UNARY_PRED, // node(UNARY_PRED, ??)
     BINARY_PRED, // node(BINARY_PRED, SYMBOL_EQUALS)
-    APPLICATION, // node(APPLICATION, node(VARIABLE, "f"), [term1, term2, ...])
-                    // node(APPLICATION, node(UNARY_OP, SYMBOL_POWERSET), [term])
-                    // node(APPLICATION, node(BINARY_OP, SYMBOL_CAP), [term1, term2])
+    APPLICATION, // node(APPLICATION, [node(VARIABLE, "f"), term1, term2, ...])
+                    // node(APPLICATION, [node(UNARY_OP, SYMBOL_POWERSET), term])
+                    // node(APPLICATION, [node(BINARY_OP, SYMBOL_CAP), term1, term2])
     TUPLE // node(TUPLE, [term1, term2, ...])
 };
 

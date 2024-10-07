@@ -9,58 +9,63 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <utility>
+
+// Enumeration representing reasons for justifications in tableau lines
+enum class Reason {
+    ModusPonens,
+    Target,
+    Hypothesis
+};
+
+// Represents a single line in the tableau
+class tabline_t {
+public:
+    bool target = false;                           // Indicates if this line is a target
+    bool active = true;                            // Indicates if this line is active
+    std::vector<int> proved;                       // Indices of targets this is proved for
+    std::vector<int> assumptions;                  // Indices of assumptions
+    std::pair<Reason, std::vector<int>> justification; // How this was proved and from which lines
+    node* formula = nullptr;                       // Pointer to the associated formula
+    node* negation = nullptr;                      // Pointer to the negation of the formula
+
+    tabline_t(node* form) : formula(form) {}
+};
 
 class context_t {
 public:
-    // Constructor
     context_t();
 
-    /**
-     * @brief Retrieves the next available index for the given variable name.
-     *        If the variable does not exist in the context, it initializes its index to 0.
-     * 
-     * @param var_name The name of the variable.
-     * @return int The next index for the variable.
-     */
+    // Retrieves and increments the next available index for a variable
     int get_next_index(const std::string& var_name);
 
-    /**
-     * @brief Retrieves the current index for the given variable name without incrementing.
-     *        Returns -1 if the variable does not exist.
-     * 
-     * @param var_name The name of the variable.
-     * @return int The current index, or -1 if not found.
-     */
+    // Retrieves the current index of a variable without incrementing
+    // Returns -1 if the variable does not exist
     int get_current_index(const std::string& var_name) const;
 
-    /**
-     * @brief Resets the index for the given variable name to zero.
-     *        If the variable does not exist, it initializes its index to 0.
-     * 
-     * @param var_name The name of the variable.
-     */
+    // Resets the index of a variable to zero
+    // Initializes the variable if it does not exist
     void reset_index(const std::string& var_name);
 
-    /**
-     * @brief Checks if a variable exists in the context.
-     * 
-     * @param var_name The name of the variable.
-     * @return true If the variable exists.
-     * @return false Otherwise.
-     */
+    // Checks if a variable exists in the context
     bool has_variable(const std::string& var_name) const;
 
-    /**
-     * @brief Prints the current state of var_indices for debugging purposes.
-     */
+    // Prints the current state of variable indices for debugging
     void print_context() const;
 
+    // Array of tableau lines
+    std::vector<tabline_t> tableau;
+
 private:
-    // Dictionary mapping variable names to their latest index
+    // Maps variable base names to their latest index
     std::unordered_map<std::string, int> var_indices;
 };
 
+// Generates renaming pairs for common variables based on the context
 std::vector<std::pair<std::string, std::string>> vars_rename_list(context_t& ctx, const std::set<std::string>& common_vars);
+
+// Applies renaming pairs to a formula's AST to avoid variable capture
+void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
 #endif // CONTEXT_H
 
