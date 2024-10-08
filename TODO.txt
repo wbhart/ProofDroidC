@@ -1,5 +1,9 @@
 Critical:
 
+* Split iff targets
+
+* Skolemization
+
 Noncritical:
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,

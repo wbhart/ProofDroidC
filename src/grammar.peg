@@ -181,6 +181,14 @@ Application
         
         delete args;  // Clean up the args node after extracting its children
     }
+   / i:Variable _ OPEN _ CLOSE {
+        std::vector<node*> children; // empty children list
+        i->vdata->var_kind = VariableKind::FUNCTION;
+        children.insert(children.begin(), i);  // Insert the function/variable name at the start
+        
+        $$ = new node(APPLICATION, children);
+        
+   }
 
   Tuple
     <- OPEN _ args:TermList _ CLOSE {
