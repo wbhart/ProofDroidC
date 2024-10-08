@@ -13,7 +13,6 @@
 // Enum representing the possible user options
 enum class option_t {
     OPTION_QUIT,
-    OPTION_REDISPLAY,
     OPTION_MANUAL,
     OPTION_SKOLEMIZE
 };
@@ -28,7 +27,6 @@ struct option_entry {
 // Constant table containing all possible options with their keys and messages
 const std::vector<option_entry> all_options = {
     {option_t::OPTION_QUIT, "q", "quit"},
-    {option_t::OPTION_REDISPLAY, "r", "redisplay"},
     {option_t::OPTION_MANUAL, "m", "manual mode"},
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize"}
 };
@@ -171,7 +169,6 @@ int main(int argc, char** argv) {
     // Initialize active options: quit, redisplay, manual
     std::vector<option_t> active_options = {
         option_t::OPTION_QUIT,
-        option_t::OPTION_REDISPLAY,
         option_t::OPTION_MANUAL
     };
 
@@ -198,10 +195,6 @@ int main(int argc, char** argv) {
         }
         else {
             switch (selected_option) {
-                case option_t::OPTION_REDISPLAY:
-                    // Print all formulas in the context
-                    print_tableau(tab_ctx);
-                    break;
                 case option_t::OPTION_MANUAL:
                     // Apply parameterize_all to the tableau
                     parameterize_all(tab_ctx);
