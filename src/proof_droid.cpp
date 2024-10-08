@@ -198,7 +198,6 @@ int main(int argc, char** argv) {
                 case option_t::OPTION_MANUAL:
                     // Apply parameterize_all to the tableau
                     parameterize_all(tab_ctx);
-                    std::cout << "Applied parameterization to all active formulas." << std::endl;
                     // Remove OPTION_MANUAL and add OPTION_SKOLEMIZE
                     active_options.erase(
                         std::remove(active_options.begin(), active_options.end(), option_t::OPTION_MANUAL),
@@ -209,7 +208,6 @@ int main(int argc, char** argv) {
                 case option_t::OPTION_SKOLEMIZE:
                     // Apply skolemize_all to the tableau
                     skolemize_all(tab_ctx);
-                    std::cout << "Applied skolemization to all active formulas." << std::endl;
                     break;
                 case option_t::OPTION_QUIT:
                     // Exit the application
@@ -220,6 +218,7 @@ int main(int argc, char** argv) {
             }
         }
 
+        std::cout << std::endl;
         print_tableau(tab_ctx);
 
         // After handling the command, display the current options again
