@@ -235,6 +235,8 @@ int main(int argc, char** argv) {
         std::cout << "> ";
     }
 
+    std::cout << std::endl;
+
 exit_loop:
     // Clean up parser context
     parser_destroy(ctx);
