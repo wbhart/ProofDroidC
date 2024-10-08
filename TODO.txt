@@ -2,7 +2,7 @@ Critical:
 
 * Split iff targets
 
-* Skolemization
+* Unbind variables in skolem_form
 
 Noncritical:
 

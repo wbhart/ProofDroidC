@@ -339,3 +339,20 @@ void rename_vars(node* root, const std::vector<std::pair<std::string, std::strin
         rename_vars(child, renaming_pairs);
     }
 }
+
+// Parameterize function: changes all free individual variables to parameters
+node* parameterize(node* formula) {
+    // If the node is a free individual variable, change it to parameter
+    if (formula->type == VARIABLE) {
+        if (!formula->vdata->bound && formula->vdata->var_kind == INDIVIDUAL) {
+            formula->vdata->var_kind = PARAMETER;
+        }
+    }
+
+    // Recursively parameterize child nodes
+    for (auto child : formula->children) {
+        parameterize(child);
+    }
+
+    return formula;
+}

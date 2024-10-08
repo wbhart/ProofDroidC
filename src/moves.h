@@ -18,5 +18,8 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
 // Skolemizes an arbitrary formula, returning the result
 node* skolem_form(context_t& ctx, node* formula);
 
+// Changes all free individual variables to parameters in the formula
+node* parameterize(node* formula);
+
 #endif // MOVES_H
 
