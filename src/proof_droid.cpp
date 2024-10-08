@@ -27,7 +27,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::cout << std::endl << "Welcome to ProofDroid for C version 0.1!" << std::endl << std::endl;
+
     // Open the specified file
+    std::cout << "Reading " << argv[1] << std::endl;
     std::ifstream infile(argv[1]);
     if (!infile) {
         std::cerr << "Error opening file: " << argv[1] << std::endl;
@@ -105,6 +108,10 @@ int main(int argc, char** argv) {
     parser_destroy(ctx);
     infile.close();
 
+    print_tableau(tab_ctx);
+    std::cout << std::endl;
+    std::cout << "Options: r = redisplay, q = quit" << std::endl;
+
     // Enter interactive mode
     std::cout << "> ";
     while (getline(std::cin, line)) {
@@ -116,9 +123,11 @@ int main(int argc, char** argv) {
             break; // Exit the application
         }
         else {
-            std::cout << "Unknown command. Use 'r' to print formulas or 'q' to quit." << std::endl;
+            std::cout << "Unknown command." << std::endl;
         }
 
+        std::cout << std::endl;
+        std::cout << "Options: r = redisplay, q = quit" << std::endl;
         std::cout << "> ";
     }
 
