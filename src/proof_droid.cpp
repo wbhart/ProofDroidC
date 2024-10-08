@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
         bool found = get_option_from_key(line, active_options, selected_option);
 
         if (!found) {
-            std::cout << "Unknown command." << std::endl;
+            std::cout << std::endl << "Unknown command." << std::endl;
         }
         else {
             switch (selected_option) {
@@ -216,10 +216,10 @@ int main(int argc, char** argv) {
                     std::cout << "Unhandled option." << std::endl;
                     break;
             }
+        
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
         }
-
-        std::cout << std::endl;
-        print_tableau(tab_ctx);
 
         // After handling the command, display the current options again
         std::cout << std::endl;
