@@ -8,8 +8,6 @@ Critical:
 
 * Modify parser error to show position in string where error occurs with arrow pointing
 
-* Make help message modular in proof_droid, showing only available options
-
 Noncritical:
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,
