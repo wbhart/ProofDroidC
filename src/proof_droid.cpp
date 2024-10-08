@@ -33,13 +33,21 @@ const std::vector<option_entry> all_options = {
 
 // Function to print all formulas in the tableau
 void print_tableau(const context_t& tab_ctx) {
+    std::cout << "Hypotheses:" << std::endl;
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
-        std::cout << i + 1 << ": ";
-        if (tabline.target) {
-            std::cout << "Target: " << tabline.negation->to_string(UNICODE) << std::endl;
-        } else {
+        if (!tabline.target) {
+            std::cout << " " << i + 1 << ": ";
             std::cout << tabline.formula->to_string(UNICODE) << std::endl;
+        }
+    }
+    
+    std::cout << "Targets:" << std::endl;
+    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+        const tabline_t& tabline = tab_ctx.tableau[i];
+        if (tabline.target) {
+            std::cout << " " << i + 1 << ": ";
+            std::cout << tabline.negation->to_string(UNICODE) << std::endl;
         }
     }
 }
@@ -92,7 +100,7 @@ int main(int argc, char** argv) {
     std::cout << "Welcome to ProofDroid for C version 0.1!" << std::endl << std::endl;
 
     // Open the specified file
-    std::cout << "Reading " << argv[1] << std::endl;
+    std::cout << "Reading " << argv[1] << "..." << std::endl << std::endl;
     std::ifstream infile(argv[1]);
     if (!infile) {
         std::cerr << "Error opening file: " << argv[1] << std::endl;
