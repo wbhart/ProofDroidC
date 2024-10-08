@@ -18,8 +18,14 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
 // Skolemizes an arbitrary formula, returning the result
 node* skolem_form(context_t& ctx, node* formula);
 
+// Skolemizes all active formulas
+void skolemize_all(context_t& tab_ctx);
+
 // Changes all free individual variables to parameters in the formula
 node* parameterize(node* formula);
+
+// Applies parameterize to all active formulas in the tableau
+void parameterize_all(context_t& tab_ctx);
 
 #endif // MOVES_H
 

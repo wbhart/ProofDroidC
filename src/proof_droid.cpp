@@ -3,6 +3,7 @@
 #include "grammar.h"
 #include "node.h"
 #include "context.h"
+#include "moves.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -27,7 +28,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << std::endl << "Welcome to ProofDroid for C version 0.1!" << std::endl << std::endl;
+    std::cout << "Welcome to ProofDroid for C version 0.1!" << std::endl << std::endl;
 
     // Open the specified file
     std::cout << "Reading " << argv[1] << std::endl;
@@ -110,13 +111,21 @@ int main(int argc, char** argv) {
 
     print_tableau(tab_ctx);
     std::cout << std::endl;
-    std::cout << "Options: r = redisplay, q = quit" << std::endl;
+    std::cout << "Options: r = redisplay, m = manual mode, s = skolemize, q = quit" << std::endl;
 
     // Enter interactive mode
     std::cout << "> ";
     while (getline(std::cin, line)) {
         if (line == "r") {
             // Print all formulas in the context
+            print_tableau(tab_ctx);
+        }
+        else if (line == "m") {
+            parameterize_all(tab_ctx);
+            print_tableau(tab_ctx);
+        }
+        else if (line == "s") {
+            skolemize_all(tab_ctx);
             print_tableau(tab_ctx);
         }
         else if (line == "q") {
@@ -127,7 +136,7 @@ int main(int argc, char** argv) {
         }
 
         std::cout << std::endl;
-        std::cout << "Options: r = redisplay, q = quit" << std::endl;
+        std::cout << "Options: r = redisplay, m = manual mode, s = skolemize, q = quit" << std::endl;
         std::cout << "> ";
     }
 

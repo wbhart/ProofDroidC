@@ -93,6 +93,10 @@ public:
         return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && !vdata->bound);
     }
 
+    bool is_disjunction() const {
+        return (type == LOGICAL_BINARY && symbol == SYMBOL_OR);
+    }
+    
     // Function to get the variable name if the node is of type VARIABLE
     std::string name() const {
         if (type == VARIABLE && vdata) {

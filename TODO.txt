@@ -4,10 +4,18 @@ Critical:
 
 * Unbind variables in skolem_form
 
+* Allow user to enter hypotheses and targets manually
+
+* Modify parser error to show position in string where error occurs with arrow pointing
+
+* Make help message modular in proof_droid, showing only available options
+
 Noncritical:
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,
   e.g. partial orders), and \neg(A \subseteq B), \neg(a \leq b), etc. Must internally
   canonicalise to \neg(blah) for negated literal purposes for resolution
+
+* Helpful error messages in parser (i.e. rules corresponding to non-matching inputs)
 
 Maybe:

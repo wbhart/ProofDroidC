@@ -3,6 +3,26 @@
 #include "moves.h"
 #include <set>
 #include <algorithm>
+#include <vector>
+
+// turn disjunction into implication
+node* hide_disjunction(node* formula) {
+   if (formula->is_disjunction()) {
+       node* antecedent = formula->children[0];
+       node* negated = negate_node(antecedent);
+
+       std::vector<node*> children;
+       children.push_back(negated);
+       children.push_back(formula->children[1]);
+
+       node* impl = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
+
+       formula->children.clear();
+
+       return impl;
+   } else
+       return formula;
+}
 
 // Skolemizes an existentially quantified formula by replacing the existential variable
 // with a Skolem function dependent on the provided universally quantified variables.
@@ -108,4 +128,73 @@ node* skolem_form(context_t& ctx, node* formula) {
     node* skolemized_formula = substitute(formula, subst);
 
     return skolemized_formula;
+}
+
+void skolemize_all(context_t& tab_ctx) {
+    for (auto& tabline : tab_ctx.tableau) {
+        // Only process active formulas
+        if (tabline.active && tabline.formula != nullptr) {
+            // Apply skolem_form to the formula
+            node* skolemized = skolem_form(tab_ctx, tabline.formula);
+
+            // Replace the original formula with the skolemized formula
+            tabline.formula = skolemized;
+
+            // If the formula is a target, re-negate it
+            if (tabline.target) {
+                // Delete existing negation to prevent memory leaks
+                delete tabline.negation;
+
+                // Create a deep copy of the skolemized formula
+                node* formula_copy = deep_copy(tabline.formula);
+
+                // Negate the copied formula
+                node* negated = negate_node(formula_copy);
+                negated = hide_disjunction(negated);
+
+                // Assign the negated formula to the negation field
+                tabline.negation = negated;
+            }
+        }
+    }
+}
+
+// Parameterize function: changes all free individual variables to parameters
+node* parameterize(node* formula) {
+    if (formula == nullptr) return nullptr;
+
+    // If the node is a free individual variable, change it to parameter
+    if (formula->type == VARIABLE && formula->vdata != nullptr) {
+        if (!formula->vdata->bound && formula->vdata->var_kind == INDIVIDUAL) {
+            formula->vdata->var_kind = PARAMETER;
+        }
+    }
+
+    // Recursively parameterize child nodes
+    for (auto child : formula->children) {
+        parameterize(child);
+    }
+
+    return formula;
+}
+
+void parameterize_all(context_t& tab_ctx) {
+    // Iterate through each tabline in the tableau
+    for (auto& tabline : tab_ctx.tableau) {
+        // Only process active formulas
+        if (tabline.active) {
+            // Apply parameterize to the formula
+            if (tabline.target) {
+                // Delete existing negation to prevent memory leaks
+                delete tabline.formula;
+
+                parameterize(tabline.negation);
+                
+                // Replace existing formula
+                tabline.formula = negate_node(deep_copy(tabline.negation));
+            } else {
+                parameterize(tabline.formula);
+            }
+        }
+    }
 }
