@@ -250,4 +250,6 @@ void vars_used(std::set<std::string>& variables, const node* root);
 
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
+node* disjunction_to_implication(node* formula);
+
 #endif // NODE_H

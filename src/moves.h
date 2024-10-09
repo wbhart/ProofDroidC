@@ -7,6 +7,12 @@
 #include <vector>
 #include <string>
 
+// Changes all free individual variables to parameters in the formula
+node* parameterize(node* formula);
+
+// Applies parameterize to all active formulas in the tableau
+void parameterize_all(context_t& tab_ctx);
+
 // Skolemizes an existentially quantified formula of the form \exists x (\phi(x))
 // It also takes a list of universally quantified variable names in scope and the
 // context managing variable indices.
@@ -20,12 +26,6 @@ node* skolem_form(context_t& ctx, node* formula);
 
 // Skolemizes all active formulas
 void skolemize_all(context_t& tab_ctx);
-
-// Changes all free individual variables to parameters in the formula
-node* parameterize(node* formula);
-
-// Applies parameterize to all active formulas in the tableau
-void parameterize_all(context_t& tab_ctx);
 
 #endif // MOVES_H
 

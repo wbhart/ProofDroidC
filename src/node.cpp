@@ -351,3 +351,22 @@ void rename_vars(node* root, const std::vector<std::pair<std::string, std::strin
         rename_vars(child, renaming_pairs);
     }
 }
+
+// turn disjunction into implication
+node* disjunction_to_implication(node* formula) {
+   if (formula->is_disjunction()) {
+       node* antecedent = formula->children[0];
+       node* negated = negate_node(antecedent);
+
+       std::vector<node*> children;
+       children.push_back(negated);
+       children.push_back(formula->children[1]);
+
+       node* impl = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
+
+       formula->children.clear();
+
+       return impl;
+   } else
+       return formula;
+}
