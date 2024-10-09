@@ -55,3 +55,4 @@ grammar:
 clean:
 	rm -rf $(BUILD_DIR)/* 
 	rm -f $(SRC_DIR)/grammar.c $(SRC_DIR)/grammar.h
+	rm -f $(TARGET)
