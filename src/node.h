@@ -242,7 +242,9 @@ node* deep_copy(const node* n);
 
 node* negate_node(node *n);
 
-void bind_var(const std::string& var_name, node* current);
+void bind_var(node* current, const std::string& var_name);
+
+void unbind_var(node* current, const std::string& var_name);
 
 void vars_used(std::set<std::string>& variables, const node* root);
 

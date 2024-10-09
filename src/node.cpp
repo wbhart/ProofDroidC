@@ -212,7 +212,7 @@ node* negate_node(node* n) {
     }
 }
 
-void bind_var(const std::string& var_name, node* current) {
+void bind_var(node* current, const std::string& var_name) {
     // Check if the current node is a VARIABLE with the given name
     if (current->type == VARIABLE && current->name() == var_name) {
         current->vdata->bound = true;
@@ -220,7 +220,19 @@ void bind_var(const std::string& var_name, node* current) {
 
     // Recursively traverse all child nodes
     for (auto& child : current->children) {
-        bind_var(var_name, child);
+        bind_var(child, var_name);
+    }
+}
+
+void unbind_var(node* current, const std::string& var_name) {
+    // Check if the current node is a VARIABLE with the given name
+    if (current->type == VARIABLE && current->name() == var_name) {
+        current->vdata->bound = false;
+    }
+
+    // Recursively traverse all child nodes
+    for (auto& child : current->children) {
+        unbind_var(child, var_name);
     }
 }
 

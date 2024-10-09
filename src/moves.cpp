@@ -107,6 +107,10 @@ node* skolem_form(context_t& ctx, node* formula) {
 
             // Set formula to the inner formula \phi
             node* inner_formula = formula->children[1];
+
+            // Unbind all occurrences of variable
+            unbind_var(inner_formula, var_node->name());
+
             formula->children.clear(); // Detach children to prevent deletion
             delete var_node; // Delete no longer used variable
             delete formula; // Delete the forall node
@@ -165,7 +169,6 @@ node* parameterize(node* formula) {
     if (formula->type == VARIABLE && formula->vdata != nullptr) {
         if (!formula->vdata->bound && formula->vdata->var_kind == INDIVIDUAL) {
             formula->vdata->var_kind = PARAMETER;
-            formula->vdata->bound = false;
         }
     }
 
