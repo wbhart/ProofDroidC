@@ -1,6 +1,7 @@
 #include "../src/node.h"
 #include "../src/substitute.h"
 #include "../src/grammar.h"
+#include "../src/unify.h"
 #include <iostream>
 #include <unordered_map>
 #include <string>
@@ -8,10 +9,8 @@
 #include <optional>
 
 // Function declarations
-std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst);
 void print_substitution(const Substitution& subst);
 bool run_test_case(const std::string& formula1, const std::string& formula2, const Substitution& expected_subst);
-
 
 // Function to parse a formula using the parser
 node* parse_formula(const std::string& formula) {

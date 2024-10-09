@@ -4,6 +4,7 @@
 #include "node.h"
 #include "context.h"
 #include "substitute.h"
+#include "unify.h"
 #include <vector>
 #include <string>
 
@@ -26,6 +27,15 @@ node* skolem_form(context_t& ctx, node* formula);
 
 // Skolemizes all active formulas
 void skolemize_all(context_t& tab_ctx);
+
+// Applies modus ponens to the given implication and unit clauses.
+// Parameters:
+// - implication: The implication formula P ∧ Q ∧ ... ∧ R → S.
+// - unit_clauses: The unit clause formula list P_1, Q_1, ..., R_1.
+// - ctx_var: The context for variable indexing and renaming.
+// Returns:
+// - A new node representing the result of modus ponens, or nullptr if unification fails.
+node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
 
 #endif // MOVES_H
 

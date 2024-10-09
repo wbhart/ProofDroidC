@@ -10,6 +10,13 @@ Critical:
 
 * Display reasons
 
+* Should skolem functions be renamed to prevent capture in modus_ponens?
+  What about non-skolem functions?
+
+* Add special implication-to-disjunction case to modus_ponens.
+
+* Deal with modus ponens case where single unit clause is a disjunction.
+
 Noncritical:
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,

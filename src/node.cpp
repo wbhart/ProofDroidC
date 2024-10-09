@@ -236,9 +236,9 @@ void unbind_var(node* current, const std::string& var_name) {
     }
 }
 
-void vars_used(std::set<std::string>& variables, const node* root) {
+void vars_used(std::set<std::string>& variables, const node* root, bool include_params) {
     // If the current node is a VARIABLE, add its name to the set
-    if (root->type == VARIABLE) {
+    if (root->is_variable()) {
         variables.insert(root->name());
     }
 
@@ -254,19 +254,8 @@ std::set<std::string> find_common_variables(const node* formula1, const node* fo
     std::set<std::string> vars2;
 
     // Collect variables from both formulas
-    vars_used(vars1, formula1);
+    vars_used(vars1, formula1, false);
     vars_used(vars2, formula2);
-
-    // For debugging: Print collected variables
-    std::cout << "Variables in Formula 1:\n";
-    for (const auto& var : vars1) {
-        std::cout << var << " ";
-    }
-    std::cout << "\nVariables in Formula 2:\n";
-    for (const auto& var : vars2) {
-        std::cout << var << " ";
-    }
-    std::cout << "\n";
 
     // Find the intersection of vars1 and vars2
     std::set<std::string> common_vars;
@@ -332,7 +321,7 @@ std::string append_unicode_subscript(const std::string& base, int index) {
     return base + subscript;
 }
 
-// Implementing rename_vars
+// Rename all variables according to a list of renames
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs) {
     // Check if the current node is a VARIABLE and needs renaming
     if (root->type == VARIABLE) {
@@ -370,3 +359,32 @@ node* disjunction_to_implication(node* formula) {
    } else
        return formula;
 }
+
+// Function to convert a conjunction into a list of its conjuncts
+std::vector<node*> conjunction_to_list(node* conjunction) {
+    std::vector<node*> conjuncts;
+
+    if (!conjunction->is_conjunction()) {
+        // Not a disjunction; return the node itself as a deep copy
+        conjuncts.push_back(deep_copy(conjunction));
+        return conjuncts;
+    }
+
+    // Traverse the left children to collect all conjuncts in reverse order
+    node* current = conjunction;
+    while (current->is_conjunction()) {
+        // Push the right child (current->children[1]) first
+        conjuncts.push_back(deep_copy(current->children[1]));
+        // Move to the left child (current->children[0])
+        current = current->children[0];
+    }
+
+    // Add the last conjunct (leftmost child) as a deep copy
+    conjuncts.push_back(deep_copy(current));
+
+    // Reverse the conjuncts to maintain left-to-right order
+    std::reverse(conjuncts.begin(), conjuncts.end());
+
+    return conjuncts;
+}
+

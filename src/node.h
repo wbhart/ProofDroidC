@@ -97,6 +97,14 @@ public:
         return (type == LOGICAL_BINARY && symbol == SYMBOL_OR);
     }
     
+    bool is_conjunction() const {
+        return (type == LOGICAL_BINARY && symbol == SYMBOL_AND);
+    }
+    
+    bool is_implication() const {
+        return (type == LOGICAL_BINARY && symbol == SYMBOL_IMPLIES);
+    }
+    
     // Function to get the variable name if the node is of type VARIABLE
     std::string name() const {
         if (type == VARIABLE && vdata) {
@@ -246,10 +254,14 @@ void bind_var(node* current, const std::string& var_name);
 
 void unbind_var(node* current, const std::string& var_name);
 
-void vars_used(std::set<std::string>& variables, const node* root);
+void vars_used(std::set<std::string>& variables, const node* root, bool include_params=true);
+
+std::set<std::string> find_common_variables(const node* formula1, const node* formula2);
 
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
 node* disjunction_to_implication(node* formula);
+
+std::vector<node*> conjunction_to_list(node* conjunction);
 
 #endif // NODE_H
