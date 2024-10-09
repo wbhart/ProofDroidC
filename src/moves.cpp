@@ -283,3 +283,17 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     delete implication_copy;
     return substituted_consequent;
 }
+
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
+    // 1. Negate the implication: A -> B becomes ¬B -> ¬A
+    node* negated_implication = contrapositive(implication);
+
+    // 2. Apply modus ponens with the negated implication and the provided unit clauses
+    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
+
+    // 3. Clean up the negated implication
+    delete negated_implication;
+
+    // 4. Return the result from modus ponens
+    return result;
+}

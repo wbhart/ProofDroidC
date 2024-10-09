@@ -37,5 +37,14 @@ void skolemize_all(context_t& tab_ctx);
 // - A new node representing the result of modus ponens, or nullptr if unification fails.
 node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
 
+// Applies modus tollens to the given implication and unit clauses.
+// Parameters:
+// - implication: The implication formula ¬S → ¬P ∨ ¬Q ∨ ... ∨ ¬R.
+// - unit_clauses: The unit clause formula list P_1, Q_1, ..., R_1.
+// - ctx_var: The context for variable indexing and renaming.
+// Returns:
+// - A new node representing the result of modus ponens, or nullptr if unification fails.
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
+
 #endif // MOVES_H
 

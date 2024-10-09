@@ -388,3 +388,37 @@ std::vector<node*> conjunction_to_list(node* conjunction) {
     return conjuncts;
 }
 
+// Take the contrapositive of an implication
+node* contrapositive(node* implication) {
+    if (!implication->is_implication()) {
+        std::cerr << "Error: The node to negate is not an implication." << std::endl;
+        return nullptr;
+    }
+
+    node* antecedent = implication->children[0];
+    node* consequent = implication->children[1];
+
+    // Negate the consequent: ¬B
+    node* not_consequent = negate_node(deep_copy(consequent));
+    if (!not_consequent) {
+        std::cerr << "Error: Failed to negate the consequent." << std::endl;
+        return nullptr;
+    }
+
+    // Negate the antecedent: ¬A
+    node* not_antecedent = negate_node(deep_copy(antecedent));
+    if (!not_antecedent) {
+        std::cerr << "Error: Failed to negate the antecedent." << std::endl;
+        delete not_consequent;
+        return nullptr;
+    }
+
+    // Create the new implication: ¬B -> ¬A
+    std::vector<node*> children;
+    children.push_back(not_consequent);  // Push the EQUALS operator node
+    children.push_back(not_antecedent);  // Push the first term
+    node* new_implication = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
+
+    return new_implication;
+}
+

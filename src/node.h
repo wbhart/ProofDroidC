@@ -264,4 +264,6 @@ node* disjunction_to_implication(node* formula);
 
 std::vector<node*> conjunction_to_list(node* conjunction);
 
+node* contrapositive(node* implication);
+
 #endif // NODE_H
