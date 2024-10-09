@@ -161,12 +161,11 @@ void skolemize_all(context_t& tab_ctx) {
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
-    if (formula == nullptr) return nullptr;
-
     // If the node is a free individual variable, change it to parameter
     if (formula->type == VARIABLE && formula->vdata != nullptr) {
         if (!formula->vdata->bound && formula->vdata->var_kind == INDIVIDUAL) {
             formula->vdata->var_kind = PARAMETER;
+            formula->vdata->bound = false;
         }
     }
 

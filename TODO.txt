@@ -2,11 +2,13 @@ Critical:
 
 * Split iff targets
 
-* Unbind variables in skolem_form
-
 * Allow user to enter hypotheses and targets manually
 
 * Modify parser error to show position in string where error occurs with arrow pointing
+
+* Add reasons for hyps and tars
+
+* Display reasons
 
 Noncritical:
 
