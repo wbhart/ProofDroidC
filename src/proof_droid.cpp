@@ -18,7 +18,9 @@ enum class option_t {
     OPTION_SKOLEMIZE,
     OPTION_MODUS_PONENS,   // New option for Modus Ponens
     OPTION_MODUS_TOLLENS,  // New option for Modus Tollens
-    OPTION_EXIT_MANUAL     // New option for Exit Manual Mode
+    OPTION_EXIT_MANUAL,    // New option for Exit Manual Mode
+    OPTION_CONJ_IDEM,      // New option for Conjunctive Idempotence
+    OPTION_DISJ_IDEM       // New option for Disjunctive Idempotence
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -36,10 +38,11 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
-    {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"}
+    {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
+    {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence", "Apply Conjunctive Idempotence P ∧ P -> P"},
+    {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"}
 };
 
-// Function to print all formulas in the tableau with reasons
 // Function to print all formulas in the tableau with reasons
 void print_tableau(const context_t& tab_ctx) {
     std::cout << "Hypotheses:" << std::endl;
@@ -269,8 +272,33 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             continue;
         }
 
-        // For 'p' and 't', ensure there are enough arguments
-        if (selected_option == option_t::OPTION_MODUS_PONENS || selected_option == option_t::OPTION_MODUS_TOLLENS) {
+        // For 'p', 't', 'ci', and 'di', ensure there are enough arguments
+        if (selected_option == option_t::OPTION_MODUS_PONENS || 
+            selected_option == option_t::OPTION_MODUS_TOLLENS ||
+            selected_option == option_t::OPTION_CONJ_IDEM ||
+            selected_option == option_t::OPTION_DISJ_IDEM) {
+            
+            // For 'ci' and 'di', no additional arguments are needed
+            if (selected_option == option_t::OPTION_CONJ_IDEM || 
+                selected_option == option_t::OPTION_DISJ_IDEM) {
+                
+                // Apply the respective idempotence move
+                if (selected_option == option_t::OPTION_CONJ_IDEM) {
+                    move_conj_idem(tab_ctx);
+                } else {
+                    move_disj_idem(tab_ctx);
+                }
+
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+                // Before next prompt, re-print the summary of options
+                print_manual_summary(manual_active_options);
+                continue;
+            }
+
+            // For modus ponens and modus tollens, handle as before
             if (tokens.size() < 3) { // Need at least implication_line and one other_line
                 std::cerr << "Error: Insufficient arguments. Usage: " 
                           << command 
@@ -458,6 +486,8 @@ int main(int argc, char** argv) {
                         option_t::OPTION_SKOLEMIZE,
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
+                        option_t::OPTION_CONJ_IDEM,      // Added Conjunctive Idempotence
+                        option_t::OPTION_DISJ_IDEM,      // Added Disjunctive Idempotence
                         option_t::OPTION_EXIT_MANUAL,
                         option_t::OPTION_QUIT
                     };

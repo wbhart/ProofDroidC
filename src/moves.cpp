@@ -70,15 +70,8 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
     std::string skolem_func_name;
 
     // Check if the base name exists in the context
-    if (ctx.has_variable(skolem_func_base)) {
-        // Base name exists; append a subscript for uniqueness
-        int skolem_index = ctx.get_next_index(skolem_func_base);
-        skolem_func_name = append_subscript(skolem_func_base, skolem_index);
-    } else {
-        // Base name does not exist; use the original name without appending
-        skolem_func_name = skolem_func_base;
-        ctx.reset_index(skolem_func_base); // Initialize the index in the context
-    }
+    int skolem_index = ctx.get_next_index(skolem_func_base);
+    skolem_func_name = append_subscript(skolem_func_base, skolem_index);
 
     // Create the Skolem function symbol node
     node* fn_sym = new node(VARIABLE, skolem_func_name);
@@ -156,27 +149,29 @@ node* skolem_form(context_t& ctx, node* formula) {
 void skolemize_all(context_t& tab_ctx) {
     for (auto& tabline : tab_ctx.tableau) {
         // Only process active formulas
-        if (tabline.active && tabline.formula != nullptr) {
+        if (tabline.active) {
             // Apply skolem_form to the formula
             node* skolemized = skolem_form(tab_ctx, tabline.formula);
 
-            // Replace the original formula with the skolemized formula
-            tabline.formula = skolemized;
+            if (skolemized != tabline.formula) { // if anything changed
+                // Replace the original formula with the skolemized formula
+                tabline.formula = skolemized;
 
-            // If the formula is a target, re-negate it
-            if (tabline.target) {
-                // Delete existing negation to prevent memory leaks
-                delete tabline.negation;
+                // If the formula is a target, re-negate it
+                if (tabline.target) {
+                    // Delete existing negation to prevent memory leaks
+                    delete tabline.negation;
 
-                // Create a deep copy of the skolemized formula
-                node* formula_copy = deep_copy(tabline.formula);
+                    // Create a deep copy of the skolemized formula
+                    node* formula_copy = deep_copy(tabline.formula);
 
-                // Negate the copied formula
-                node* negated = negate_node(formula_copy);
-                negated = disjunction_to_implication(negated);
+                    // Negate the copied formula
+                    node* negated = negate_node(formula_copy);
+                    negated = disjunction_to_implication(negated);
 
-                // Assign the negated formula to the negation field
-                tabline.negation = negated;
+                    // Assign the negated formula to the negation field
+                    tabline.negation = negated;
+                }
             }
         }
     }
@@ -405,4 +400,110 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     ctx.tableau.push_back(new_tabline);
 
     return true;
+}
+
+// Function to check for Disjunctive Idempotence: P ∨ P
+bool disjunctive_idempotence(const node* formula) {
+    // Ensure the formula is a logical binary operation with OR symbol
+    if (!formula->is_disjunction())
+        return false;
+
+    // Since nodes have the correct number of children, no need to check size
+    const node* left = formula->children[0];
+    const node* right = formula->children[1];
+
+    // Check if both operands are structurally equal (up to variable renaming)
+    return equal(left, right);
+}
+
+// Function to check for Conjunctive Idempotence: P ∧ P
+bool conjunctive_idempotence(const node* formula) {
+    // Ensure the formula is a logical binary operation with AND symbol
+    if (!formula->is_conjunction())
+        return false;
+
+    // Since nodes have the correct number of children, no need to check size
+    const node* left = formula->children[0];
+    const node* right = formula->children[1];
+
+    // Check if both operands are structurally equal (up to variable renaming)
+    return equal(left, right);
+}
+
+bool move_disj_idem(context_t& tab_ctx) {
+    bool moved = false;
+
+    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Check if the formula is a disjunctive idempotent
+        if ((tabline.target && conjunctive_idempotence(tabline.formula))
+            || (!tabline.target && disjunctive_idempotence(tabline.formula))) {
+            // Formula is of the form P ∨ P
+
+            // Store the original formula node and its children
+            node* original_formula = tabline.formula;
+            node* P = original_formula->children[0];
+            node* redundant_child = original_formula->children[1];
+
+            // Replace formula with P
+            tabline.formula = P;
+
+            // Clear children to prevent automatic deletion
+            original_formula->children.clear();
+
+            // Delete the redundant child and the original formula node
+            delete redundant_child;
+            delete original_formula;
+
+            // If it's a target, update the negation field to ¬P
+            if (tabline.target) {
+                node* new_negation = negate_node(deep_copy(P));
+                tabline.negation = new_negation;
+            }
+
+            moved = true;
+        }
+    }
+
+    return moved;
+}
+
+bool move_conj_idem(context_t& tab_ctx) {
+    bool moved = false;
+
+    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Check if the formula is a conjunctive idempotent
+        if ((tabline.target && disjunctive_idempotence(tabline.formula))
+            || (!tabline.target && conjunctive_idempotence(tabline.formula))) {
+            // Formula is of the form P ∧ P
+
+            // Store the original formula node and its children
+            node* original_formula = tabline.formula;
+            node* P = original_formula->children[0];
+            node* redundant_child = original_formula->children[1];
+
+            // Replace formula with P
+            tabline.formula = P;
+
+            // Clear children to prevent automatic deletion
+            original_formula->children.clear();
+
+            // Delete the redundant child and the original formula node
+            delete redundant_child;
+            delete original_formula;
+
+            // If it's a target, update the negation field to ¬P
+            if (tabline.target) {
+                node* new_negation = negate_node(deep_copy(P));
+                tabline.negation = new_negation;
+            }
+
+            moved = true;
+        }
+    }
+
+    return moved;
 }

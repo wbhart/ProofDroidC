@@ -266,4 +266,6 @@ std::vector<node*> conjunction_to_list(node* conjunction);
 
 node* contrapositive(node* implication);
 
+bool equal(const node* a, const node* b);
+
 #endif // NODE_H

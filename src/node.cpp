@@ -53,7 +53,8 @@ node* deep_copy(const node* n) {
             copied_node = new node(TUPLE, copied_children);
             break;
         default:
-            throw std::logic_error("Unsupported node type for deep copy");
+            std::cout << n->type << std::endl;
+            throw std::logic_error("Unsupported node type for deep_copy");
     }
 
     return copied_node;
@@ -422,3 +423,156 @@ node* contrapositive(node* implication) {
     return new_implication;
 }
 
+// Function declaration (ensure it's declared in node.h)
+bool equal(const node* a, const node* b);
+
+// Helper function for recursive comparison with variable mapping
+bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, std::string>& var_map) {
+    // Compare node types
+    if (a->type != b->type)
+        return false;
+
+    switch (a->type) {
+        case VARIABLE:
+            /// Compare VariableKind, bound, and arity
+            if (a->vdata->var_kind != b->vdata->var_kind ||
+                a->vdata->bound != b->vdata->bound ||
+                a->vdata->arity != b->vdata->arity)
+                return false;
+
+            // Handle variable renaming for INDIVIDUAL variables
+            if (a->vdata->var_kind == INDIVIDUAL) {
+                const std::string& var_a = a->vdata->name;
+                const std::string& var_b = b->vdata->name;
+
+                auto it = var_map.find(var_a);
+                if (it != var_map.end()) {
+                    // Variable already mapped, check consistency
+                    if (it->second != var_b)
+                        return false;
+                } else {
+                    // Map variable from a to b
+                    var_map[var_a] = var_b;
+                }
+            } else {
+                // For other VariableKind types, names must match exactly
+                if (a->vdata->name != b->vdata->name)
+                    return false;
+            }
+            break;
+
+        case CONSTANT:
+            // Compare symbols for CONSTANT nodes
+            if (a->symbol != b->symbol)
+                return false;
+            break;
+
+        case QUANTIFIER:
+            // Compare symbols and recursively compare children
+            if (a->symbol != b->symbol)
+                return false;
+            
+            // Assuming QUANTIFIER nodes have exactly two children: variable and formula
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            if (!equal_helper(a->children[1], b->children[1], var_map))
+                return false;
+            break;
+
+        case LOGICAL_UNARY:
+            // Compare symbols and recursively compare single child
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming LOGICAL_UNARY nodes have exactly one child
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            break;
+
+        case LOGICAL_BINARY:
+            // Compare symbols and recursively compare both children
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming LOGICAL_BINARY nodes have exactly two children
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            if (!equal_helper(a->children[1], b->children[1], var_map))
+                return false;
+            break;
+
+        case UNARY_OP:
+            // Compare symbols and recursively compare single child
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming UNARY_OP nodes have exactly one child
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            break;
+
+        case BINARY_OP:
+            // Compare symbols and recursively compare both children
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming BINARY_OP nodes have exactly two children
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            if (!equal_helper(a->children[1], b->children[1], var_map))
+                return false;
+            break;
+
+        case UNARY_PRED:
+            // Compare symbols and recursively compare single child
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming UNARY_PRED nodes have exactly one child
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            break;
+
+        case BINARY_PRED:
+            // Compare symbols and recursively compare both children
+            if (a->symbol != b->symbol)
+                return false;
+            // Assuming BINARY_PRED nodes have exactly two children
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            if (!equal_helper(a->children[1], b->children[1], var_map))
+                return false;
+            break;
+
+        case APPLICATION:
+            // Compare the operator node (first child)
+            if (!equal_helper(a->children[0], b->children[0], var_map))
+                return false;
+            // Compare the arguments (remaining children)
+            if (a->children.size() != b->children.size())
+                return false; // APPLICATION nodes should have the same number of arguments
+            for (size_t i = 1; i < a->children.size(); ++i) {
+                if (!equal_helper(a->children[i], b->children[i], var_map))
+                    return false;
+            }
+            break;
+
+        case TUPLE:
+            // Compare all children recursively
+            // Assuming TUPLE nodes can have variable number of children
+            if (a->children.size() != b->children.size())
+                return false;
+            for (size_t i = 0; i < a->children.size(); ++i) {
+                if (!equal_helper(a->children[i], b->children[i], var_map))
+                    return false;
+            }
+            break;
+
+        default:
+            // For unhandled types, assume not equal
+            return false;
+    }
+
+    return true;
+}
+
+// Compares formulas up to renaming of INDIVIDUAL variables
+bool equal(const node* a, const node* b) {
+    std::unordered_map<std::string, std::string> var_map;
+    return equal_helper(a, b, var_map);
+}

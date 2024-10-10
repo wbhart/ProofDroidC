@@ -49,5 +49,11 @@ node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<nod
 // Performs modus ponens\tollens on specified lines
 bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens);
 
+// Function to apply disjunctive idempotence: P ∨ P -> P
+bool move_disj_idem(context_t& tab_ctx);
+
+// Function to apply conjunctive idempotence: P ∧ P -> P
+bool move_conj_idem(context_t& tab_ctx);
+
 #endif // MOVES_H
 
