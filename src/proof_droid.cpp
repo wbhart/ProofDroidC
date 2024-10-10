@@ -492,6 +492,9 @@ int main(int argc, char** argv) {
                         option_t::OPTION_QUIT
                     };
 
+                    // Turn free variables into parameters (constant variables)
+                    parameterize_all(tab_ctx);
+                    
                     // Enter manual mode with the current manual_active_options
                     manual_mode(tab_ctx, manual_active_options);
 

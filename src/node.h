@@ -142,6 +142,9 @@ public:
                     } else {
                         oss << name();
                     }
+                    if (vdata->var_kind == INDIVIDUAL && !vdata->bound) {
+                         oss << "'";
+                    }
                 } else { // REPR
                     oss << name();
                 }
