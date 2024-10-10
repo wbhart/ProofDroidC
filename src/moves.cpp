@@ -182,6 +182,20 @@ void skolemize_all(context_t& tab_ctx) {
     }
 }
 
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
+    // 1. Negate the implication: A -> B becomes ¬B -> ¬A
+    node* negated_implication = contrapositive(implication);
+
+    // 2. Apply modus ponens with the negated implication and the provided unit clauses
+    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
+
+    // 3. Clean up the negated implication
+    delete negated_implication;
+
+    // 4. Return the result from modus ponens
+    return result;
+}
+
 node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
     // 1. Verify that the first formula is an implication
     if (!(implication->is_implication())) {
@@ -198,11 +212,11 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
     // 5. Collect all variables from conjuncts and unit clauses
     std::set<std::string> vars_conjuncts;
-    vars_used(vars_conjuncts, implication, false);
+    vars_used(vars_conjuncts, implication);
 
     std::set<std::string> vars_units;
     for (const auto& unit : unit_clauses) {
-        vars_used(vars_units, unit);
+        vars_used(vars_units, unit, false);
     }
 
     // 6. Find common variables
@@ -249,6 +263,7 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
         std::optional<Substitution> maybe_subst = unify(conjunct_copy, unit, subst);
         if (!maybe_subst.has_value()) {
             std::cerr << "Error: Unification failed between conjunct " << (i + 1) << " and unit clause." << std::endl;
+            std::cerr << conjunct_copy->to_string(UNICODE) << " " << unit->to_string(UNICODE) << std::endl;
             delete conjunct_copy;
             delete implication_copy;
             return nullptr;
@@ -284,16 +299,110 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     return substituted_consequent;
 }
 
-node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
-    // 1. Negate the implication: A -> B becomes ¬B -> ¬A
-    node* negated_implication = contrapositive(implication);
+bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens) {
+    // Step 1: Validate implication_line is within bounds
+    if (implication_line < 0 || implication_line >= static_cast<int>(ctx.tableau.size())) {
+        std::cerr << "Error: implication line " << implication_line + 1 << " is out of bounds.\n";
+        return false;
+    }
 
-    // 2. Apply modus ponens with the negated implication and the provided unit clauses
-    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
+    tabline_t& implication_tabline = ctx.tableau[implication_line];
 
-    // 3. Clean up the negated implication
-    delete negated_implication;
+    // Step 2: Ensure implication_line is a hypothesis
+    if (implication_tabline.target) {
+        std::cerr << "Error: Line " << implication_line + 1 << " is not a hypothesis.\n";
+        return false;
+    }
 
-    // 4. Return the result from modus ponens
-    return result;
+    node* implication = implication_tabline.formula;
+    if (!implication->is_implication()) {
+        std::cerr << "Error: Line " << implication_line + 1 << " does not contain a valid implication.\n";
+        return false;
+    }
+
+    // Step 3: Validate other_lines are within bounds and determine their nature
+    bool all_hypotheses = true;
+    bool all_targets = true;
+
+    for (int line : other_lines) {
+        if (line < 0 || line >= static_cast<int>(ctx.tableau.size())) {
+            std::cerr << "Error: line " << line + 1 << " is out of bounds.\n";
+            return false;
+        }
+
+        tabline_t& current_tabline = ctx.tableau[line];
+        if (current_tabline.target) {
+            all_hypotheses = false;
+        } else {
+            all_targets = false;
+        }
+    }
+
+    // Step 4: Determine the direction based on the nature of other_lines
+    bool forward;
+    if (all_hypotheses && !all_targets) {
+        forward = true; // Apply modus ponens
+    }
+    else if (all_targets && !all_hypotheses) {
+        forward = false; // Apply modus tollens
+    }
+    else {
+        std::cerr << "Error: antecedents must be all hypotheses or all targets.\n";
+        return false;
+    }
+    
+    // Step 5: Extract unit clauses from other_lines
+    std::vector<node*> unit_clauses;
+    for (int line : other_lines) {
+        node* clause = ctx.tableau[line].formula;
+        unit_clauses.push_back(clause);
+    }
+
+    // Step 6: Apply the appropriate inference rule
+    node* result = nullptr;
+    Reason justification_reason;
+
+    if (forward ^ !ponens) {
+        // Apply modus ponens
+        result = modus_ponens(ctx, implication, unit_clauses);
+        justification_reason = Reason::ModusPonens;
+    }
+    else {
+        // Apply modus tollens
+        result = modus_tollens(ctx, implication, unit_clauses);
+        justification_reason = Reason::ModusTollens;
+    }
+
+    // Step 7: Check if the inference was successful
+    if (result == nullptr) {
+        std::cerr << "Error: modus " << (ponens ? "ponens" : "tollens") << " failed to infer a result.\n";
+        return false;
+    }
+
+    // Step 8: Create a new tabline for the result
+    tabline_t new_tabline(result);
+
+    if (forward) {
+        // Insert as a hypothesis
+        new_tabline.target = false;
+    }
+    else {
+        // Insert as a target
+        new_tabline.target = true;
+
+        // Negate the result and store in the negation field
+        node* neg_result = negate_node(deep_copy(result));
+        new_tabline.negation = neg_result;
+    }
+
+    // Step 9: Set the justification
+    std::vector<int> justification_lines;
+    justification_lines.push_back(implication_line);
+    justification_lines.insert(justification_lines.end(), other_lines.begin(), other_lines.end());
+    new_tabline.justification = { justification_reason, justification_lines };
+
+    // Step 10: Append the new tabline to the tableau
+    ctx.tableau.push_back(new_tabline);
+
+    return true;
 }

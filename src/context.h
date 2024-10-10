@@ -14,6 +14,7 @@
 // Enumeration representing reasons for justifications in tableau lines
 enum class Reason {
     ModusPonens,
+    ModusTollens,
     Target,
     Hypothesis
 };

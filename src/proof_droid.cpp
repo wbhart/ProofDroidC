@@ -9,26 +9,34 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 // Enum representing the possible user options
 enum class option_t {
     OPTION_QUIT,
     OPTION_MANUAL,
-    OPTION_SKOLEMIZE
+    OPTION_SKOLEMIZE,
+    OPTION_MODUS_PONENS,   // New option for Modus Ponens
+    OPTION_MODUS_TOLLENS,  // New option for Modus Tollens
+    OPTION_EXIT_MANUAL     // New option for Exit Manual Mode
 };
 
-// Structure representing an option entry with key and help message
+// Structure representing an option entry with key, short message, and detailed description
 struct option_entry {
     option_t option;
     std::string key;
-    std::string message;
+    std::string short_message;
+    std::string detailed_description;
 };
 
-// Constant table containing all possible options with their keys and messages
+// Constant table containing all possible options with their keys, short messages, and detailed descriptions
 const std::vector<option_entry> all_options = {
-    {option_t::OPTION_QUIT, "q", "quit"},
-    {option_t::OPTION_MANUAL, "m", "manual mode"},
-    {option_t::OPTION_SKOLEMIZE, "s", "skolemize"}
+    {option_t::OPTION_QUIT, "q", "quit", "Quit the program"},
+    {option_t::OPTION_MANUAL, "m", "manual mode", "Enter manual mode"},
+    {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization"},
+    {option_t::OPTION_MODUS_PONENS, "p", "modus ponens", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
+    {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
+    {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"}
 };
 
 // Function to print all formulas in the tableau
@@ -52,7 +60,7 @@ void print_tableau(const context_t& tab_ctx) {
     }
 }
 
-// Function to print all active options
+// Function to print all active options in a concise summary
 void print_options(const std::vector<option_t>& active_options) {
     std::cout << "Options:";
 
@@ -69,7 +77,7 @@ void print_options(const std::vector<option_t>& active_options) {
                 std::cout << " ";
                 first = false;
             }
-            std::cout << it->key << " = " << it->message;
+            std::cout << it->key << " = " << it->short_message;
         }
     }
     std::cout << std::endl;
@@ -88,6 +96,233 @@ bool get_option_from_key(const std::string& input_key, const std::vector<option_
         }
     }
     return false;
+}
+
+// Function to parse a command into tokens
+std::vector<std::string> tokenize(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::istringstream iss(input);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+// Function to print the detailed list of commands in manual mode
+void print_detailed_commands(const std::vector<option_t>& active_options) {
+    std::cout << "Available Commands:" << std::endl;
+    for (const auto& opt : active_options) {
+        // Find the option_entry corresponding to opt
+        auto it = std::find_if(all_options.begin(), all_options.end(),
+            [&opt](const option_entry& entry) { return entry.option == opt; });
+
+        if (it != all_options.end()) {
+            std::cout << " " << it->detailed_description << std::endl;
+        }
+    }
+    std::cout << std::endl;
+}
+
+// Function to print the summary of available options in manual mode
+void print_manual_summary(const std::vector<option_t>& active_options) {
+    std::cout << "Options:";
+
+    bool first = true;
+    for (const auto& opt : active_options) {
+        // Find the option_entry corresponding to opt
+        auto it = std::find_if(all_options.begin(), all_options.end(),
+            [&opt](const option_entry& entry) { return entry.option == opt; });
+
+        if (it != all_options.end()) {
+            if (!first) {
+                std::cout << ", ";
+            } else {
+                std::cout << " ";
+                first = false;
+            }
+            std::cout << it->key << " = " << it->short_message;
+        }
+    }
+
+    std::cout << std::endl;
+}
+
+// Function to handle manual mode
+void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_options) {
+    std::cout << "\nWelcome to manual mode." << std::endl;
+
+    // Print detailed list of commands based on active options
+    print_detailed_commands(manual_active_options);
+
+    // Print the current tableau
+    print_tableau(tab_ctx);
+    std::cout << std::endl;
+
+    // Print the summary of available options before the first prompt
+    print_manual_summary(manual_active_options);
+
+    std::string input_line;
+    while (true) {
+        std::cout << "> ";
+        if (!getline(std::cin, input_line)) {
+            std::cout << std::endl;
+            break; // Exit on EOF
+        }
+
+        if (input_line.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_manual_summary(manual_active_options);
+            continue; // Prompt again
+        }
+
+        // Tokenize the input
+        std::vector<std::string> tokens = tokenize(input_line);
+        if (tokens.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_manual_summary(manual_active_options);
+            continue;
+        }
+
+        std::string command = tokens[0];
+
+        // Handle 'x' and 'q' commands first
+        if (command == "x") {
+            std::cout << "Exiting manual mode.\n" << std::endl;
+            break;
+        }
+
+        if (command == "q") {
+            std::cout << "Quitting the program." << std::endl;
+            exit(0);
+        }
+
+        // Check if the command is among the active options
+        option_t selected_option;
+        bool found = get_option_from_key(command, manual_active_options, selected_option);
+
+        if (!found) {
+            std::cerr << std::endl << "Unknown command. Available commands: ";
+            // Dynamically construct the list of available commands
+            bool first = true;
+            for (const auto& opt : manual_active_options) {
+                // Skip 'x' and 'q' as they are handled separately
+                if (opt == option_t::OPTION_EXIT_MANUAL || opt == option_t::OPTION_QUIT) {
+                    continue;
+                }
+
+                auto it = std::find_if(all_options.begin(), all_options.end(),
+                    [&opt](const option_entry& entry) { return entry.option == opt; });
+
+                if (it != all_options.end()) {
+                    if (!first) {
+                        std::cout << ", ";
+                    } else {
+                        first = false;
+                    }
+                    std::cout << it->key;
+                }
+            }
+
+            // Always include 'x' and 'q' in the error message
+            auto it_exit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_MANUAL; });
+            if (it_exit != all_options.end()) {
+                if (!manual_active_options.empty()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_exit->key;
+            }
+
+            auto it_quit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_QUIT; });
+            if (it_quit != all_options.end()) {
+                if (!manual_active_options.empty() || it_exit != all_options.end()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_quit->key;
+            }
+
+            std::cout << "." << std::endl << std::endl;
+
+            // Before next prompt, re-print the summary of options
+            print_manual_summary(manual_active_options);
+            continue;
+        }
+
+        if (selected_option == option_t::OPTION_SKOLEMIZE) {
+            // Apply skolemize_all to the tableau
+            skolemize_all(tab_ctx);
+            
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+            
+            // Before next prompt, re-print the summary of options
+            print_manual_summary(manual_active_options);
+            continue;
+        }
+
+        // For 'p' and 't', ensure there are enough arguments
+        if (selected_option == option_t::OPTION_MODUS_PONENS || selected_option == option_t::OPTION_MODUS_TOLLENS) {
+            if (tokens.size() < 3) { // Need at least implication_line and one other_line
+                std::cerr << "Error: Insufficient arguments. Usage: " 
+                          << command 
+                          << " <implication_line> <line1> <line2> ..." 
+                          << std::endl << std::endl;
+                // Before next prompt, re-print the summary of options
+                print_manual_summary(manual_active_options);
+                continue;
+            }
+
+            // Parse implication_line
+            int implication_line;
+            try {
+                implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+            } catch (...) {
+                std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
+                // Before next prompt, re-print the summary of options
+                print_manual_summary(manual_active_options);
+                continue;
+            }
+
+            // Parse other_lines
+            std::vector<int> other_lines;
+            bool parse_error = false;
+            for (size_t i = 2; i < tokens.size(); ++i) {
+                try {
+                    int line_num = std::stoi(tokens[i]) - 1; // Convert to 0-based index
+                    other_lines.push_back(line_num);
+                } catch (...) {
+                    std::cerr << "Error: Invalid line number '" << tokens[i] << "'." << std::endl << std::endl;
+                    parse_error = true;
+                    break;
+                }
+            }
+            if (parse_error) {
+                // Before next prompt, re-print the summary of options
+                print_manual_summary(manual_active_options);
+                continue;
+            }
+
+            // Determine if applying modus ponens or modus tollens
+            bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
+
+            // Apply move_mpt
+            move_mpt(tab_ctx, implication_line, other_lines, ponens);
+
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+
+            // Before next prompt, re-print the summary of options
+            print_manual_summary(manual_active_options);
+            continue;
+        }
+
+        // For any other cases, re-print the summary of options
+        print_manual_summary(manual_active_options);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -150,7 +385,7 @@ int main(int argc, char** argv) {
         parser_parse(ctx, &ast);
 
         if (!ast) {
-            std::cerr << "Error parsing line " << line_number << ": " << formula_str << std::endl;
+            std::cerr << "Error parsing line " << line_number << ": " << formula_str << std::endl << std::endl;
             continue; // Skip to the next line
         }
 
@@ -174,7 +409,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Initialize active options: quit, redisplay, manual
+    // Initialize active options: quit and manual
     std::vector<option_t> active_options = {
         option_t::OPTION_QUIT,
         option_t::OPTION_MANUAL
@@ -203,19 +438,35 @@ int main(int argc, char** argv) {
         }
         else {
             switch (selected_option) {
-                case option_t::OPTION_MANUAL:
-                    // Apply parameterize_all to the tableau
-                    parameterize_all(tab_ctx);
-                    // Remove OPTION_MANUAL and add OPTION_SKOLEMIZE
-                    active_options.erase(
-                        std::remove(active_options.begin(), active_options.end(), option_t::OPTION_MANUAL),
-                        active_options.end()
-                    );
-                    active_options.push_back(option_t::OPTION_SKOLEMIZE);
+                case option_t::OPTION_MANUAL: {
+                    // Define active options within manual mode
+                    std::vector<option_t> manual_active_options = {
+                        option_t::OPTION_SKOLEMIZE,
+                        option_t::OPTION_MODUS_PONENS,
+                        option_t::OPTION_MODUS_TOLLENS,
+                        option_t::OPTION_EXIT_MANUAL,
+                        option_t::OPTION_QUIT
+                    };
+
+                    // Enter manual mode with the current manual_active_options
+                    manual_mode(tab_ctx, manual_active_options);
+
+                    // After exiting manual mode, display the tableau and options again
+                    print_tableau(tab_ctx);
+                    std::cout << std::endl;
+
+                    // Reset active_options to include only 'm' and 'q'
+                    active_options = {
+                        option_t::OPTION_QUIT,
+                        option_t::OPTION_MANUAL
+                    };
                     break;
+                }
                 case option_t::OPTION_SKOLEMIZE:
                     // Apply skolemize_all to the tableau
                     skolemize_all(tab_ctx);
+                    std::cout << "Skolemization applied successfully.\n";
+                    print_tableau(tab_ctx);
                     break;
                 case option_t::OPTION_QUIT:
                     // Exit the application
@@ -224,9 +475,6 @@ int main(int argc, char** argv) {
                     std::cout << "Unhandled option." << std::endl;
                     break;
             }
-        
-            std::cout << std::endl;
-            print_tableau(tab_ctx);
         }
 
         // After handling the command, display the current options again

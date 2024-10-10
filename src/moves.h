@@ -46,5 +46,8 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 // - A new node representing the result of modus ponens, or nullptr if unification fails.
 node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
 
+// Performs modus ponens\tollens on specified lines
+bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens);
+
 #endif // MOVES_H
 
