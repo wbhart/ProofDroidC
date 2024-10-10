@@ -426,7 +426,13 @@ node* contrapositive(node* implication) {
 // Function declaration (ensure it's declared in node.h)
 bool equal(const node* a, const node* b);
 
-// Helper function for recursive comparison with variable mapping
+// moves.cpp (continued)
+
+#include "node.h"
+#include <unordered_map>
+#include <string>
+
+// Function to compare two nodes for equality up to variable mapping
 bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, std::string>& var_map) {
     // Compare node types
     if (a->type != b->type)
@@ -434,25 +440,20 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
 
     switch (a->type) {
         case VARIABLE:
-            /// Compare VariableKind, bound, and arity
-            if (a->vdata->var_kind != b->vdata->var_kind ||
-                a->vdata->bound != b->vdata->bound ||
-                a->vdata->arity != b->vdata->arity)
-                return false;
-
-            // Handle variable renaming for INDIVIDUAL variables
+            // Handle variable comparison without mapping here
             if (a->vdata->var_kind == INDIVIDUAL) {
                 const std::string& var_a = a->vdata->name;
                 const std::string& var_b = b->vdata->name;
 
                 auto it = var_map.find(var_a);
                 if (it != var_map.end()) {
-                    // Variable already mapped, check consistency
+                    // Variable has been mapped in a quantifier, check consistency
                     if (it->second != var_b)
                         return false;
                 } else {
-                    // Map variable from a to b
-                    var_map[var_a] = var_b;
+                    // Free variables must match exactly
+                    if (var_a != var_b)
+                        return false;
                 }
             } else {
                 // For other VariableKind types, names must match exactly
@@ -468,13 +469,21 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
             break;
 
         case QUANTIFIER:
-            // Compare symbols and recursively compare children
+            // Compare quantifier symbols (e.g., ∀, ∃)
             if (a->symbol != b->symbol)
                 return false;
             
             // Assuming QUANTIFIER nodes have exactly two children: variable and formula
-            if (!equal_helper(a->children[0], b->children[0], var_map))
-                return false;
+            // Map the bound variable from 'a' to 'b'
+            {
+                const node* a_var = a->children[0];
+                const node* b_var = b->children[0];
+                
+                // Add mapping for bound variables
+                var_map[a_var->vdata->name] = b_var->vdata->name;
+            }
+
+            // Recursively compare the formulas under the quantifiers
             if (!equal_helper(a->children[1], b->children[1], var_map))
                 return false;
             break;
@@ -554,7 +563,7 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
 
         case TUPLE:
             // Compare all children recursively
-            // Assuming TUPLE nodes can have variable number of children
+            // Assuming TUPLE nodes can have a variable number of children
             if (a->children.size() != b->children.size())
                 return false;
             for (size_t i = 0; i < a->children.size(); ++i) {
@@ -571,7 +580,7 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
     return true;
 }
 
-// Compares formulas up to renaming of INDIVIDUAL variables
+// Compares formulas up to renaming of bound variables
 bool equal(const node* a, const node* b) {
     std::unordered_map<std::string, std::string> var_map;
     return equal_helper(a, b, var_map);
