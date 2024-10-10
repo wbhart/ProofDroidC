@@ -68,5 +68,7 @@ std::vector<std::pair<std::string, std::string>> vars_rename_list(context_t& ctx
 // Applies renaming pairs to a formula's AST to avoid variable capture
 void rename_vars(node* root, const std::vector<std::pair<std::string, std::string>>& renaming_pairs);
 
+void print_reason(const context_t& context, int index);
+
 #endif // CONTEXT_H
 

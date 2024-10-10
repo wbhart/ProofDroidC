@@ -39,23 +39,30 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"}
 };
 
-// Function to print all formulas in the tableau
+// Function to print all formulas in the tableau with reasons
+// Function to print all formulas in the tableau with reasons
 void print_tableau(const context_t& tab_ctx) {
     std::cout << "Hypotheses:" << std::endl;
+    
+    // First, print all Hypotheses
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
         if (!tabline.target) {
-            std::cout << " " << i + 1 << ": ";
-            std::cout << tabline.formula->to_string(UNICODE) << std::endl;
+            std::cout << " " << i + 1 << " "; // Line number
+            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
+            std::cout << ": " << tabline.formula->to_string(UNICODE) << std::endl;
         }
     }
     
-    std::cout << "Targets:" << std::endl;
+    std::cout << std::endl << "Targets:" << std::endl;
+    
+    // Then, print all Targets
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
         if (tabline.target) {
-            std::cout << " " << i + 1 << ": ";
-            std::cout << tabline.negation->to_string(UNICODE) << std::endl;
+            std::cout << " " << i + 1 << " "; // Line number
+            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
+            std::cout << ": " << tabline.negation->to_string(UNICODE) << std::endl;
         }
     }
 }
@@ -193,7 +200,6 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
         }
 
         if (command == "q") {
-            std::cout << "Quitting the program." << std::endl;
             exit(0);
         }
 
@@ -394,10 +400,13 @@ int main(int argc, char** argv) {
             node* ast_copy = deep_copy(ast);
             node* negated = negate_node(ast_copy);
 
-            // Create a tabline struct with target=true
+            // Create a tabline struct with target=true and set justification
             tabline_t tabline(negated); // The formula field holds the negated formula
             tabline.negation = ast; // The negation field holds the original formula
             tabline.target = true;
+
+            // **Added:** Set justification for Target
+            tabline.justification = { Reason::Target, {} };
 
             // Add to the tableau
             tab_ctx.tableau.push_back(tabline);
@@ -405,6 +414,11 @@ int main(int argc, char** argv) {
         else {
             // Non-target formula, add directly to the tableau
             tabline_t tabline(ast);
+            tabline.target = false;
+
+            // **Added:** Set justification for Hypothesis
+            tabline.justification = { Reason::Hypothesis, {} };
+
             tab_ctx.tableau.push_back(tabline);
         }
     }
@@ -453,7 +467,6 @@ int main(int argc, char** argv) {
 
                     // After exiting manual mode, display the tableau and options again
                     print_tableau(tab_ctx);
-                    std::cout << std::endl;
 
                     // Reset active_options to include only 'm' and 'q'
                     active_options = {

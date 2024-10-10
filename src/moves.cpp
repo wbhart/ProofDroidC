@@ -365,13 +365,13 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     if (forward ^ !ponens) {
         // Apply modus ponens
         result = modus_ponens(ctx, implication, unit_clauses);
-        justification_reason = Reason::ModusPonens;
     }
     else {
         // Apply modus tollens
         result = modus_tollens(ctx, implication, unit_clauses);
-        justification_reason = Reason::ModusTollens;
     }
+
+    justification_reason = (ponens ? Reason::ModusPonens : Reason::ModusTollens);
 
     // Step 7: Check if the inference was successful
     if (result == nullptr) {

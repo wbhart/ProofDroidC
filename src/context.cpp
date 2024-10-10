@@ -83,3 +83,64 @@ std::vector<std::pair<std::string, std::string>> vars_rename_list(context_t& ctx
     return renaming_pairs;
 }
 
+// Function to print the reason for a given tableau line index
+// context.cpp
+
+#include "context.h"
+#include <iostream>
+#include <vector>
+
+// Function to print the reason for a given tableau line index
+void print_reason(const context_t& context, int index) {
+    // Check if the index is within the bounds of the tableau
+    if (index < 0 || static_cast<size_t>(index) >= context.tableau.size()) {
+        std::cerr << "Error: Line index " << index << " is out of bounds." << std::endl;
+        return;
+    }
+
+    // Retrieve the specified tableau line
+    const tabline_t& tabline = context.tableau[index];
+
+    // Extract the justification reason and associated line numbers
+    Reason reason = tabline.justification.first;
+    const std::vector<int>& associated_lines = tabline.justification.second;
+
+    // Determine the output based on the reason
+    switch (reason) {
+        case Reason::Target:
+            std::cout << "Tar";
+            break;
+
+        case Reason::Hypothesis:
+            std::cout << "Hyp";
+            break;
+
+        case Reason::ModusPonens: {
+            std::cout << "MP[";
+            for (size_t i = 0; i < associated_lines.size(); ++i) {
+                std::cout << associated_lines[i] + 1;
+                if (i != associated_lines.size() - 1) {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::ModusTollens: {
+            std::cout << "MT[";
+            for (size_t i = 0; i < associated_lines.size(); ++i) {
+                std::cout << associated_lines[i] + 1;
+                if (i != associated_lines.size() - 1) {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << "]";
+            break;
+        }
+
+        default:
+            std::cout << "Unknown";
+            break;
+    }
+}
