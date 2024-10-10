@@ -37,6 +37,9 @@ class context_t {
 public:
     context_t();
 
+    // Whether free variables have already been made into parameters
+    bool parameterized = false;
+
     // Retrieves and increments the next available index for a variable
     int get_next_index(const std::string& var_name);
 

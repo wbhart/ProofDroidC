@@ -24,23 +24,28 @@ node* parameterize(node* formula) {
 
 void parameterize_all(context_t& tab_ctx) {
     // Iterate through each tabline in the tableau
-    for (auto& tabline : tab_ctx.tableau) {
-        // Only process active formulas
-        if (tabline.active) {
-            // Apply parameterize to the formula
-            if (tabline.target) {
-                // Delete existing negation to prevent memory leaks
-                delete tabline.formula;
+    if (!tab_ctx.parameterized) {
+        for (auto& tabline : tab_ctx.tableau) {
+            // Only process active formulas
+            if (tabline.active) {
+                // Apply parameterize to the formula
+                if (tabline.target) {
+                    // Delete existing negation to prevent memory leaks
+                    delete tabline.formula;
 
-                parameterize(tabline.negation);
-                
-                // Replace existing formula
-                tabline.formula = negate_node(deep_copy(tabline.negation));
-            } else {
-                parameterize(tabline.formula);
+                    parameterize(tabline.negation);
+                    
+                    // Replace existing formula
+                    tabline.formula = negate_node(deep_copy(tabline.negation));
+                } else {
+                    parameterize(tabline.formula);
+                }
             }
         }
     }
+
+    // Ensure parameterization is only done once
+    tab_ctx.parameterized = true;
 }
 
 // Skolemizes an existentially quantified formula by replacing the existential variable
