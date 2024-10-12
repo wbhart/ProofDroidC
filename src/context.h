@@ -19,7 +19,8 @@ enum class Reason {
     Hypothesis,
     SplitConjunction,
     SplitDisjunctiveImplication,
-    SplitConjunctiveImplication
+    SplitConjunctiveImplication,
+    NegatedImplication
 };
 
 // Represents a single line in the tableau

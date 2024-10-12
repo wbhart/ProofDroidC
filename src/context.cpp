@@ -160,6 +160,13 @@ void print_reason(const context_t& context, int index) {
             break;
         }
 
+        case Reason::NegatedImplication: {
+            std::cout << "NI[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
         default:
             std::cout << "Unknown";
             break;

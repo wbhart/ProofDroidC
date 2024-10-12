@@ -93,6 +93,10 @@ public:
         return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && !vdata->bound);
     }
 
+    bool is_negation() const {
+        return (type == LOGICAL_UNARY && symbol == SYMBOL_NOT);
+    }
+    
     bool is_disjunction() const {
         return (type == LOGICAL_BINARY && symbol == SYMBOL_OR);
     }

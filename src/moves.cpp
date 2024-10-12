@@ -638,8 +638,8 @@ bool move_sdi(context_t& tab_ctx) {
                         tabline_t new_tabline_Q_imp(Q_imp_R);
 
                         // Set justifications
-                        new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
-                        new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+                        new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
 
                         // Append new tablines to the tableau
                         tab_ctx.tableau.push_back(new_tabline_P_imp);
@@ -700,8 +700,8 @@ bool move_sdi(context_t& tab_ctx) {
                         tabline_t new_tabline_neg_Q_imp(neg_Q_imp_R, Q_imp_R);
 
                         // Set justifications
-                        new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
-                        new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+                        new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
 
                         // Append new tablines to the tableau
                         tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
@@ -860,6 +860,87 @@ bool move_sci(context_t& tab_ctx) {
                         moved = true;
                     }
                 }
+            }
+        }
+
+        i++;
+    }
+
+    return moved;
+}
+
+bool move_ni(context_t& tab_ctx) {
+    bool moved = false;
+    size_t i = 0;
+
+    while (i < tab_ctx.tableau.size()) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Skip inactive formulas
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
+        if (!tabline.target) {
+            // **Hypothesis Case:** Look for formulas of the form ¬(P → Q)
+            if (tabline.formula->is_negation()) {
+                node* inner = tabline.formula->children[0];
+                if (inner->is_implication()) {
+                    node* P = inner->children[0];
+                    node* Q = inner->children[1];
+
+                    // Deactivate the original formula
+                    tabline.active = false;
+
+                    // Deep copy P and Q
+                    node* P_copy = deep_copy(P);
+                    node* neg_Q_copy = negate_node(deep_copy(Q));
+
+                    // Create new tablines
+                    tabline_t new_tabline_P(P_copy);
+                    tabline_t new_tabline_neg_Q(neg_Q_copy); // Assuming second parameter is for negation
+
+                    // Set justifications
+                    new_tabline_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+                    new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+
+                    // Append new tablines to the tableau
+                    tab_ctx.tableau.push_back(new_tabline_P);
+                    tab_ctx.tableau.push_back(new_tabline_neg_Q);
+
+                    moved = true;
+                }
+            }
+        }
+        else {
+            // **Target Case:** Look for formulas of the form P -> Q
+            if (tabline.formula->is_implication()) {
+                node* P = tabline.formula->children[0];
+                node* Q = tabline.formula->children[1];
+
+                // Deactivate the original formula
+                tabline.active = false;
+
+                // Deep copy P and Q
+                node* P_copy = deep_copy(P);
+                node* Q_copy = deep_copy(Q);
+                node* neg_P_copy = negate_node(deep_copy(P));
+                node* neg_Q_copy = negate_node(deep_copy(Q));
+
+                // Create new target tablines
+                tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming second parameter is for negation
+                tabline_t new_tabline_neg_Q(Q_copy, neg_Q_copy);
+
+                // Set justifications
+                new_tabline_neg_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+                new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+
+                // Append new tablines to the tableau
+                tab_ctx.tableau.push_back(new_tabline_neg_P);
+                tab_ctx.tableau.push_back(new_tabline_neg_Q);
+
+                moved = true;
             }
         }
 

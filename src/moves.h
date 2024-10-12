@@ -64,5 +64,8 @@ bool move_sdi(context_t& tab_ctx);
 // Split lines P -> (Q ∧ R) into P -> Q and P -> R
 bool move_sci(context_t& tab_ctx);
 
+// Split lines ¬(P -> Q) into P and ¬Q
+bool move_ni(context_t& tab_ctx);
+
 #endif // MOVES_H
 
