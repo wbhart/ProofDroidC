@@ -16,16 +16,18 @@
 enum class option_t {
     OPTION_QUIT,
     OPTION_MANUAL,
+    OPTION_SEMI_AUTOMATIC, // Newly added option for Semi-Automatic Mode
     OPTION_SKOLEMIZE,
-    OPTION_MODUS_PONENS,   // New option for Modus Ponens
-    OPTION_MODUS_TOLLENS,  // New option for Modus Tollens
-    OPTION_EXIT_MANUAL,    // New option for Exit Manual Mode
-    OPTION_CONJ_IDEM,      // New option for Conjunctive Idempotence
-    OPTION_DISJ_IDEM,      // New option for Disjunctive Idempotence
-    OPTION_SPLIT_CONJUNCTION, // New option for Split Conjunctions
-    OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, // Existing option for Split Disjunctive Implication
-    OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,  // Newly added option for Split Conjunctive Implication
-    OPTION_NEGATED_IMPLICATION            // Newly added option for Negated Implication
+    OPTION_MODUS_PONENS,
+    OPTION_MODUS_TOLLENS,
+    OPTION_EXIT,
+    OPTION_CONJ_IDEM,
+    OPTION_DISJ_IDEM,
+    OPTION_SPLIT_CONJUNCTION,
+    OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
+    OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
+    OPTION_NEGATED_IMPLICATION,
+    OPTION_CONDITIONAL_PREMISE
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -40,16 +42,18 @@ struct option_entry {
 const std::vector<option_entry> all_options = {
     {option_t::OPTION_QUIT, "q", "quit", "Quit the program"},
     {option_t::OPTION_MANUAL, "m", "manual mode", "Enter manual mode"},
+    {option_t::OPTION_SEMI_AUTOMATIC, "s", "semi-automatic mode", "Enter semi-automatic mode"}, // Newly added option
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
-    {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
+    {option_t::OPTION_EXIT, "x", "exit mode", "Exit mode"},
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence", "Apply Conjunctive Idempotence P ∧ P -> P"},
     {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"},
     {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions", "Apply Split Conjunctions"},
-    {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication", "Apply Split Disjunctive Implication"}, // Existing option
-    {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication", "Apply Split Conjunctive Implication"}, // Newly added option
-    {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication", "Apply Negated Implication"} // Newly added option
+    {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication", "Apply Split Disjunctive Implication"},
+    {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication", "Apply Split Conjunctive Implication"},
+    {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication", "Apply Negated Implication"},
+    {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise", "Apply Conditional Premise: cp <index>"}
 };
 
 // Function to print all formulas in the tableau with reasons
@@ -225,7 +229,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             bool first = true;
             for (const auto& opt : manual_active_options) {
                 // Skip 'x' and 'q' as they are handled separately
-                if (opt == option_t::OPTION_EXIT_MANUAL || opt == option_t::OPTION_QUIT) {
+                if (opt == option_t::OPTION_EXIT || opt == option_t::OPTION_QUIT) {
                     continue;
                 }
 
@@ -244,7 +248,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
             // Always include 'x' and 'q' in the error message
             auto it_exit = std::find_if(all_options.begin(), all_options.end(),
-                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_MANUAL; });
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT; });
             if (it_exit != all_options.end()) {
                 if (!manual_active_options.empty()) {
                     std::cout << ", ";
@@ -269,19 +273,24 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
         }
 
         if (selected_option == option_t::OPTION_SKOLEMIZE) {
-            // Apply skolemize_all to the tableau
-            skolemize_all(tab_ctx);
-            
+            // Apply skolemize_all to the tableau starting from 0
+            bool skolemized = skolemize_all(tab_ctx, 0);
+            if (skolemized) {
+                std::cout << "Skolemization applied successfully.\n";
+            } else {
+                std::cout << "No Skolemization applied." << std::endl;
+            }
+
             std::cout << std::endl;
             print_tableau(tab_ctx);
             std::cout << std::endl;
-            
+
             // Before next prompt, re-print the summary of options
             print_manual_summary(manual_active_options);
             continue;
         }
 
-        // For 'p', 't', 'ci', 'di', 'sc', 'sdi', 'sci', and 'ni', handle accordingly
+        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', and 'cp', handle accordingly
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS ||
             selected_option == option_t::OPTION_CONJ_IDEM ||
@@ -289,28 +298,87 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
             selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
             selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
-            selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
+            selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
+            selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
             
-            // For 'ci', 'di', 'sc', 'sci', 'sdi', and 'ni', handle without additional arguments
+            // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', and 'cp', handle without additional arguments
             if (selected_option == option_t::OPTION_CONJ_IDEM || 
                 selected_option == option_t::OPTION_DISJ_IDEM ||
                 selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
                 selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
-                selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
+                selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
+                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
                 
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
-                    move_conj_idem(tab_ctx);
+                    bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Conjunctive Idempotence applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Conjunctive Idempotence could not be applied." << std::endl;
+                    }
                 } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
-                    move_disj_idem(tab_ctx);
+                    bool applied = move_di(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Disjunctive Idempotence applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Disjunctive Idempotence could not be applied." << std::endl;
+                    }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
-                    move_sc(tab_ctx);
+                    bool applied = move_sc(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Split Conjunctions applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Split Conjunctions could not be applied." << std::endl;
+                    }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
-                    move_sci(tab_ctx); // Invoke the Split Conjunctive Implication function
+                    bool applied = move_sci(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Split Conjunctive Implication applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Split Conjunctive Implication could not be applied." << std::endl;
+                    }
                 } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
-                    move_sdi(tab_ctx); // Invoke the Split Disjunctive Implication function
+                    bool applied = move_sdi(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Split Disjunctive Implication applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Split Disjunctive Implication could not be applied." << std::endl;
+                    }
                 } else if (selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
-                    move_ni(tab_ctx); // Invoke the Negated Implication function
+                    bool applied = move_ni(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        std::cout << "Negated Implication applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Negated Implication could not be applied." << std::endl;
+                    }
+                } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+                    // Handle the new 'cp' move for Conditional Premise
+                    if (tokens.size() < 2) { // Expecting 'cp <index>'
+                        std::cerr << "Error: Insufficient arguments. Usage: cp <index>" << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_manual_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Parse the index
+                    int target_index;
+                    try {
+                        target_index = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                    } catch (...) {
+                        std::cerr << "Error: Invalid index." << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_manual_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Apply conditional_premise
+                    bool cp_moved = conditional_premise(tab_ctx, target_index);
+                    if (cp_moved) {
+                        std::cout << "Conditional Premise applied successfully." << std::endl;
+                    } else {
+                        std::cerr << "Error: Conditional Premise could not be applied on the specified index." << std::endl;
+                    }
                 }
 
                 std::cout << std::endl;
@@ -323,13 +391,200 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             }
 
             // For modus ponens and modus tollens, handle as before
+            if (selected_option == option_t::OPTION_MODUS_PONENS || 
+                selected_option == option_t::OPTION_MODUS_TOLLENS) {
+                
+                if (tokens.size() < 3) { // Need at least implication_line and one other_line
+                    std::cerr << "Error: Insufficient arguments. Usage: " 
+                              << command 
+                              << " <implication_line> <line1> <line2> ..." 
+                              << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_manual_summary(manual_active_options);
+                    continue;
+                }
+
+                // Parse implication_line
+                int implication_line;
+                try {
+                    implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_manual_summary(manual_active_options);
+                    continue;
+                }
+
+                // Parse other_lines
+                std::vector<int> other_lines;
+                bool parse_error = false;
+                for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
+                    try {
+                        int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
+                        other_lines.push_back(line_num);
+                    } catch (...) {
+                        std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
+                        parse_error = true;
+                        break;
+                    }
+                }
+                if (parse_error) {
+                    // Before next prompt, re-print the summary of options
+                    print_manual_summary(manual_active_options);
+                    continue;
+                }
+
+                // Determine if applying modus ponens or modus tollens
+                bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
+
+                // Apply move_mpt
+                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
+
+                if (move_applied) {
+                    std::cout << "Modus " << (ponens ? "Ponens" : "Tollens") << " applied successfully." << std::endl;
+                    // After applying the move, run cleanup_moves automatically
+                    size_t cleanup_start_line = 0; // Starting from the beginning
+                    bool cleanup_result = cleanup_moves(tab_ctx, cleanup_start_line);
+                    if (cleanup_result) {
+                        std::cout << "Cleanup Moves applied successfully." << std::endl;
+                    } else {
+                        std::cout << "No applicable Cleanup Moves found." << std::endl;
+                    }
+                } else {
+                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+                }
+
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+                // Before next prompt, re-print the summary of options
+                print_manual_summary(manual_active_options);
+                continue;
+            }
+
+            // For any other cases, re-print the summary of options
+            print_manual_summary(manual_active_options);
+        }
+    }
+}
+
+// Function to handle semi-automatic mode
+void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_auto_active_options) {
+    std::cout << "\nWelcome to semi-automatic mode." << std::endl << std::endl;
+
+    // Print detailed list of commands based on active options
+    print_detailed_commands(semi_auto_active_options);
+
+    // Parameterize all (if not done yet) and Skolemize all
+    parameterize_all(tab_ctx);
+    cleanup_moves(tab_ctx, 0); // Starting from line 0
+
+    // Print the current tableau
+    print_tableau(tab_ctx);
+    std::cout << std::endl;
+
+    // Print the summary of available options before the first prompt
+    print_manual_summary(semi_auto_active_options);
+
+    std::string input_line;
+    while (true) {
+        std::cout << "> ";
+        if (!getline(std::cin, input_line)) {
+            std::cout << std::endl;
+            break; // Exit on EOF
+        }
+
+        if (input_line.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_manual_summary(semi_auto_active_options);
+            continue; // Prompt again
+        }
+
+        // Tokenize the input
+        std::vector<std::string> tokens = tokenize(input_line);
+        if (tokens.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_manual_summary(semi_auto_active_options);
+            continue;
+        }
+
+        std::string command = tokens[0];
+
+        // Handle 'x' and 'q' commands first
+        if (command == "x") {
+            std::cout << "Exiting semi-automatic mode.\n" << std::endl;
+            break;
+        }
+
+        if (command == "q") {
+            exit(0);
+        }
+
+        // Check if the command is among the active options
+        option_t selected_option;
+        bool found = get_option_from_key(command, semi_auto_active_options, selected_option);
+
+        if (!found) {
+            std::cerr << std::endl << "Unknown command. Available commands: ";
+            // Dynamically construct the list of available commands
+            bool first = true;
+            for (const auto& opt : semi_auto_active_options) {
+                // Skip 'x' and 'q' as they are handled separately
+                if (opt == option_t::OPTION_EXIT || opt == option_t::OPTION_QUIT) {
+                    continue;
+                }
+
+                auto it = std::find_if(all_options.begin(), all_options.end(),
+                    [&opt](const option_entry& entry) { return entry.option == opt; });
+
+                if (it != all_options.end()) {
+                    if (!first) {
+                        std::cout << ", ";
+                    } else {
+                        first = false;
+                    }
+                    std::cout << it->key;
+                }
+            }
+
+            // Always include 'x' and 'q' in the error message
+            auto it_exit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT; });
+            if (it_exit != all_options.end()) {
+                if (!semi_auto_active_options.empty()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_exit->key;
+            }
+
+            auto it_quit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_QUIT; });
+            if (it_quit != all_options.end()) {
+                if (!semi_auto_active_options.empty() || it_exit != all_options.end()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_quit->key;
+            }
+
+            std::cout << "." << std::endl << std::endl;
+
+            // Before next prompt, re-print the summary of options
+            print_manual_summary(semi_auto_active_options);
+            continue;
+        }
+
+        // Handle 'p' and 't' commands
+        if (selected_option == option_t::OPTION_MODUS_PONENS || 
+            selected_option == option_t::OPTION_MODUS_TOLLENS) {
+            
             if (tokens.size() < 3) { // Need at least implication_line and one other_line
                 std::cerr << "Error: Insufficient arguments. Usage: " 
                           << command 
                           << " <implication_line> <line1> <line2> ..." 
                           << std::endl << std::endl;
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(manual_active_options);
+                print_manual_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -340,7 +595,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             } catch (...) {
                 std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(manual_active_options);
+                print_manual_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -359,7 +614,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             }
             if (parse_error) {
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(manual_active_options);
+                print_manual_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -367,19 +622,33 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
 
             // Apply move_mpt
-            move_mpt(tab_ctx, implication_line, other_lines, ponens);
+            bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
+
+            if (move_applied) {
+                std::cout << "Modus " << (ponens ? "Ponens" : "Tollens") << " applied successfully." << std::endl;
+                // After applying the move, run cleanup_moves automatically
+                size_t cleanup_start_line = 0; // Starting from the beginning
+                bool cleanup_result = cleanup_moves(tab_ctx, cleanup_start_line);
+                if (cleanup_result) {
+                    std::cout << "Cleanup Moves applied successfully." << std::endl;
+                } else {
+                    std::cout << "No applicable Cleanup Moves found." << std::endl;
+                }
+            } else {
+                std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+            }
 
             std::cout << std::endl;
             print_tableau(tab_ctx);
             std::cout << std::endl;
 
             // Before next prompt, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_manual_summary(semi_auto_active_options);
             continue;
         }
 
         // For any other cases, re-print the summary of options
-        print_manual_summary(manual_active_options);
+        print_manual_summary(semi_auto_active_options);
     }
 }
 
@@ -477,10 +746,11 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Initialize active options: quit and manual
+    // Initialize active options: quit, manual, and semi-automatic
     std::vector<option_t> active_options = {
         option_t::OPTION_QUIT,
-        option_t::OPTION_MANUAL
+        option_t::OPTION_MANUAL,
+        option_t::OPTION_SEMI_AUTOMATIC
     };
 
     // Display the initial tableau
@@ -512,13 +782,14 @@ int main(int argc, char** argv) {
                         option_t::OPTION_SKOLEMIZE,
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_CONJ_IDEM,                      // Added Conjunctive Idempotence
+                        option_t::OPTION_CONJ_IDEM,                      // Renamed Conjunctive Idempotence
                         option_t::OPTION_DISJ_IDEM,                      // Added Disjunctive Idempotence
                         option_t::OPTION_SPLIT_CONJUNCTION,               // Added Split Conjunctions
                         option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,   // Added Split Conjunctive Implication
                         option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,   // Existing Split Disjunctive Implication
                         option_t::OPTION_NEGATED_IMPLICATION,            // Added Negated Implication
-                        option_t::OPTION_EXIT_MANUAL,
+                        option_t::OPTION_CONDITIONAL_PREMISE,            // Added Conditional Premise
+                        option_t::OPTION_EXIT,
                         option_t::OPTION_QUIT
                     };
 
@@ -531,19 +802,48 @@ int main(int argc, char** argv) {
                     // After exiting manual mode, display the tableau and options again
                     print_tableau(tab_ctx);
 
-                    // Reset active_options to include only 'm' and 'q'
+                    // Reset active_options to include 'm', 'sa', and 'q'
                     active_options = {
                         option_t::OPTION_QUIT,
-                        option_t::OPTION_MANUAL
+                        option_t::OPTION_MANUAL,
+                        option_t::OPTION_SEMI_AUTOMATIC
                     };
                     break;
                 }
-                case option_t::OPTION_SKOLEMIZE:
-                    // Apply skolemize_all to the tableau
-                    skolemize_all(tab_ctx);
-                    std::cout << "Skolemization applied successfully.\n";
+                case option_t::OPTION_SEMI_AUTOMATIC: {
+                    // Define active options within semi-automatic mode
+                    std::vector<option_t> semi_auto_active_options = {
+                        option_t::OPTION_MODUS_PONENS,
+                        option_t::OPTION_MODUS_TOLLENS,
+                        option_t::OPTION_EXIT, // Reusing OPTION_EXIT as 'x' for exiting modes
+                        option_t::OPTION_QUIT
+                    };
+
+                    // Enter semi-automatic mode with the current semi_auto_active_options
+                    semi_automatic_mode(tab_ctx, semi_auto_active_options);
+
+                    // After exiting semi-automatic mode, display the tableau and options again
+                    print_tableau(tab_ctx);
+
+                    // Reset active_options to include 'm', 'sa', and 'q'
+                    active_options = {
+                        option_t::OPTION_QUIT,
+                        option_t::OPTION_MANUAL,
+                        option_t::OPTION_SEMI_AUTOMATIC
+                    };
+                    break;
+                }
+                case option_t::OPTION_SKOLEMIZE: {
+                    // Apply skolemize_all to the tableau starting from 0
+                    bool skolemized = skolemize_all(tab_ctx, 0);
+                    if (skolemized) {
+                        std::cout << "Skolemization applied successfully.\n";
+                    } else {
+                        std::cout << "No Skolemization applied." << std::endl;
+                    }
                     print_tableau(tab_ctx);
                     break;
+                }
                 case option_t::OPTION_QUIT:
                     // Exit the application
                     goto exit_loop;

@@ -26,7 +26,7 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
 node* skolem_form(context_t& ctx, node* formula);
 
 // Skolemizes all active formulas
-void skolemize_all(context_t& tab_ctx);
+bool skolemize_all(context_t& tab_ctx, size_t start = 0);
 
 // Applies modus ponens to the given implication and unit clauses.
 // Parameters:
@@ -50,22 +50,31 @@ node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<nod
 bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens);
 
 // Function to apply disjunctive idempotence: P ∨ P -> P
-bool move_disj_idem(context_t& tab_ctx);
+bool move_di(context_t& tab_ctx, size_t start = 0);
 
 // Function to apply conjunctive idempotence: P ∧ P -> P
-bool move_conj_idem(context_t& tab_ctx);
+bool move_ci(context_t& tab_ctx, size_t start = 0);
 
 // Split conjunctions P ∧ Q into P and Q
-bool move_sc(context_t& tab_ctx);
+bool move_sc(context_t& tab_ctx, size_t start = 0);
 
 // Split lines (P ∨ Q) -> R into P -> R and Q -> R
-bool move_sdi(context_t& tab_ctx);
+bool move_sdi(context_t& tab_ctx, size_t start = 0);
 
 // Split lines P -> (Q ∧ R) into P -> Q and P -> R
-bool move_sci(context_t& tab_ctx);
+bool move_sci(context_t& tab_ctx, size_t start = 0);
 
 // Split lines ¬(P -> Q) into P and ¬Q
-bool move_ni(context_t& tab_ctx);
+bool move_ni(context_t& tab_ctx, size_t start = 0);
+
+// Conditional premise move: P -> Q to conditional hypothesis P and target Q
+bool conditional_premise(context_t& tab_ctx, int index);
+
+// Apply conditional premise to all lines
+bool move_cp(context_t& tab_ctx, size_t start = 0);
+
+// Apply all cleanup moves
+bool cleanup_moves(context_t& tab_ctx, size_t start_line = 0);
 
 #endif // MOVES_H
 

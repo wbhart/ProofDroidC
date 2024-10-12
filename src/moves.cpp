@@ -8,7 +8,7 @@
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
     // If the node is a free individual variable, change it to parameter
-    if (formula->type == VARIABLE && formula->vdata != nullptr) {
+    if (formula->type == VARIABLE) {
         if (!formula->vdata->bound && formula->vdata->var_kind == INDIVIDUAL) {
             formula->vdata->var_kind = PARAMETER;
         }
@@ -151,14 +151,20 @@ node* skolem_form(context_t& ctx, node* formula) {
     return skolemized_formula;
 }
 
-void skolemize_all(context_t& tab_ctx) {
-    for (auto& tabline : tab_ctx.tableau) {
-        // Only process active formulas
+bool skolemize_all(context_t& tab_ctx, size_t start) {
+    bool moved = false; // whether any move occurred
+    
+    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+       // Only process active formulas
         if (tabline.active) {
             // Apply skolem_form to the formula
             node* skolemized = skolem_form(tab_ctx, tabline.formula);
 
             if (skolemized != tabline.formula) { // if anything changed
+                moved = true;
+
                 // Replace the original formula with the skolemized formula
                 tabline.formula = skolemized;
 
@@ -180,6 +186,8 @@ void skolemize_all(context_t& tab_ctx) {
             }
         }
     }
+
+    return moved;
 }
 
 node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
@@ -435,10 +443,10 @@ bool conjunctive_idempotence(const node* formula) {
     return equal(left, right);
 }
 
-bool move_disj_idem(context_t& tab_ctx) {
+bool move_di(context_t& tab_ctx, size_t start) {
     bool moved = false;
 
-    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         if (!tabline.active) {
@@ -479,10 +487,10 @@ bool move_disj_idem(context_t& tab_ctx) {
     return moved;
 }
 
-bool move_conj_idem(context_t& tab_ctx) {
+bool move_ci(context_t& tab_ctx, size_t start) {
     bool moved = false;
 
-    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         if (!tabline.active) {
@@ -524,9 +532,9 @@ bool move_conj_idem(context_t& tab_ctx) {
 }
 
 // Split conjunctions
-bool move_sc(context_t& tab_ctx) {
+bool move_sc(context_t& tab_ctx, size_t start) {
     bool moved = false;
-    size_t i = 0;
+    size_t i = start;
 
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
@@ -581,9 +589,9 @@ bool move_sc(context_t& tab_ctx) {
     return moved;
 }
 
-bool move_sdi(context_t& tab_ctx) {
+bool move_sdi(context_t& tab_ctx, size_t start) {
     bool moved = false;
-    size_t i = 0;
+    size_t i = start;
 
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
@@ -719,9 +727,9 @@ bool move_sdi(context_t& tab_ctx) {
     return moved;
 }
 
-bool move_sci(context_t& tab_ctx) {
+bool move_sci(context_t& tab_ctx, size_t start) {
     bool moved = false;
-    size_t i = 0;
+    size_t i = start;
 
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
@@ -869,9 +877,9 @@ bool move_sci(context_t& tab_ctx) {
     return moved;
 }
 
-bool move_ni(context_t& tab_ctx) {
+bool move_ni(context_t& tab_ctx, size_t start) {
     bool moved = false;
-    size_t i = 0;
+    size_t i = start;
 
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
@@ -945,6 +953,156 @@ bool move_ni(context_t& tab_ctx) {
         }
 
         i++;
+    }
+
+    return moved;
+}
+
+bool conditional_premise(context_t& tab_ctx, int index) {
+    // Check if index is within bounds
+    if (index < 0 || index >= static_cast<int>(tab_ctx.tableau.size())) {
+        std::cerr << "Error: Index out of bounds." << std::endl;
+        return false;
+    }
+
+    tabline_t& tabline = tab_ctx.tableau[index];
+
+    // Check if the tabline is active and a target
+    if (!tabline.active) {
+        std::cerr << "Error: Selected formula is inactive." << std::endl;
+        return false;
+    }
+
+    if (!tabline.target) {
+        std::cerr << "Error: Selected formula is not a target." << std::endl;
+        return false;
+    }
+
+    // Check if the negated field is an implication
+    if (!tabline.negation->is_implication()) {
+        std::cerr << "Error: The target is not an implication." << std::endl;
+        return false;
+    }
+
+    // Extract P and Q from the implication
+    node* implication = tabline.negation; // Since it's a negated formula
+    node* P = implication->children[0];
+    node* Q = implication->children[1];
+
+    // Deep copy P and Q
+    node* P_copy = deep_copy(P);
+    node* Q_copy = deep_copy(Q);
+    node* neg_Q_copy = negate_node(deep_copy(Q)); // For the new target Q
+
+    // Create new hypothesis P
+    tabline_t new_hypothesis(P_copy);
+    new_hypothesis.target = false;
+    new_hypothesis.active = true;
+    new_hypothesis.justification = { Reason::ConditionalPremise, { static_cast<int>(index) } };
+    // The new target Q will be at index size(), zero-based
+
+    // Create new target Q
+    tabline_t new_target(neg_Q_copy, Q_copy); // Assuming constructor takes formula and negation
+    new_target.target = true;
+    new_target.active = true;
+    new_target.justification = { Reason::ConditionalPremise, { static_cast<int>(index) } };
+    // No assumptions for the new target
+
+    // Deactivate the original formula
+    tabline.active = false;
+
+    // Append new hypothesis and target to the tableau
+    tab_ctx.tableau.push_back(new_hypothesis);
+    tab_ctx.tableau.push_back(new_target);
+
+    // Add assumption to the new hypothesis (assuming the new target is the last one)
+    new_hypothesis.assumptions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+
+    return true;
+}
+
+bool move_cp(context_t& tab_ctx, size_t start) {
+    bool moved = false;
+    
+    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
+        const tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Check if the tabline is active and a target
+        if (tabline.active && tabline.target) {
+            // Ensure the negation field exists and is an implication
+            if (tabline.negation && tabline.negation->is_implication()) {
+                bool success = conditional_premise(tab_ctx, i);
+                if (success) {
+                    moved = true;
+                }
+            }
+        }
+    }
+
+    return moved;
+}
+
+bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
+    bool moved = false;
+    size_t start = start_line;
+    size_t current_size = tab_ctx.tableau.size();
+
+    while (start < current_size) {
+        // Flags to determine if move_di or move_ci were applied
+        bool di_ci_move_applied = false;
+
+        // Apply moves in the specified order
+        // 1. skolemize_all
+        if (skolemize_all(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 2. move_cp
+        if (move_cp(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 3. move_sc
+        if (move_sc(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 4. move_ni
+        if (move_ni(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 5. move_sdi
+        if (move_sdi(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 6. move_sci
+        if (move_sci(tab_ctx, start)) {
+            moved = true;
+        }
+
+        // 7. move_di
+        if (move_di(tab_ctx, start)) {
+            di_ci_move_applied = true;
+            moved = true;
+        }
+
+        // 8. move_ci
+        if (move_ci(tab_ctx, start)) {
+            di_ci_move_applied = true;
+            moved = true;
+        }
+
+        if (di_ci_move_applied) {
+            // Continue the loop to apply moves to any new lines
+            continue;
+        }
+
+        // Update start_line to previous current_size before moves were applied
+        start = current_size;
+        // Update current_size to the new size of the tableau
+        current_size = tab_ctx.tableau.size();
     }
 
     return moved;
