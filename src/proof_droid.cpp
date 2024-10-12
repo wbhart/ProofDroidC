@@ -20,7 +20,10 @@ enum class option_t {
     OPTION_MODUS_TOLLENS,  // New option for Modus Tollens
     OPTION_EXIT_MANUAL,    // New option for Exit Manual Mode
     OPTION_CONJ_IDEM,      // New option for Conjunctive Idempotence
-    OPTION_DISJ_IDEM       // New option for Disjunctive Idempotence
+    OPTION_DISJ_IDEM,      // New option for Disjunctive Idempotence
+    OPTION_SPLIT_CONJUNCTION, // New option for Split Conjunctions
+    OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, // Existing option for Split Disjunctive Implication
+    OPTION_SPLIT_CONJUNCTIVE_IMPLICATION  // Newly added option for Split Conjunctive Implication
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -40,7 +43,10 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence", "Apply Conjunctive Idempotence P ∧ P -> P"},
-    {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"}
+    {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"},
+    {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions", "Apply Split Conjunctions"},
+    {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication", "Apply Split Disjunctive Implication"}, // Existing option
+    {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication", "Apply Split Conjunctive Implication"} // Newly added option
 };
 
 // Function to print all formulas in the tableau with reasons
@@ -50,7 +56,7 @@ void print_tableau(const context_t& tab_ctx) {
     // First, print all Hypotheses
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
-        if (!tabline.target) {
+        if (tabline.active && !tabline.target) {
             std::cout << " " << i + 1 << " "; // Line number
             print_reason(tab_ctx, static_cast<int>(i)); // Print reason
             std::cout << ": " << tabline.formula->to_string(UNICODE) << std::endl;
@@ -62,7 +68,7 @@ void print_tableau(const context_t& tab_ctx) {
     // Then, print all Targets
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
-        if (tabline.target) {
+        if (tabline.active && tabline.target) {
             std::cout << " " << i + 1 << " "; // Line number
             print_reason(tab_ctx, static_cast<int>(i)); // Print reason
             std::cout << ": " << tabline.negation->to_string(UNICODE) << std::endl;
@@ -272,21 +278,32 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             continue;
         }
 
-        // For 'p', 't', 'ci', and 'di', ensure there are enough arguments
+        // For 'p', 't', 'ci', 'di', 'sc', 'sdi', and 'sci', handle accordingly
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS ||
             selected_option == option_t::OPTION_CONJ_IDEM ||
-            selected_option == option_t::OPTION_DISJ_IDEM) {
+            selected_option == option_t::OPTION_DISJ_IDEM ||
+            selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
+            selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
+            selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
             
-            // For 'ci' and 'di', no additional arguments are needed
+            // For 'ci', 'di', 'sc', 'sci', and 'sdi', handle without additional arguments
             if (selected_option == option_t::OPTION_CONJ_IDEM || 
-                selected_option == option_t::OPTION_DISJ_IDEM) {
+                selected_option == option_t::OPTION_DISJ_IDEM ||
+                selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
+                selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
+                selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
                 
-                // Apply the respective idempotence move
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
                     move_conj_idem(tab_ctx);
-                } else {
+                } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
                     move_disj_idem(tab_ctx);
+                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
+                    move_sc(tab_ctx);
+                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
+                    move_sci(tab_ctx); // Invoke the new move_sci function
+                } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
+                    move_sdi(tab_ctx); // Invoke the existing move_sdi function
                 }
 
                 std::cout << std::endl;
@@ -323,12 +340,12 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             // Parse other_lines
             std::vector<int> other_lines;
             bool parse_error = false;
-            for (size_t i = 2; i < tokens.size(); ++i) {
+            for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
                 try {
-                    int line_num = std::stoi(tokens[i]) - 1; // Convert to 0-based index
+                    int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
                     other_lines.push_back(line_num);
                 } catch (...) {
-                    std::cerr << "Error: Invalid line number '" << tokens[i] << "'." << std::endl << std::endl;
+                    std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
                     parse_error = true;
                     break;
                 }
@@ -432,6 +449,7 @@ int main(int argc, char** argv) {
             tabline_t tabline(negated); // The formula field holds the negated formula
             tabline.negation = ast; // The negation field holds the original formula
             tabline.target = true;
+            tabline.active = true;
 
             // **Added:** Set justification for Target
             tabline.justification = { Reason::Target, {} };
@@ -443,6 +461,7 @@ int main(int argc, char** argv) {
             // Non-target formula, add directly to the tableau
             tabline_t tabline(ast);
             tabline.target = false;
+            tabline.active = true;
 
             // **Added:** Set justification for Hypothesis
             tabline.justification = { Reason::Hypothesis, {} };
@@ -486,8 +505,11 @@ int main(int argc, char** argv) {
                         option_t::OPTION_SKOLEMIZE,
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_CONJ_IDEM,      // Added Conjunctive Idempotence
-                        option_t::OPTION_DISJ_IDEM,      // Added Disjunctive Idempotence
+                        option_t::OPTION_CONJ_IDEM,                      // Added Conjunctive Idempotence
+                        option_t::OPTION_DISJ_IDEM,                      // Added Disjunctive Idempotence
+                        option_t::OPTION_SPLIT_CONJUNCTION,               // Added Split Conjunctions
+                        option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,   // Added Split Conjunctive Implication
+                        option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,   // Existing Split Disjunctive Implication
                         option_t::OPTION_EXIT_MANUAL,
                         option_t::OPTION_QUIT
                     };

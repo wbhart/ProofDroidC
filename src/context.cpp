@@ -139,6 +139,27 @@ void print_reason(const context_t& context, int index) {
             break;
         }
 
+        case Reason::SplitConjunction: {
+            std::cout << "SC[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::SplitConjunctiveImplication: {
+            std::cout << "SCI[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::SplitDisjunctiveImplication: {
+            std::cout << "SDI[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
         default:
             std::cout << "Unknown";
             break;

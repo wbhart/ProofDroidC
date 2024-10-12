@@ -441,6 +441,11 @@ bool move_disj_idem(context_t& tab_ctx) {
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
         // Check if the formula is a disjunctive idempotent
         if ((tabline.target && conjunctive_idempotence(tabline.formula))
             || (!tabline.target && disjunctive_idempotence(tabline.formula))) {
@@ -480,6 +485,11 @@ bool move_conj_idem(context_t& tab_ctx) {
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
         // Check if the formula is a conjunctive idempotent
         if ((tabline.target && disjunctive_idempotence(tabline.formula))
             || (!tabline.target && conjunctive_idempotence(tabline.formula))) {
@@ -508,6 +518,352 @@ bool move_conj_idem(context_t& tab_ctx) {
 
             moved = true;
         }
+    }
+
+    return moved;
+}
+
+// Split conjunctions
+bool move_sc(context_t& tab_ctx) {
+    bool moved = false;
+    size_t i = 0;
+
+    while (i < tab_ctx.tableau.size()) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Check if the formula is active and a conjunction
+        if (tabline.active && ((!tabline.target && tabline.formula->is_conjunction()) ||
+            (tabline.target && tabline.formula->is_disjunction()))) {
+            // Get P and Q from P ∧ Q
+            node* P = tabline.formula->children[0];
+            node* Q = tabline.formula->children[1];
+
+            // Create new tablines for P and Q
+            if (!tabline.target) {
+                // Original is a hypothesis, new tablines are hypotheses
+                tabline_t new_tabline_P(deep_copy(P));
+                tabline_t new_tabline_Q(deep_copy(Q));
+
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
+                new_tabline_Q.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
+
+                // Append new hypotheses to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
+                tab_ctx.tableau.push_back(new_tabline_Q);
+            }
+            else {
+                // Original is a target, new tablines are targets
+                node* neg_P = negate_node(deep_copy(P));
+                node* neg_Q = negate_node(deep_copy(Q));
+
+                tabline_t new_tabline_P(deep_copy(P), neg_P);
+                tabline_t new_tabline_Q(deep_copy(Q), neg_Q);
+
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
+                new_tabline_Q.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
+
+                // Append new targets to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
+                tab_ctx.tableau.push_back(new_tabline_Q);
+            }
+
+            // Mark the original conjunction as inactive
+            tabline.active = false;
+
+            moved = true;
+        }
+
+        i++;
+    }
+
+    return moved;
+}
+
+bool move_sdi(context_t& tab_ctx) {
+    bool moved = false;
+    size_t i = 0;
+
+    while (i < tab_ctx.tableau.size()) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Skip inactive formulas
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
+        if (!tabline.target) {
+            // **Hypothesis Case:** Look for formulas of the form (P ∨ Q) → R
+            if (tabline.formula->is_implication()) {
+                node* left = tabline.formula->children[0];  // (P ∨ Q)
+                node* right = tabline.formula->children[1]; // R
+
+                if (left->is_disjunction()) {
+                    node* P = left->children[0];
+                    node* Q = left->children[1];
+                    node* R = right;
+
+                    // Collect variables used in R, P, and Q using vars_used
+                    std::set<std::string> vars_R, vars_P, vars_Q;
+                    vars_used(vars_R, R);
+                    vars_used(vars_P, P);
+                    vars_used(vars_Q, Q);
+
+                    // Check if all variables in R are used in P and in Q
+                    bool valid = true;
+                    for (const auto& var : vars_R) {
+                        if (vars_P.find(var) == vars_P.end() || vars_Q.find(var) == vars_Q.end()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (valid) {
+                        // Deactivate the original formula
+                        tabline.active = false;
+
+                        // Deep copy P, Q, R
+                        node* P_copy = deep_copy(P);
+                        node* Q_copy = deep_copy(Q);
+                        node* R_copy = deep_copy(R);
+
+                        // Create new implications P → R and Q → R
+                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy });
+                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy });
+
+                        // Create new tablines as hypotheses
+                        tabline_t new_tabline_P_imp(P_imp_R);
+                        tabline_t new_tabline_Q_imp(Q_imp_R);
+
+                        // Set justifications
+                        new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+                        new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+
+                        // Append new tablines to the tableau
+                        tab_ctx.tableau.push_back(new_tabline_P_imp);
+                        tab_ctx.tableau.push_back(new_tabline_Q_imp);
+
+                        moved = true;
+                    }
+                }
+            }
+        }
+        else {
+            // **Target Case:** Look for formulas of the form (P ∨ Q) ∧ ¬R, which represent ¬((P ∨ Q) → R)
+            if (tabline.formula->is_conjunction()) {
+                node* left = tabline.formula->children[0];  // (P ∨ Q)
+                node* right = tabline.formula->children[1]; // ¬R
+
+                // Check if left is a disjunction and right is a negation
+                if (left->is_disjunction()) {
+                    node* P = left->children[0];
+                    node* Q = left->children[1];
+                    node* R = right->children[0];
+
+                    // Collect variables used in R, P, and Q using vars_used
+                    std::set<std::string> vars_R, vars_P, vars_Q;
+                    vars_used(vars_R, R);
+                    vars_used(vars_P, P);
+                    vars_used(vars_Q, Q);
+
+                    // Check if all variables in R are used in P and in Q
+                    bool valid = true;
+                    for (const auto& var : vars_R) {
+                        if (vars_P.find(var) == vars_P.end() || vars_Q.find(var) == vars_Q.end()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (valid) {
+                        // Deactivate the original formula
+                        tabline.active = false;
+
+                        // Deep copy P, Q, R
+                        node* P_copy = deep_copy(P);
+                        node* Q_copy = deep_copy(Q);
+                        node* R_copy1 = deep_copy(R);
+                        node* R_copy2 = deep_copy(R);
+
+                        // Create new implications P → R and Q → R
+                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
+                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
+
+                        // Negate the new implications
+                        node* neg_P_imp_R = negate_node(deep_copy(P_imp_R));
+                        node* neg_Q_imp_R = negate_node(deep_copy(Q_imp_R));
+
+                        // Create new tablines as targets
+                        tabline_t new_tabline_neg_P_imp(neg_P_imp_R, P_imp_R);
+                        tabline_t new_tabline_neg_Q_imp(neg_Q_imp_R, Q_imp_R);
+
+                        // Set justifications
+                        new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+                        new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i + 1) } };
+
+                        // Append new tablines to the tableau
+                        tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
+                        tab_ctx.tableau.push_back(new_tabline_neg_Q_imp);
+
+                        moved = true;
+                    }
+                }
+            }
+        }
+
+        i++;
+    }
+
+    return moved;
+}
+
+bool move_sci(context_t& tab_ctx) {
+    bool moved = false;
+    size_t i = 0;
+
+    while (i < tab_ctx.tableau.size()) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Skip inactive formulas
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
+        if (!tabline.target) {
+            // **Hypothesis Case:** Look for formulas of the form P → (Q ∧ R)
+            if (tabline.formula->is_implication()) {
+                node* antecedent = tabline.formula->children[0];  // P
+                node* consequent = tabline.formula->children[1];  // (Q ∧ R)
+
+                if (consequent->is_conjunction()) {
+                    node* Q = consequent->children[0];
+                    node* R = consequent->children[1];
+
+                    // Collect variables used in Q, R, and P using vars_used
+                    std::set<std::string> vars_Q, vars_R, vars_P;
+                    vars_used(vars_Q, Q, true);
+                    vars_used(vars_R, R, true);
+                    vars_used(vars_P, antecedent, true);
+
+                    // Check if all variables in Q and R are used in P
+                    bool valid = true;
+                    for (const auto& var : vars_Q) {
+                        if (vars_P.find(var) == vars_P.end()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (valid) {
+                        for (const auto& var : vars_R) {
+                            if (vars_P.find(var) == vars_P.end()) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (valid) {
+                        // Deactivate the original formula
+                        tabline.active = false;
+
+                        // Deep copy P, Q, R
+                        node* P_copy = deep_copy(antecedent);
+                        node* Q_copy = deep_copy(Q);
+                        node* R_copy = deep_copy(R);
+
+                        // Create new implications P → Q and P → R
+                        node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, Q_copy });
+                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy });
+
+                        // Create new tablines as hypotheses
+                        tabline_t new_tabline_P_imp_Q(P_imp_Q);
+                        tabline_t new_tabline_P_imp_R(P_imp_R);
+
+                        // Set justifications
+                        new_tabline_P_imp_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_P_imp_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+
+                        // Append new tablines to the tableau
+                        tab_ctx.tableau.push_back(new_tabline_P_imp_Q);
+                        tab_ctx.tableau.push_back(new_tabline_P_imp_R);
+
+                        moved = true;
+                    }
+                }
+            }
+        }
+        else {
+            // **Target Case:** Look for formulas of the form P ∧ (Q ∨ R)
+            if (tabline.formula->is_conjunction()) {
+                node* P = tabline.formula->children[0];             // P
+                node* disjunct = tabline.formula->children[1];      // (Q ∨ R)
+
+                if (disjunct->is_disjunction()) {
+                    node* Q = disjunct->children[0];
+                    node* R = disjunct->children[1];
+
+                    // Collect variables used in Q, R, and P using vars_used
+                    std::set<std::string> vars_Q, vars_R, vars_P;
+                    vars_used(vars_Q, Q, true);
+                    vars_used(vars_R, R, true);
+                    vars_used(vars_P, P, true);
+
+                    // Check if all variables in Q and R are used in P
+                    bool valid = true;
+                    for (const auto& var : vars_Q) {
+                        if (vars_P.find(var) == vars_P.end()) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (valid) {
+                        for (const auto& var : vars_R) {
+                            if (vars_P.find(var) == vars_P.end()) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (valid) {
+                        // Deactivate the original formula
+                        tabline.active = false;
+
+                        // Deep copy P, Q, R
+                        node* P_copy1 = deep_copy(P);
+                        node* P_copy2 = deep_copy(P);
+                        node* Q_copy = deep_copy(Q);
+                        node* R_copy = deep_copy(R);
+
+                        // Create new conjunctions P ∧ Q and P ∧ R
+                        node* P_and_Q = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy1, Q_copy });
+                        node* P_and_R = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy2, R_copy });
+
+                        node* neg_P_and_Q = negate_node(deep_copy(P_and_Q));
+                        node* neg_P_and_R = negate_node(deep_copy(P_and_R));
+
+                        // Create new tablines as targets
+                        tabline_t new_tabline_P_and_Q(P_and_Q, neg_P_and_Q);
+                        tabline_t new_tabline_P_and_R(P_and_R, neg_P_and_R);
+
+                        // Set justifications
+                        new_tabline_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+
+                        // Append new tablines to the tableau
+                        tab_ctx.tableau.push_back(new_tabline_P_and_Q);
+                        tab_ctx.tableau.push_back(new_tabline_P_and_R);
+
+                        moved = true;
+                    }
+                }
+            }
+        }
+
+        i++;
     }
 
     return moved;

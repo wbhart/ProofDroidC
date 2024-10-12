@@ -55,5 +55,14 @@ bool move_disj_idem(context_t& tab_ctx);
 // Function to apply conjunctive idempotence: P ∧ P -> P
 bool move_conj_idem(context_t& tab_ctx);
 
+// Split conjunctions P ∧ Q into P and Q
+bool move_sc(context_t& tab_ctx);
+
+// Split lines (P ∨ Q) -> R into P -> R and Q -> R
+bool move_sdi(context_t& tab_ctx);
+
+// Split lines P -> (Q ∧ R) into P -> Q and P -> R
+bool move_sci(context_t& tab_ctx);
+
 #endif // MOVES_H
 

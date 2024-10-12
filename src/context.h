@@ -16,7 +16,10 @@ enum class Reason {
     ModusPonens,
     ModusTollens,
     Target,
-    Hypothesis
+    Hypothesis,
+    SplitConjunction,
+    SplitDisjunctiveImplication,
+    SplitConjunctiveImplication
 };
 
 // Represents a single line in the tableau
@@ -30,7 +33,8 @@ public:
     node* formula = nullptr;                       // Pointer to the associated formula
     node* negation = nullptr;                      // Pointer to the negation of the formula
 
-    tabline_t(node* form) : formula(form) {}
+    tabline_t(node* form) : target(false), formula(form) {}
+    tabline_t(node* form, node* neg) : target(true), formula(form), negation(neg) {}
 };
 
 class context_t {
