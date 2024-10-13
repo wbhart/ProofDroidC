@@ -423,15 +423,6 @@ node* contrapositive(node* implication) {
     return new_implication;
 }
 
-// Function declaration (ensure it's declared in node.h)
-bool equal(const node* a, const node* b);
-
-// moves.cpp (continued)
-
-#include "node.h"
-#include <unordered_map>
-#include <string>
-
 // Function to compare two nodes for equality up to variable mapping
 bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, std::string>& var_map) {
     // Compare node types

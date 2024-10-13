@@ -100,47 +100,47 @@ int main() {
 
     std::vector<TestCase> test_cases = {
         // Test 1: Simple existential quantifier with no universals
-        {"\\exists x P(x)", "P(x())"},
+        {"\\exists x P(x)", "P(x_0())"},
 
         // Test 2: Existential quantifier with one universal
-        {"\\forall y \\exists x P(x, y)", "P(x(y), y)"},
+        {"\\forall y \\exists x P(x, y)", "P(x_0(y), y)"},
 
         // Test 3: Nested quantifiers
-        {"\\forall y \\forall z \\exists x P(x, y, z)", "P(x(y, z), y, z)"},
+        {"\\forall y \\forall z \\exists x P(x, y, z)", "P(x_0(y, z), y, z)"},
 
         // Test 4: Multiple existential quantifiers
-        {"\\forall y \\exists x \\exists w P(x, w, y)", "P(x(y), w(y), y)"},
+        {"\\forall y \\exists x \\exists w P(x, w, y)", "P(x_0(y), w_0(y), y)"},
 
         // Test 5: Existential quantifier with unused universal
-        {"\\forall y \\forall z \\exists x P(x, y)", "P(x(y), y)"},
+        {"\\forall y \\forall z \\exists x P(x, y)", "P(x_0(y), y)"},
 
         // Test 6: No quantifiers
         {"P(x, y)", "P(x, y)"},
 
         // Test 7: Multiple quantifiers mixed
-        {"\\forall y \\exists x \\forall z \\exists w P(x, y, z, w)", "P(x(y), y, z, w(y, z))"},
+        {"\\forall y \\exists x \\forall z \\exists w P(x, y, z, w)", "P(x_0(y), y, z, w_0(y, z))"},
 
         // Test 8: Existential quantifier inside universal
-        {"\\forall y \\exists x (P(x, y) \\vee Q(y))", "P(x(y), y) \\vee Q(y)"},
+        {"\\forall y \\exists x (P(x, y) \\vee Q(y))", "P(x_0(y), y) \\vee Q(y)"},
 
         // Test 9: Multiple universals before existential
-        {"\\forall y \\forall z \\exists x \\exists w P(x, w, y, z)", "P(x(y, z), w(y, z), y, z)"},
+        {"\\forall y \\forall z \\exists x \\exists w P(x, w, y, z)", "P(x_0(y, z), w_0(y, z), y, z)"},
 
         // Test 10: Existential quantifier with function arguments
-        {"\\forall y \\exists x P(f(x), y)", "P(f(x(y)), y)"},
+        {"\\forall y \\exists x P(f(x), y)", "P(f(x_0(y)), y)"},
 
         // Additional Test Cases
         // Test 11: Multiple universals, some unused
-        {"\\forall y \\forall z \\forall w \\exists x P(x, y)", "P(x(y), y)"},
+        {"\\forall y \\forall z \\forall w \\exists x P(x, y)", "P(x_0(y), y)"},
 
         // Test 12: Nested existential quantifiers
-        {"\\forall y \\exists x \\forall z \\exists w \\exists v Q(x, w, v, y, z)", "Q(x(y), w(y, z), v(y, z), y, z)"},
+        {"\\forall y \\exists x \\forall z \\exists w \\exists v Q(x, w, v, y, z)", "Q(x_0(y), w_0(y, z), v_0(y, z), y, z)"},
 
         // Test 13: Existential quantifier with multiple universals
-        {"\\forall y \\forall z \\exists x P(x, y, z)", "P(x(y, z), y, z)"},
+        {"\\forall y \\forall z \\exists x P(x, y, z)", "P(x_0(y, z), y, z)"},
 
         // Test 14: Complex formula with multiple quantifiers
-        {"\\forall y \\exists x \\forall z (P(x, y) \\implies Q(z))", "(P(x(y), y) \\implies Q(z))"}
+        {"\\forall y \\exists x \\forall z (P(x, y) \\implies Q(z))", "(P(x_0(y), y) \\implies Q(z))"}
     };
 
     std::cout << "Running tests..." << std::endl;
