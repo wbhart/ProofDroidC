@@ -1,14 +1,18 @@
 Critical:
 
-* Split iff targets
+* Deal properly with exit mode options
+
+* Check equality is the right kind each place it is used
+
+* Make di/ci append a new line instead of modifying existing one
+
+* Propagate restrictions/assumptions
+
+* Split iff's
 
 * Allow user to enter hypotheses and targets manually
 
 * Modify parser error to show position in string where error occurs with arrow pointing
-
-* Add reasons for hyps and tars
-
-* Display reasons
 
 * Should skolem functions be renamed to prevent capture in modus_ponens?
   What about non-skolem functions?

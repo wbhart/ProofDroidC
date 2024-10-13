@@ -20,7 +20,8 @@ enum class option_t {
     OPTION_SKOLEMIZE,
     OPTION_MODUS_PONENS,
     OPTION_MODUS_TOLLENS,
-    OPTION_EXIT,
+    OPTION_EXIT_MANUAL,
+    OPTION_EXIT_SEMIAUTO,
     OPTION_CONJ_IDEM,
     OPTION_DISJ_IDEM,
     OPTION_SPLIT_CONJUNCTION,
@@ -46,7 +47,8 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
-    {option_t::OPTION_EXIT, "x", "exit mode", "Exit mode"},
+    {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
+    {option_t::OPTION_EXIT_SEMIAUTO, "x", "exit semiautomatic mode", "Exit semiautomatic mode"},
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence", "Apply Conjunctive Idempotence P ∧ P -> P"},
     {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"},
     {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions", "Apply Split Conjunctions"},
@@ -148,7 +150,7 @@ void print_detailed_commands(const std::vector<option_t>& active_options) {
 }
 
 // Function to print the summary of available options in manual mode
-void print_manual_summary(const std::vector<option_t>& active_options) {
+void print_summary(const std::vector<option_t>& active_options) {
     std::cout << "Options:";
 
     bool first = true;
@@ -183,7 +185,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
     std::cout << std::endl;
 
     // Print the summary of available options before the first prompt
-    print_manual_summary(manual_active_options);
+    print_summary(manual_active_options);
 
     std::string input_line;
     while (true) {
@@ -195,7 +197,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
         if (input_line.empty()) {
             // Before each prompt, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_summary(manual_active_options);
             continue; // Prompt again
         }
 
@@ -203,7 +205,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
         std::vector<std::string> tokens = tokenize(input_line);
         if (tokens.empty()) {
             // Before each prompt, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_summary(manual_active_options);
             continue;
         }
 
@@ -229,7 +231,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             bool first = true;
             for (const auto& opt : manual_active_options) {
                 // Skip 'x' and 'q' as they are handled separately
-                if (opt == option_t::OPTION_EXIT || opt == option_t::OPTION_QUIT) {
+                if (opt == option_t::OPTION_EXIT_MANUAL || opt == option_t::OPTION_QUIT) {
                     continue;
                 }
 
@@ -248,7 +250,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
             // Always include 'x' and 'q' in the error message
             auto it_exit = std::find_if(all_options.begin(), all_options.end(),
-                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT; });
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_MANUAL; });
             if (it_exit != all_options.end()) {
                 if (!manual_active_options.empty()) {
                     std::cout << ", ";
@@ -268,7 +270,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             std::cout << "." << std::endl << std::endl;
 
             // Before next prompt, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_summary(manual_active_options);
             continue;
         }
 
@@ -286,7 +288,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             std::cout << std::endl;
 
             // Before next prompt, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_summary(manual_active_options);
             continue;
         }
 
@@ -357,7 +359,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                     if (tokens.size() < 2) { // Expecting 'cp <index>'
                         std::cerr << "Error: Insufficient arguments. Usage: cp <index>" << std::endl << std::endl;
                         // Before next prompt, re-print the summary of options
-                        print_manual_summary(manual_active_options);
+                        print_summary(manual_active_options);
                         continue;
                     }
 
@@ -368,7 +370,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                     } catch (...) {
                         std::cerr << "Error: Invalid index." << std::endl << std::endl;
                         // Before next prompt, re-print the summary of options
-                        print_manual_summary(manual_active_options);
+                        print_summary(manual_active_options);
                         continue;
                     }
 
@@ -386,7 +388,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 std::cout << std::endl;
 
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(manual_active_options);
+                print_summary(manual_active_options);
                 continue;
             }
 
@@ -400,7 +402,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                               << " <implication_line> <line1> <line2> ..." 
                               << std::endl << std::endl;
                     // Before next prompt, re-print the summary of options
-                    print_manual_summary(manual_active_options);
+                    print_summary(manual_active_options);
                     continue;
                 }
 
@@ -411,7 +413,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 } catch (...) {
                     std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
                     // Before next prompt, re-print the summary of options
-                    print_manual_summary(manual_active_options);
+                    print_summary(manual_active_options);
                     continue;
                 }
 
@@ -430,7 +432,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 }
                 if (parse_error) {
                     // Before next prompt, re-print the summary of options
-                    print_manual_summary(manual_active_options);
+                    print_summary(manual_active_options);
                     continue;
                 }
 
@@ -459,12 +461,12 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 std::cout << std::endl;
 
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(manual_active_options);
+                print_summary(manual_active_options);
                 continue;
             }
 
             // For any other cases, re-print the summary of options
-            print_manual_summary(manual_active_options);
+            print_summary(manual_active_options);
         }
     }
 }
@@ -485,7 +487,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
     std::cout << std::endl;
 
     // Print the summary of available options before the first prompt
-    print_manual_summary(semi_auto_active_options);
+    print_summary(semi_auto_active_options);
 
     std::string input_line;
     while (true) {
@@ -497,7 +499,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
 
         if (input_line.empty()) {
             // Before each prompt, re-print the summary of options
-            print_manual_summary(semi_auto_active_options);
+            print_summary(semi_auto_active_options);
             continue; // Prompt again
         }
 
@@ -505,7 +507,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
         std::vector<std::string> tokens = tokenize(input_line);
         if (tokens.empty()) {
             // Before each prompt, re-print the summary of options
-            print_manual_summary(semi_auto_active_options);
+            print_summary(semi_auto_active_options);
             continue;
         }
 
@@ -531,7 +533,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             bool first = true;
             for (const auto& opt : semi_auto_active_options) {
                 // Skip 'x' and 'q' as they are handled separately
-                if (opt == option_t::OPTION_EXIT || opt == option_t::OPTION_QUIT) {
+                if (opt == option_t::OPTION_EXIT_SEMIAUTO || opt == option_t::OPTION_QUIT) {
                     continue;
                 }
 
@@ -550,7 +552,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
 
             // Always include 'x' and 'q' in the error message
             auto it_exit = std::find_if(all_options.begin(), all_options.end(),
-                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT; });
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_SEMIAUTO; });
             if (it_exit != all_options.end()) {
                 if (!semi_auto_active_options.empty()) {
                     std::cout << ", ";
@@ -570,7 +572,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             std::cout << "." << std::endl << std::endl;
 
             // Before next prompt, re-print the summary of options
-            print_manual_summary(semi_auto_active_options);
+            print_summary(semi_auto_active_options);
             continue;
         }
 
@@ -584,7 +586,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
                           << " <implication_line> <line1> <line2> ..." 
                           << std::endl << std::endl;
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(semi_auto_active_options);
+                print_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -595,7 +597,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             } catch (...) {
                 std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(semi_auto_active_options);
+                print_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -614,7 +616,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             }
             if (parse_error) {
                 // Before next prompt, re-print the summary of options
-                print_manual_summary(semi_auto_active_options);
+                print_summary(semi_auto_active_options);
                 continue;
             }
 
@@ -643,12 +645,12 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             std::cout << std::endl;
 
             // Before next prompt, re-print the summary of options
-            print_manual_summary(semi_auto_active_options);
+            print_summary(semi_auto_active_options);
             continue;
         }
 
         // For any other cases, re-print the summary of options
-        print_manual_summary(semi_auto_active_options);
+        print_summary(semi_auto_active_options);
     }
 }
 
@@ -789,7 +791,7 @@ int main(int argc, char** argv) {
                         option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,   // Existing Split Disjunctive Implication
                         option_t::OPTION_NEGATED_IMPLICATION,            // Added Negated Implication
                         option_t::OPTION_CONDITIONAL_PREMISE,            // Added Conditional Premise
-                        option_t::OPTION_EXIT,
+                        option_t::OPTION_EXIT_MANUAL,
                         option_t::OPTION_QUIT
                     };
 
@@ -815,7 +817,7 @@ int main(int argc, char** argv) {
                     std::vector<option_t> semi_auto_active_options = {
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_EXIT, // Reusing OPTION_EXIT as 'x' for exiting modes
+                        option_t::OPTION_EXIT_SEMIAUTO, // Reusing OPTION_EXIT as 'x' for exiting modes
                         option_t::OPTION_QUIT
                     };
 
