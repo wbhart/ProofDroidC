@@ -17,6 +17,8 @@ enum class Reason {
     ModusTollens,
     Target,
     Hypothesis,
+    ConjunctiveIdempotence,
+    DisjunctiveIdempotence,
     SplitConjunction,
     SplitDisjunctiveImplication,
     SplitConjunctiveImplication,

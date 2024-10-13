@@ -139,6 +139,20 @@ void print_reason(const context_t& context, int index) {
             break;
         }
 
+        case Reason::DisjunctiveIdempotence: {
+            std::cout << "DI[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::ConjunctiveIdempotence: {
+            std::cout << "CI[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
         case Reason::SplitConjunction: {
             std::cout << "SC[";
             std::cout << associated_lines[0] + 1;

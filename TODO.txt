@@ -1,7 +1,5 @@
 Critical:
 
-* Check equality is the right kind each place it is used
-
 * Make di/ci append a new line instead of modifying existing one
 
 * Propagate restrictions/assumptions

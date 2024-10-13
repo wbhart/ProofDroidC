@@ -190,20 +190,6 @@ bool skolemize_all(context_t& tab_ctx, size_t start) {
     return moved;
 }
 
-node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
-    // 1. Negate the implication: A -> B becomes ¬B -> ¬A
-    node* negated_implication = contrapositive(implication);
-
-    // 2. Apply modus ponens with the negated implication and the provided unit clauses
-    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
-
-    // 3. Clean up the negated implication
-    delete negated_implication;
-
-    // 4. Return the result from modus ponens
-    return result;
-}
-
 node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
     // 1. Verify that the first formula is an implication
     if (!(implication->is_implication())) {
@@ -305,6 +291,20 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     // 10. Clean up and return the result
     delete implication_copy;
     return substituted_consequent;
+}
+
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
+    // 1. Negate the implication: A -> B becomes ¬B -> ¬A
+    node* negated_implication = contrapositive(implication);
+
+    // 2. Apply modus ponens with the negated implication and the provided unit clauses
+    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
+
+    // 3. Clean up the negated implication
+    delete negated_implication;
+
+    // 4. Return the result from modus ponens
+    return result;
 }
 
 bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens) {
@@ -462,23 +462,33 @@ bool move_di(context_t& tab_ctx, size_t start) {
             // Store the original formula node and its children
             node* original_formula = tabline.formula;
             node* P = original_formula->children[0];
-            node* redundant_child = original_formula->children[1];
 
-            // Replace formula with P
-            tabline.formula = P;
-
-            // Clear children to prevent automatic deletion
-            original_formula->children.clear();
-
-            // Delete the redundant child and the original formula node
-            delete redundant_child;
-            delete original_formula;
-
-            // If it's a target, update the negation field to ¬P
-            if (tabline.target) {
-                node* new_negation = negate_node(deep_copy(P));
-                tabline.negation = new_negation;
+            // Create new tabline for P
+            if (!tabline.target) {
+                // Original is a hypothesis, new tablines are hypotheses
+                tabline_t new_tabline_P(deep_copy(P));
+                
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
+                
+                // Append new hypotheses to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
             }
+            else {
+                // Original is a target, new tablines are targets
+                node* neg_P = negate_node(deep_copy(P));
+
+                tabline_t new_tabline_P(deep_copy(P), neg_P);
+
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
+                
+                // Append new targets to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
+            }
+
+            // Mark the original conjunction as inactive
+            tabline.active = false;
 
             moved = true;
         }
@@ -506,22 +516,29 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             // Store the original formula node and its children
             node* original_formula = tabline.formula;
             node* P = original_formula->children[0];
-            node* redundant_child = original_formula->children[1];
 
-            // Replace formula with P
-            tabline.formula = P;
+             // Create new tabline for P
+            if (!tabline.target) {
+                // Original is a hypothesis, new tablines are hypotheses
+                tabline_t new_tabline_P(deep_copy(P));
+                
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
+                
+                // Append new hypotheses to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
+            }
+            else {
+                // Original is a target, new tablines are targets
+                node* neg_P = negate_node(deep_copy(P));
 
-            // Clear children to prevent automatic deletion
-            original_formula->children.clear();
+                tabline_t new_tabline_P(deep_copy(P), neg_P);
 
-            // Delete the redundant child and the original formula node
-            delete redundant_child;
-            delete original_formula;
-
-            // If it's a target, update the negation field to ¬P
-            if (tabline.target) {
-                node* new_negation = negate_node(deep_copy(P));
-                tabline.negation = new_negation;
+                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
+                
+                // Append new targets to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P);
             }
 
             moved = true;
@@ -1048,10 +1065,8 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
     size_t current_size = tab_ctx.tableau.size();
 
     while (start < current_size) {
-        // Flags to determine if move_di or move_ci were applied
-        bool di_ci_move_applied = false;
-
         // Apply moves in the specified order
+        
         // 1. skolemize_all
         if (skolemize_all(tab_ctx, start)) {
             moved = true;
@@ -1084,19 +1099,12 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
 
         // 7. move_di
         if (move_di(tab_ctx, start)) {
-            di_ci_move_applied = true;
             moved = true;
         }
 
         // 8. move_ci
         if (move_ci(tab_ctx, start)) {
-            di_ci_move_applied = true;
             moved = true;
-        }
-
-        if (di_ci_move_applied) {
-            // Continue the loop to apply moves to any new lines
-            continue;
         }
 
         // Update start_line to previous current_size before moves were applied
