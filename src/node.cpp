@@ -464,7 +464,6 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
             if (a->symbol != b->symbol)
                 return false;
             
-            // Assuming QUANTIFIER nodes have exactly two children: variable and formula
             // Map the bound variable from 'a' to 'b'
             {
                 const node* a_var = a->children[0];
@@ -571,7 +570,7 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
     return true;
 }
 
-// Compares formulas up to renaming of bound variables
+// Compares formulas up to renaming of variables bound in expressions
 bool equal(const node* a, const node* b) {
     std::unordered_map<std::string, std::string> var_map;
     return equal_helper(a, b, var_map);

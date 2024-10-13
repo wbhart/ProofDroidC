@@ -68,7 +68,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
 
     // If both nodes are applications, check if they can be unified
     if (node1->type == APPLICATION && node2->type == APPLICATION) {
-        // First children are the symbols, which should be equal, for now
+        // First children are the symbols, which should be the same, for now
         if (node1->children[0]->type != node2->children[0]->type) {
             return std::nullopt; // We don't allow unification with functions for now
         }
