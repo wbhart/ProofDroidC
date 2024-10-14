@@ -1,14 +1,8 @@
 Critical:
 
-* Make di/ci append a new line instead of modifying existing one
-
-* Propagate restrictions/assumptions
+* Should targets have restrictions/assumptions?
 
 * Split iff's
-
-* Allow user to enter hypotheses and targets manually
-
-* Modify parser error to show position in string where error occurs with arrow pointing
 
 * Should skolem functions be renamed to prevent capture in modus_ponens?
   What about non-skolem functions?
@@ -18,6 +12,10 @@ Critical:
 * Deal with modus ponens case where single unit clause is a disjunction.
 
 Noncritical:
+
+* Modify parser error to show position in string where error occurs with arrow pointing
+
+* Allow user to enter hypotheses and targets manually
 
 * print/parse \not\subseteq and \not\leq (the latter can't be made into > in general,
   e.g. partial orders), and \neg(A \subseteq B), \neg(a \leq b), etc. Must internally

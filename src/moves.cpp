@@ -344,6 +344,16 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         } else {
             all_targets = false;
         }
+
+        if (!check_assumptions(implication_tabline.assumptions, current_tabline.assumptions)) {
+            std::cerr << "Error: line " << line + 1 << " has incompatible assumptions.\n";
+            return false;
+        }
+
+        if (!check_restrictions(implication_tabline.restrictions, current_tabline.restrictions)) {
+            std::cerr << "Error: line " << line + 1 << " has incompatible target restrictions.\n";
+            return false;
+        }
     }
 
     // Step 4: Determine the direction based on the nature of other_lines
@@ -409,7 +419,20 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     justification_lines.insert(justification_lines.end(), other_lines.begin(), other_lines.end());
     new_tabline.justification = { justification_reason, justification_lines };
 
-    // Step 10: Append the new tabline to the tableau
+    // Step 10: Set the assumptions and restrictions
+    new_tabline.assumptions = implication_tabline.assumptions;
+    for (int line : other_lines) {
+        new_tabline.assumptions = combine_assumptions(new_tabline.assumptions,
+                                                  ctx.tableau[line].assumptions);
+    }
+
+    new_tabline.restrictions = implication_tabline.restrictions;
+    for (int line : other_lines) {
+        new_tabline.restrictions = combine_restrictions(new_tabline.restrictions,
+                                                  ctx.tableau[line].restrictions);
+    }
+
+    // Step 11: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
 
     return true;
@@ -468,7 +491,11 @@ bool move_di(context_t& tab_ctx, size_t start) {
                 // Original is a hypothesis, new tablines are hypotheses
                 tabline_t new_tabline_P(deep_copy(P));
                 
-                // Set justification to SPLIT_CONJUNCTION
+                // Copy restrictions and assumptions
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                
+                // Set justification to DisjunctiveIdempotence
                 new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
@@ -480,7 +507,11 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
 
-                // Set justification to SPLIT_CONJUNCTION
+                // Copy restrictions and assumptions
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                
+                // Set justification to DisjunctiveIdempotence
                 new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
                 
                 // Append new targets to the tableau
@@ -522,7 +553,11 @@ bool move_ci(context_t& tab_ctx, size_t start) {
                 // Original is a hypothesis, new tablines are hypotheses
                 tabline_t new_tabline_P(deep_copy(P));
                 
-                // Set justification to SPLIT_CONJUNCTION
+                // Copy restrictions and assumptions
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                
+                // Set justification to ConjunctiveIdempotence
                 new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
@@ -534,7 +569,11 @@ bool move_ci(context_t& tab_ctx, size_t start) {
 
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
 
-                // Set justification to SPLIT_CONJUNCTION
+                // Copy restrictions and assumptions
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                
+                // Set justification to ConjunctiveIdempotence
                 new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
                 
                 // Append new targets to the tableau
@@ -569,7 +608,12 @@ bool move_sc(context_t& tab_ctx, size_t start) {
                 tabline_t new_tabline_P(deep_copy(P));
                 tabline_t new_tabline_Q(deep_copy(Q));
 
-                // Set justification to SPLIT_CONJUNCTION
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                new_tabline_Q.assumptions = tabline.assumptions;
+                new_tabline_Q.restrictions = tabline.restrictions;
+                
+                // Set justification to SplitConjunction
                 new_tabline_P.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
                 new_tabline_Q.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
 
@@ -585,7 +629,13 @@ bool move_sc(context_t& tab_ctx, size_t start) {
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
                 tabline_t new_tabline_Q(deep_copy(Q), neg_Q);
 
-                // Set justification to SPLIT_CONJUNCTION
+                // Copy restrictions and assumptions
+                new_tabline_P.assumptions = tabline.assumptions;
+                new_tabline_P.restrictions = tabline.restrictions;
+                new_tabline_Q.assumptions = tabline.assumptions;
+                new_tabline_Q.restrictions = tabline.restrictions;
+                
+                // Set justification to SplitConjunction
                 new_tabline_P.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
                 new_tabline_Q.justification = { Reason::SplitConjunction, { static_cast<int>(i) } };
 
@@ -662,6 +712,12 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         tabline_t new_tabline_P_imp(P_imp_R);
                         tabline_t new_tabline_Q_imp(Q_imp_R);
 
+                        // Copy restrictions and assumptions
+                        new_tabline_P_imp.assumptions = tabline.assumptions;
+                        new_tabline_P_imp.restrictions = tabline.restrictions;
+                        new_tabline_Q_imp.assumptions = tabline.assumptions;
+                        new_tabline_Q_imp.restrictions = tabline.restrictions;
+                
                         // Set justifications
                         new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
                         new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
@@ -724,6 +780,12 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         tabline_t new_tabline_neg_P_imp(neg_P_imp_R, P_imp_R);
                         tabline_t new_tabline_neg_Q_imp(neg_Q_imp_R, Q_imp_R);
 
+                        // Copy restrictions and assumptions
+                        new_tabline_neg_P_imp.assumptions = tabline.assumptions;
+                        new_tabline_neg_P_imp.restrictions = tabline.restrictions;
+                        new_tabline_neg_Q_imp.assumptions = tabline.assumptions;
+                        new_tabline_neg_Q_imp.restrictions = tabline.restrictions;
+                
                         // Set justifications
                         new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
                         new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
@@ -807,6 +869,12 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         tabline_t new_tabline_P_imp_Q(P_imp_Q);
                         tabline_t new_tabline_P_imp_R(P_imp_R);
 
+                        // Copy restrictions and assumptions
+                        new_tabline_P_imp_Q.assumptions = tabline.assumptions;
+                        new_tabline_P_imp_Q.restrictions = tabline.restrictions;
+                        new_tabline_P_imp_R.assumptions = tabline.assumptions;
+                        new_tabline_P_imp_R.restrictions = tabline.restrictions;
+                
                         // Set justifications
                         new_tabline_P_imp_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
                         new_tabline_P_imp_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
@@ -874,6 +942,12 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         tabline_t new_tabline_P_and_Q(P_and_Q, neg_P_and_Q);
                         tabline_t new_tabline_P_and_R(P_and_R, neg_P_and_R);
 
+                        // Copy restrictions and assumptions
+                        new_tabline_P_and_Q.assumptions = tabline.assumptions;
+                        new_tabline_P_and_Q.restrictions = tabline.restrictions;
+                        new_tabline_P_and_R.assumptions = tabline.assumptions;
+                        new_tabline_P_and_R.restrictions = tabline.restrictions;
+                
                         // Set justifications
                         new_tabline_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
                         new_tabline_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
@@ -930,6 +1004,12 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                     new_tabline_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
                     new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
 
+                    // Copy restrictions and assumptions
+                    new_tabline_P.assumptions = tabline.assumptions;
+                    new_tabline_P.restrictions = tabline.restrictions;
+                    new_tabline_neg_Q.assumptions = tabline.assumptions;
+                    new_tabline_neg_Q.restrictions = tabline.restrictions;
+                
                     // Append new tablines to the tableau
                     tab_ctx.tableau.push_back(new_tabline_P);
                     tab_ctx.tableau.push_back(new_tabline_neg_Q);
@@ -957,6 +1037,12 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming second parameter is for negation
                 tabline_t new_tabline_neg_Q(Q_copy, neg_Q_copy);
 
+                // Copy restrictions and assumptions
+                new_tabline_neg_P.assumptions = tabline.assumptions;
+                new_tabline_neg_P.restrictions = tabline.restrictions;
+                new_tabline_neg_Q.assumptions = tabline.assumptions;
+                new_tabline_neg_Q.restrictions = tabline.restrictions;
+                
                 // Set justifications
                 new_tabline_neg_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
                 new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
@@ -1028,12 +1114,18 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     // Deactivate the original formula
     tabline.active = false;
 
+    // Copy restrictions and assumptions
+    new_hypothesis.assumptions = tabline.assumptions;
+    new_hypothesis.restrictions = tabline.restrictions;
+    new_target.assumptions = tabline.assumptions;
+    new_target.restrictions = tabline.restrictions;
+                
     // Append new hypothesis and target to the tableau
     tab_ctx.tableau.push_back(new_hypothesis);
     tab_ctx.tableau.push_back(new_target);
 
-    // Add assumption to the new hypothesis (assuming the new target is the last one)
-    new_hypothesis.assumptions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+    // Add restriction to the new hypothesis
+    new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
 
     return true;
 }
@@ -1066,7 +1158,7 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
 
     while (start < current_size) {
         // Apply moves in the specified order
-        
+
         // 1. skolemize_all
         if (skolemize_all(tab_ctx, start)) {
             moved = true;

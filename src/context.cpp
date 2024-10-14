@@ -84,13 +84,6 @@ std::vector<std::pair<std::string, std::string>> vars_rename_list(context_t& ctx
 }
 
 // Function to print the reason for a given tableau line index
-// context.cpp
-
-#include "context.h"
-#include <iostream>
-#include <vector>
-
-// Function to print the reason for a given tableau line index
 void print_reason(const context_t& context, int index) {
     // Check if the index is within the bounds of the tableau
     if (index < 0 || static_cast<size_t>(index) >= context.tableau.size()) {
@@ -192,4 +185,94 @@ void print_reason(const context_t& context, int index) {
             std::cout << "Unknown";
             break;
     }
+}
+
+// Function to combine two restriction vectors without duplicates
+std::vector<int> combine_restrictions(const std::vector<int>& res1, const std::vector<int>& res2) {
+    if (res1.empty()) {
+        return res2;
+    }
+    if (res2.empty()) {
+        return res1;
+    }
+
+    std::vector<int> combined;
+    combined.reserve(res1.size() + res2.size());
+
+    // Sort both vectors
+    std::vector<int> sorted_res1 = res1;
+    std::vector<int> sorted_res2 = res2;
+    std::sort(sorted_res1.begin(), sorted_res1.end());
+    std::sort(sorted_res2.begin(), sorted_res2.end());
+
+    // Perform set_union to merge without duplicates
+    std::set_union(sorted_res1.begin(), sorted_res1.end(),
+                  sorted_res2.begin(), sorted_res2.end(),
+                  std::back_inserter(combined));
+
+    return combined;
+}
+
+// Function to check restrictions
+bool check_restrictions(const std::vector<int>& res1, const std::vector<int>& res2) {
+    if (res1.empty() || res2.empty()) {
+        return true;
+    }
+
+    // Convert one vector to an unordered_set for O(1) lookups
+    std::unordered_set<int> set_res1(res1.begin(), res1.end());
+
+    // Check for at least one common element
+    for (const int& elem : res2) {
+        if (set_res1.find(elem) != set_res1.end()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Function to combine two assumption vectors without duplicates
+std::vector<int> combine_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
+    if (assm1.empty()) {
+        return assm2;
+    }
+    if (assm2.empty()) {
+        return assm1;
+    }
+
+    std::vector<int> combined;
+    combined.reserve(assm1.size() + assm2.size());
+
+    // Sort both vectors
+    std::vector<int> sorted_assm1 = assm1;
+    std::vector<int> sorted_assm2 = assm2;
+    std::sort(sorted_assm1.begin(), sorted_assm1.end());
+    std::sort(sorted_assm2.begin(), sorted_assm2.end());
+
+    // Perform set_union to merge without duplicates
+    std::set_union(sorted_assm1.begin(), sorted_assm1.end(),
+                  sorted_assm2.begin(), sorted_assm2.end(),
+                  std::back_inserter(combined));
+
+    return combined;
+}
+
+// Function to check assumptions
+bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
+    if (assm1.empty() || assm2.empty()) {
+        return true;
+    }
+
+    // Convert assm2 to an unordered_set for O(1) lookups
+    std::unordered_set<int> set_assm2(assm2.begin(), assm2.end());
+
+    // Check for conflicting assumptions: n in assm1 vs -n in assm2
+    for (const int& n : assm1) {
+        if (set_assm2.find(-n) != set_assm2.end()) {
+            return false; // Conflict found
+        }
+    }
+
+    return true; // No conflicts
 }
