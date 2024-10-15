@@ -442,17 +442,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 // Apply move_mpt
                 bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
 
-                if (move_applied) {
-                    std::cout << "Modus " << (ponens ? "Ponens" : "Tollens") << " applied successfully." << std::endl;
-                    // After applying the move, run cleanup_moves automatically
-                    size_t cleanup_start_line = 0; // Starting from the beginning
-                    bool cleanup_result = cleanup_moves(tab_ctx, cleanup_start_line);
-                    if (cleanup_result) {
-                        std::cout << "Cleanup Moves applied successfully." << std::endl;
-                    } else {
-                        std::cout << "No applicable Cleanup Moves found." << std::endl;
-                    }
-                } else {
+                if (!move_applied) {
                     std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
                 }
 
@@ -478,8 +468,6 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
     // Print detailed list of commands based on active options
     print_detailed_commands(semi_auto_active_options);
 
-    // Parameterize all (if not done yet) and Skolemize all
-    parameterize_all(tab_ctx);
     cleanup_moves(tab_ctx, 0); // Starting from line 0
 
     // Print the current tableau
@@ -630,12 +618,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
                 std::cout << "Modus " << (ponens ? "Ponens" : "Tollens") << " applied successfully." << std::endl;
                 // After applying the move, run cleanup_moves automatically
                 size_t cleanup_start_line = 0; // Starting from the beginning
-                bool cleanup_result = cleanup_moves(tab_ctx, cleanup_start_line);
-                if (cleanup_result) {
-                    std::cout << "Cleanup Moves applied successfully." << std::endl;
-                } else {
-                    std::cout << "No applicable Cleanup Moves found." << std::endl;
-                }
+                cleanup_moves(tab_ctx, cleanup_start_line);
             } else {
                 std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
             }
@@ -798,13 +781,18 @@ int main(int argc, char** argv) {
                     // Turn free variables into parameters (constant variables)
                     parameterize_all(tab_ctx);
                     
+                    // set up initial hydras
+                    tab_ctx.initialize_hydras();
+                    std::vector<int> targets = tab_ctx.get_hydra();
+                    tab_ctx.select_targets(targets);
+
                     // Enter manual mode with the current manual_active_options
                     manual_mode(tab_ctx, manual_active_options);
 
                     // After exiting manual mode, display the tableau and options again
                     print_tableau(tab_ctx);
 
-                    // Reset active_options to include 'm', 'sa', and 'q'
+                    // Reset active_options to include 'm', 's', and 'q'
                     active_options = {
                         option_t::OPTION_QUIT,
                         option_t::OPTION_MANUAL,
@@ -821,6 +809,13 @@ int main(int argc, char** argv) {
                         option_t::OPTION_QUIT
                     };
 
+                    parameterize_all(tab_ctx);
+    
+                    // set up initial hydras
+                    tab_ctx.initialize_hydras();
+                    std::vector<int> targets = tab_ctx.get_hydra();
+                    tab_ctx.select_targets(targets);
+                    
                     // Enter semi-automatic mode with the current semi_auto_active_options
                     semi_automatic_mode(tab_ctx, semi_auto_active_options);
 

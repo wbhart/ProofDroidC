@@ -77,4 +77,3 @@ bool move_cp(context_t& tab_ctx, size_t start = 0);
 bool cleanup_moves(context_t& tab_ctx, size_t start_line = 0);
 
 #endif // MOVES_H
-

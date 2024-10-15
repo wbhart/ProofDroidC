@@ -435,6 +435,11 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     // Step 11: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
 
+    if (!forward) {
+        ctx.hydra_replace_list(other_lines, ctx.tableau.size() - 1);
+        ctx.select_targets();
+    }
+    
     return true;
 }
 
@@ -516,6 +521,10 @@ bool move_di(context_t& tab_ctx, size_t start) {
                 
                 // Append new targets to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
+
+                // Replace hydra
+                tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                tab_ctx.select_targets();
             }
 
             // Mark the original conjunction as inactive
@@ -578,6 +587,10 @@ bool move_ci(context_t& tab_ctx, size_t start) {
                 
                 // Append new targets to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
+
+                // Replace hydra
+                tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                tab_ctx.select_targets();
             }
 
             moved = true;
@@ -642,6 +655,10 @@ bool move_sc(context_t& tab_ctx, size_t start) {
                 // Append new targets to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
                 tab_ctx.tableau.push_back(new_tabline_Q);
+
+                // Split the hydra
+                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.select_targets();
             }
 
             // Mark the original conjunction as inactive
@@ -793,6 +810,10 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         // Append new tablines to the tableau
                         tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
                         tab_ctx.tableau.push_back(new_tabline_neg_Q_imp);
+
+                        // Split the hydra
+                        tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                        tab_ctx.select_targets();
 
                         moved = true;
                     }
@@ -956,6 +977,10 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         tab_ctx.tableau.push_back(new_tabline_P_and_Q);
                         tab_ctx.tableau.push_back(new_tabline_P_and_R);
 
+                        // Split the hydra
+                        tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                        tab_ctx.select_targets();
+
                         moved = true;
                     }
                 }
@@ -1051,6 +1076,10 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 tab_ctx.tableau.push_back(new_tabline_neg_P);
                 tab_ctx.tableau.push_back(new_tabline_neg_Q);
 
+                // Split the hydra
+                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.select_targets();
+
                 moved = true;
             }
         }
@@ -1126,6 +1155,10 @@ bool conditional_premise(context_t& tab_ctx, int index) {
 
     // Add restriction to the new hypothesis
     new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+
+    // Replace hydra
+    tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
+    tab_ctx.select_targets();
 
     return true;
 }

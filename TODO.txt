@@ -1,8 +1,18 @@
 Critical:
 
-* Should targets have restrictions/assumptions?
+* Set up initial hydras after reading file
 
 * Split iff's
+
+* Write completion checking function
+
+* Factor out dealing with restrictions/assumptions in moves by making functions that
+  deal with tablines, e.g. copy_restrictions, combine_restrictions, etc.
+
+* Should targets have restrictions/assumptions?
+
+* Make checking moves (e.g. check_restrictions/assumptions) optional, so this doesn't
+  duplicate work automation will be doing before executing the moves
 
 * Should skolem functions be renamed to prevent capture in modus_ponens?
   What about non-skolem functions?
