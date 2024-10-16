@@ -1,6 +1,8 @@
 Critical:
 
-* Set up initial hydras after reading file
+* When moving to next target, must check for next target that is not proved for current assumptions
+
+* Put assumptions/restrictions debugging code in print_tableau
 
 * Split iff's
 

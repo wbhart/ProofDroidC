@@ -314,6 +314,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         return false;
     }
 
+    // Reference is taken before modifying the vector
     tabline_t& implication_tabline = ctx.tableau[implication_line];
 
     // Step 2: Ensure implication_line is a hypothesis
@@ -473,8 +474,9 @@ bool conjunctive_idempotence(const node* formula) {
 
 bool move_di(context_t& tab_ctx, size_t start) {
     bool moved = false;
+    size_t i = start;
 
-    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
+    while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         if (!tabline.active) {
@@ -485,13 +487,17 @@ bool move_di(context_t& tab_ctx, size_t start) {
         // Check if the formula is a disjunctive idempotent
         if ((tabline.target && conjunctive_idempotence(tabline.formula))
             || (!tabline.target && disjunctive_idempotence(tabline.formula))) {
-            // Formula is of the form P ∨ P
+            // Formula is of the form P ∨ P or P ∧ P
+
+            // **Critical Fix: Set flags before modifying the vector**
+            // Mark the original conjunction/disjunction as inactive and dead
+            tabline.active = false;
+            tabline.dead = true;
 
             // Store the original formula node and its children
             node* original_formula = tabline.formula;
             node* P = original_formula->children[0];
 
-            // Create new tabline for P
             if (!tabline.target) {
                 // Original is a hypothesis, new tablines are hypotheses
                 tabline_t new_tabline_P(deep_copy(P));
@@ -500,8 +506,9 @@ bool move_di(context_t& tab_ctx, size_t start) {
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
-                // Set justification to DisjunctiveIdempotence
-                new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
+                // Set justification to DisjunctiveIdempotence or ConjunctiveIdempotence
+                Reason justification = tabline.formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
+                new_tabline_P.justification = { justification, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
@@ -516,9 +523,10 @@ bool move_di(context_t& tab_ctx, size_t start) {
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
-                // Set justification to DisjunctiveIdempotence
-                new_tabline_P.justification = { Reason::DisjunctiveIdempotence, { static_cast<int>(i) } };
-                
+                // Set justification to DisjunctiveIdempotence or ConjunctiveIdempotence
+                Reason justification = tabline.formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
+                new_tabline_P.justification = { justification, { static_cast<int>(i) } };
+
                 // Append new targets to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
 
@@ -527,11 +535,10 @@ bool move_di(context_t& tab_ctx, size_t start) {
                 tab_ctx.select_targets();
             }
 
-            // Mark the original conjunction as inactive
-            tabline.active = false;
-
             moved = true;
         }
+
+        i++;
     }
 
     return moved;
@@ -539,8 +546,9 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
 bool move_ci(context_t& tab_ctx, size_t start) {
     bool moved = false;
+    size_t i = start;
 
-    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
+    while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         if (!tabline.active) {
@@ -551,13 +559,17 @@ bool move_ci(context_t& tab_ctx, size_t start) {
         // Check if the formula is a conjunctive idempotent
         if ((tabline.target && disjunctive_idempotence(tabline.formula))
             || (!tabline.target && conjunctive_idempotence(tabline.formula))) {
-            // Formula is of the form P ∧ P
+            // Formula is of the form P ∧ P or P ∨ P
+
+            // **Critical Fix: Set flags before modifying the vector**
+            // Mark the original conjunction/disjunction as inactive and dead
+            tabline.active = false;
+            tabline.dead = true;
 
             // Store the original formula node and its children
             node* original_formula = tabline.formula;
             node* P = original_formula->children[0];
 
-             // Create new tabline for P
             if (!tabline.target) {
                 // Original is a hypothesis, new tablines are hypotheses
                 tabline_t new_tabline_P(deep_copy(P));
@@ -566,8 +578,9 @@ bool move_ci(context_t& tab_ctx, size_t start) {
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
-                // Set justification to ConjunctiveIdempotence
-                new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
+                // Set justification to ConjunctiveIdempotence or DisjunctiveIdempotence
+                Reason justification = tabline.formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
+                new_tabline_P.justification = { justification, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
@@ -582,12 +595,13 @@ bool move_ci(context_t& tab_ctx, size_t start) {
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
-                // Set justification to ConjunctiveIdempotence
-                new_tabline_P.justification = { Reason::ConjunctiveIdempotence, { static_cast<int>(i) } };
-                
+                // Set justification to ConjunctiveIdempotence or DisjunctiveIdempotence
+                Reason justification = tabline.formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
+                new_tabline_P.justification = { justification, { static_cast<int>(i) } };
+
                 // Append new targets to the tableau
                 tab_ctx.tableau.push_back(new_tabline_P);
-
+                
                 // Replace hydra
                 tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
@@ -595,6 +609,8 @@ bool move_ci(context_t& tab_ctx, size_t start) {
 
             moved = true;
         }
+
+        i++;
     }
 
     return moved;
@@ -605,17 +621,25 @@ bool move_sc(context_t& tab_ctx, size_t start) {
     bool moved = false;
     size_t i = start;
 
+    // Optional: Reserve capacity to prevent reallocations
+    size_t expected_additions = tab_ctx.tableau.size() - start;
+    tab_ctx.tableau.reserve(tab_ctx.tableau.size() + expected_additions * 2); // Adjust based on expected splits
+
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
-        // Check if the formula is active and a conjunction
+        // Check if the formula is active and a conjunction or disjunction
         if (tabline.active && ((!tabline.target && tabline.formula->is_conjunction()) ||
             (tabline.target && tabline.formula->is_disjunction()))) {
-            // Get P and Q from P ∧ Q
+            
+            // Mark the original conjunction as inactive and dead BEFORE modifying the vector
+            tabline.active = false;
+            tabline.dead = true;
+
+            // Proceed with splitting the conjunction/disjunction
             node* P = tabline.formula->children[0];
             node* Q = tabline.formula->children[1];
 
-            // Create new tablines for P and Q
             if (!tabline.target) {
                 // Original is a hypothesis, new tablines are hypotheses
                 tabline_t new_tabline_P(deep_copy(P));
@@ -639,6 +663,12 @@ bool move_sc(context_t& tab_ctx, size_t start) {
                 node* neg_P = negate_node(deep_copy(P));
                 node* neg_Q = negate_node(deep_copy(Q));
 
+                if (!neg_P || !neg_Q) {
+                    // Handle negation failure as per your error handling strategy
+                    // For example, you might skip processing this line or abort
+                    continue;
+                }
+
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
                 tabline_t new_tabline_Q(deep_copy(Q), neg_Q);
 
@@ -658,12 +688,12 @@ bool move_sc(context_t& tab_ctx, size_t start) {
 
                 // Split the hydra
                 tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+
+                // Select targets based on the updated hydra graph
                 tab_ctx.select_targets();
             }
 
-            // Mark the original conjunction as inactive
-            tabline.active = false;
-
+            // Indicate that a move was made
             moved = true;
         }
 
@@ -713,20 +743,23 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
-                        // Deactivate the original formula
+                        // **Critical Fix: Set flags before modifying the vector**
+                        // Mark the original implication as inactive and dead
                         tabline.active = false;
+                        tabline.dead = true;
 
                         // Deep copy P, Q, R
                         node* P_copy = deep_copy(P);
                         node* Q_copy = deep_copy(Q);
-                        node* R_copy = deep_copy(R);
+                        node* R_copy1 = deep_copy(R);
+                        node* R_copy2 = deep_copy(R);
 
                         // Create new implications P → R and Q → R
-                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy });
-                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy });
+                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
+                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
 
                         // Create new tablines as hypotheses
-                        tabline_t new_tabline_P_imp(P_imp_R);
+                        tabline_t new_tabline_P_imp(P_imp_R); // Assuming constructor for hypothesis
                         tabline_t new_tabline_Q_imp(Q_imp_R);
 
                         // Copy restrictions and assumptions
@@ -776,8 +809,10 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
-                        // Deactivate the original formula
+                        // **Critical Fix: Set flags before modifying the vector**
+                        // Mark the original target as inactive and dead
                         tabline.active = false;
+                        tabline.dead = true;
 
                         // Deep copy P, Q, R
                         node* P_copy = deep_copy(P);
@@ -789,13 +824,9 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
                         node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
 
-                        // Negate the new implications
-                        node* neg_P_imp_R = negate_node(deep_copy(P_imp_R));
-                        node* neg_Q_imp_R = negate_node(deep_copy(Q_imp_R));
-
                         // Create new tablines as targets
-                        tabline_t new_tabline_neg_P_imp(neg_P_imp_R, P_imp_R);
-                        tabline_t new_tabline_neg_Q_imp(neg_Q_imp_R, Q_imp_R);
+                        tabline_t new_tabline_neg_P_imp(negate_node(deep_copy(P_imp_R)), P_imp_R); // Assuming constructor for target
+                        tabline_t new_tabline_neg_Q_imp(negate_node(deep_copy(Q_imp_R)), Q_imp_R);
 
                         // Copy restrictions and assumptions
                         new_tabline_neg_P_imp.assumptions = tabline.assumptions;
@@ -811,7 +842,7 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
                         tab_ctx.tableau.push_back(new_tabline_neg_Q_imp);
 
-                        // Split the hydra
+                        // Split the hydra and select targets
                         tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                         tab_ctx.select_targets();
 
@@ -874,8 +905,10 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
-                        // Deactivate the original formula
+                        // **Critical Fix: Set flags before modifying the vector**
+                        // Mark the original implication as inactive and dead
                         tabline.active = false;
+                        tabline.dead = true;
 
                         // Deep copy P, Q, R
                         node* P_copy = deep_copy(antecedent);
@@ -904,6 +937,7 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         tab_ctx.tableau.push_back(new_tabline_P_imp_Q);
                         tab_ctx.tableau.push_back(new_tabline_P_imp_R);
 
+                        // Indicate that a move was made
                         moved = true;
                     }
                 }
@@ -943,8 +977,10 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
-                        // Deactivate the original formula
+                        // **Critical Fix: Set flags before modifying the vector**
+                        // Mark the original target as inactive and dead
                         tabline.active = false;
+                        tabline.dead = true;
 
                         // Deep copy P, Q, R
                         node* P_copy1 = deep_copy(P);
@@ -960,27 +996,28 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         node* neg_P_and_R = negate_node(deep_copy(P_and_R));
 
                         // Create new tablines as targets
-                        tabline_t new_tabline_P_and_Q(P_and_Q, neg_P_and_Q);
-                        tabline_t new_tabline_P_and_R(P_and_R, neg_P_and_R);
+                        tabline_t new_tabline_neg_P_and_Q(P_and_Q, neg_P_and_Q);
+                        tabline_t new_tabline_neg_P_and_R(P_and_R, neg_P_and_R);
 
                         // Copy restrictions and assumptions
-                        new_tabline_P_and_Q.assumptions = tabline.assumptions;
-                        new_tabline_P_and_Q.restrictions = tabline.restrictions;
-                        new_tabline_P_and_R.assumptions = tabline.assumptions;
-                        new_tabline_P_and_R.restrictions = tabline.restrictions;
+                        new_tabline_neg_P_and_Q.assumptions = tabline.assumptions;
+                        new_tabline_neg_P_and_Q.restrictions = tabline.restrictions;
+                        new_tabline_neg_P_and_R.assumptions = tabline.assumptions;
+                        new_tabline_neg_P_and_R.restrictions = tabline.restrictions;
                 
                         // Set justifications
-                        new_tabline_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
-                        new_tabline_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_neg_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                        new_tabline_neg_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
 
                         // Append new tablines to the tableau
-                        tab_ctx.tableau.push_back(new_tabline_P_and_Q);
-                        tab_ctx.tableau.push_back(new_tabline_P_and_R);
+                        tab_ctx.tableau.push_back(new_tabline_neg_P_and_Q);
+                        tab_ctx.tableau.push_back(new_tabline_neg_P_and_R);
 
-                        // Split the hydra
+                        // Split the hydra and select targets
                         tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                         tab_ctx.select_targets();
 
+                        // Indicate that a move was made
                         moved = true;
                     }
                 }
@@ -1014,43 +1051,66 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                     node* P = inner->children[0];
                     node* Q = inner->children[1];
 
-                    // Deactivate the original formula
-                    tabline.active = false;
+                    // Collect variables used in Q, P
+                    std::set<std::string> vars_Q, vars_P;
+                    vars_used(vars_Q, Q, true);
+                    vars_used(vars_P, P, true);
 
-                    // Deep copy P and Q
-                    node* P_copy = deep_copy(P);
-                    node* neg_Q_copy = negate_node(deep_copy(Q));
+                    // Check if all variables in Q are used in P
+                    bool valid = true;
+                    for (const auto& var : vars_Q) {
+                        if (vars_P.find(var) == vars_P.end()) {
+                            valid = false;
+                            break;
+                        }
+                    }
 
-                    // Create new tablines
-                    tabline_t new_tabline_P(P_copy);
-                    tabline_t new_tabline_neg_Q(neg_Q_copy); // Assuming second parameter is for negation
+                    if (valid) {
+                        // **Critical Fix: Set flags before modifying the vector**
+                        // Mark the original negated implication as inactive and dead
+                        tabline.active = false;
+                        tabline.dead = true;
 
-                    // Set justifications
-                    new_tabline_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
-                    new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+                        // Deep copy P, Q
+                        node* P_copy = deep_copy(P);
+                        node* Q_copy = deep_copy(Q);
+                        node* neg_Q_copy = negate_node(deep_copy(Q));
 
-                    // Copy restrictions and assumptions
-                    new_tabline_P.assumptions = tabline.assumptions;
-                    new_tabline_P.restrictions = tabline.restrictions;
-                    new_tabline_neg_Q.assumptions = tabline.assumptions;
-                    new_tabline_neg_Q.restrictions = tabline.restrictions;
-                
-                    // Append new tablines to the tableau
-                    tab_ctx.tableau.push_back(new_tabline_P);
-                    tab_ctx.tableau.push_back(new_tabline_neg_Q);
+                        // Create new hypothesis P
+                        tabline_t new_hypothesis_P(P_copy);
+                        new_hypothesis_P.target = false;
+                        new_hypothesis_P.active = true;
+                        new_hypothesis_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
 
-                    moved = true;
+                        // Create new target Q
+                        tabline_t new_target_Q(neg_Q_copy, Q_copy); // Assuming constructor takes formula and negation
+                        new_target_Q.target = true;
+                        new_target_Q.active = true;
+                        new_target_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
+
+                        // Copy restrictions and assumptions
+                        new_hypothesis_P.assumptions = tabline.assumptions;
+                        new_hypothesis_P.restrictions = tabline.restrictions;
+                        new_target_Q.assumptions = tabline.assumptions;
+                        new_target_Q.restrictions = tabline.restrictions;
+                    
+                        // Append new hypothesis and target to the tableau
+                        tab_ctx.tableau.push_back(new_hypothesis_P);
+                        tab_ctx.tableau.push_back(new_target_Q);
+
+                        // Add restriction to the new hypothesis
+                        new_hypothesis_P.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+
+                        moved = true;
+                    }
                 }
             }
         }
         else {
-            // **Target Case:** Look for formulas of the form P -> Q
+            // **Target Case:** Look for formulas of the form P → Q
             if (tabline.formula->is_implication()) {
                 node* P = tabline.formula->children[0];
                 node* Q = tabline.formula->children[1];
-
-                // Deactivate the original formula
-                tabline.active = false;
 
                 // Deep copy P and Q
                 node* P_copy = deep_copy(P);
@@ -1059,7 +1119,7 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 node* neg_Q_copy = negate_node(deep_copy(Q));
 
                 // Create new target tablines
-                tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming second parameter is for negation
+                tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming constructor takes formula and negation
                 tabline_t new_tabline_neg_Q(Q_copy, neg_Q_copy);
 
                 // Copy restrictions and assumptions
@@ -1072,11 +1132,18 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 new_tabline_neg_P.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
                 new_tabline_neg_Q.justification = { Reason::NegatedImplication, { static_cast<int>(i) } };
 
-                // Append new tablines to the tableau
+                // Append new target tablines to the tableau
                 tab_ctx.tableau.push_back(new_tabline_neg_P);
                 tab_ctx.tableau.push_back(new_tabline_neg_Q);
 
-                // Split the hydra
+                // **Critical Fix: Set flags before hydra operations**
+                // Already set flags before modifying the vector
+
+                // Mark the original implication as inactive and dead
+                tabline.active = false;
+                tabline.dead = true;
+
+                // Split the hydra and select targets
                 tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
 
@@ -1138,10 +1205,6 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     new_target.target = true;
     new_target.active = true;
     new_target.justification = { Reason::ConditionalPremise, { static_cast<int>(index) } };
-    // No assumptions for the new target
-
-    // Deactivate the original formula
-    tabline.active = false;
 
     // Copy restrictions and assumptions
     new_hypothesis.assumptions = tabline.assumptions;
@@ -1155,24 +1218,32 @@ bool conditional_premise(context_t& tab_ctx, int index) {
 
     // Add restriction to the new hypothesis
     new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
-
+                
     // Replace hydra
     tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
+
+    // Deactivate the original formula
+    tabline.active = false;
 
     return true;
 }
 
 bool move_cp(context_t& tab_ctx, size_t start) {
     bool moved = false;
-    
-    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
-        const tabline_t& tabline = tab_ctx.tableau[i];
 
-        // Check if the tabline is active and a target
+    for (size_t i = start; i < tab_ctx.tableau.size(); ++i) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
         if (tabline.active && tabline.target) {
             // Ensure the negation field exists and is an implication
             if (tabline.negation && tabline.negation->is_implication()) {
+                // **Critical Fix: Set flags before modifying the vector**
+                // Mark the original target as inactive and dead
+                tabline.active = false;
+                tabline.dead = true;
+
+                // Apply conditional_premise
                 bool success = conditional_premise(tab_ctx, i);
                 if (success) {
                     moved = true;

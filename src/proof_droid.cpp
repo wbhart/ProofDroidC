@@ -4,6 +4,7 @@
 #include "node.h"
 #include "context.h"
 #include "moves.h"
+#include "completion.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -278,9 +279,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             // Apply skolemize_all to the tableau starting from 0
             bool skolemized = skolemize_all(tab_ctx, 0);
             if (skolemized) {
-                std::cout << "Skolemization applied successfully.\n";
-            } else {
-                std::cout << "No Skolemization applied." << std::endl;
+                // Check if done
+                check_done(tab_ctx);
             }
 
             std::cout << std::endl;
@@ -315,44 +315,38 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
                     bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Conjunctive Idempotence applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Conjunctive Idempotence could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
                     bool applied = move_di(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Disjunctive Idempotence applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Disjunctive Idempotence could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
                     bool applied = move_sc(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Split Conjunctions applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Split Conjunctions could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
                     bool applied = move_sci(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Split Conjunctive Implication applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Split Conjunctive Implication could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
                     bool applied = move_sdi(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Split Disjunctive Implication applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Split Disjunctive Implication could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
                     bool applied = move_ni(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
-                        std::cout << "Negated Implication applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Negated Implication could not be applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
                     // Handle the new 'cp' move for Conditional Premise
@@ -377,9 +371,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                     // Apply conditional_premise
                     bool cp_moved = conditional_premise(tab_ctx, target_index);
                     if (cp_moved) {
-                        std::cout << "Conditional Premise applied successfully." << std::endl;
-                    } else {
-                        std::cerr << "Error: Conditional Premise could not be applied on the specified index." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                 }
 
@@ -444,6 +437,9 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
                 if (!move_applied) {
                     std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+                } else {
+                    // Check if done
+                    check_done(tab_ctx);
                 }
 
                 std::cout << std::endl;
@@ -615,10 +611,11 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
 
             if (move_applied) {
-                std::cout << "Modus " << (ponens ? "Ponens" : "Tollens") << " applied successfully." << std::endl;
                 // After applying the move, run cleanup_moves automatically
-                size_t cleanup_start_line = 0; // Starting from the beginning
-                cleanup_moves(tab_ctx, cleanup_start_line);
+                cleanup_moves(tab_ctx, tab_ctx.upto);
+                
+                // Check if done
+                check_done(tab_ctx);
             } else {
                 std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
             }
@@ -834,9 +831,8 @@ int main(int argc, char** argv) {
                     // Apply skolemize_all to the tableau starting from 0
                     bool skolemized = skolemize_all(tab_ctx, 0);
                     if (skolemized) {
-                        std::cout << "Skolemization applied successfully.\n";
-                    } else {
-                        std::cout << "No Skolemization applied." << std::endl;
+                        // Check if done
+                        check_done(tab_ctx);
                     }
                     print_tableau(tab_ctx);
                     break;

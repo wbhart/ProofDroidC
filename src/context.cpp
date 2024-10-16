@@ -363,7 +363,7 @@ void context_t::select_targets(const std::vector<int>& targets) {
         else {
             // If the tabline is a hypothesis
             bool restrictions_empty = tabline.restrictions.empty();
-            bool proved_false = !tabline.proved;
+            bool alive = !tabline.dead;
             bool restrictions_contains_target = false;
 
             // Check if any restriction is in the target_set
@@ -375,7 +375,7 @@ void context_t::select_targets(const std::vector<int>& targets) {
             }
 
             // Determine activation based on the specified conditions
-            if ((restrictions_empty && proved_false) || (restrictions_contains_target && proved_false)) {
+            if (alive && (restrictions_empty || restrictions_contains_target)) {
                 tabline.active = true;
             }
             else {

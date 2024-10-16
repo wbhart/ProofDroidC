@@ -35,19 +35,20 @@ class tabline_t {
 public:
     bool target = false;                           // Indicates if this line is a target
     bool active = true;                            // Indicates if this line is active
-    bool proved = false;                           // Whether target proved or hypothesis no longer useful
+    bool dead = false;                             // Whether target proved or hypothesis no longer useful
     std::vector<int> assumptions;                  // Indices of assumptions
     std::vector<int> restrictions;                 // Indices of restrictions
     std::pair<Reason, std::vector<int>> justification; // How this was proved and from which lines
     node* formula = nullptr;                       // Pointer to the associated formula
     node* negation = nullptr;                      // Pointer to the negation of the formula
+    std::vector<std::pair<int, int>> unifications; // List of pairs (i, j) where i unifies with j
 
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
-        : target(false), active(true), proved(false), formula(form), negation(nullptr) {}
+        : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications() {}
     
     tabline_t(node* form, node* neg) 
-        : target(true), active(true), proved(false), formula(form), negation(neg) {}
+        : target(true), active(true), dead(false), formula(form), negation(neg), unifications() {}
 };
 
 class context_t {
