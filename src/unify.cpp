@@ -66,6 +66,20 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
         return unify_variable(node2, node1, subst);
     }
 
+    // If both nodes are PARAMETERS
+    if (node1->type == VARIABLE && node2->type == VARIABLE)
+    {
+        if (node1->vdata->var_kind != node2->vdata->var_kind) {
+            return std::nullopt; // Not the same kind of variable
+        }
+
+        if (node1->vdata->name != node2->vdata->name) {
+            return std::nullopt; // Not the same name
+        }
+
+        return subst;
+    }
+    
     // If both nodes are applications, check if they can be unified
     if (node1->type == APPLICATION && node2->type == APPLICATION) {
         // First children are the symbols, which should be the same, for now

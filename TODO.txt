@@ -1,6 +1,16 @@
 Critical:
 
+* Add purge_dead which kills and deactivates all hypotheses which can only be used to prove dead targets.
+  Use it around line 339 of completion.
+
 * When moving to next target, must check for next target that is not proved for current assumptions
+
+* When adding new target, update restrictions of all hyps for new target if old allowed
+
+* Check for tautologies in check_done
+
+* When selecting targets, activate only those hyps whose assumptions are a subset of an unproved
+  set of assumptions for current leaf hydra
 
 * Put assumptions/restrictions debugging code in print_tableau
 

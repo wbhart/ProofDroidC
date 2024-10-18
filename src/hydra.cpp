@@ -112,7 +112,7 @@ bool hydra::add_assumption(const std::vector<int>& new_assumption) {
 
     // No conflict found, add the new assumption
     proved.push_back(new_assumption);
-    return proved.empty(); // Returns true if 'proved' is empty, false otherwise
+    return !proved.empty() && proved[0].empty(); // Returns true if assumptions is empty, false otherwise
 }
 
 // Adds a child hydra node

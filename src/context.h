@@ -13,7 +13,8 @@
 #include <utility>
 #include <unordered_set>
 #include <algorithm>
-#include <memory> // Include this for std::shared_ptr and std::make_shared
+#include <memory>
+#include <optional>
 
 // Enumeration representing reasons for justifications in tableau lines
 enum class Reason {
@@ -126,13 +127,22 @@ void print_reason(const context_t& context, int index);
 // Combine a pair of restrictions into a single restriction
 std::vector<int> combine_restrictions(const std::vector<int>& res1, const std::vector<int>& res2);
 
-// Check if restrictions are compatible
+// Check if restrictions are compatible and print an error if not
 bool check_restrictions(const std::vector<int>& res1, const std::vector<int>& res2);
+
+// Return true if restrictions are compatible
+bool restrictions_compatible(const std::vector<int>& res1, const std::vector<int>& res2);
 
 // Combine a pair of assumptions into a single set of assumptions
 std::vector<int> combine_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2);
 
-// Check if assumptions are compatible
+// Merge two assumptions lists, assuming they are already checked for compatibility
+std::vector<int> merge_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2);
+
+// Check if assumptions are compatible and print an error if not
 bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2);
+
+// Return true if assumptions are compatible
+bool assumptions_compatible(const std::vector<int>& assm1, const std::vector<int>& assm2);
 
 #endif // CONTEXT_H

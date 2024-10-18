@@ -6,6 +6,6 @@
 #include "context.h"
 
 // Function to perform the completion check as described
-void check_done(context_t& ctx);
+bool check_done(context_t& ctx);
 
 #endif // COMPLETION_H

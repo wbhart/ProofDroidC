@@ -227,7 +227,7 @@ std::vector<int> combine_restrictions(const std::vector<int>& res1, const std::v
 }
 
 // Check if restrictions are compatible
-bool check_restrictions(const std::vector<int>& res1, const std::vector<int>& res2) {
+bool restrictions_compatible(const std::vector<int>& res1, const std::vector<int>& res2) {
     if (res1.empty() || res2.empty()) {
         return true;
     }
@@ -243,6 +243,24 @@ bool check_restrictions(const std::vector<int>& res1, const std::vector<int>& re
     }
 
     return false;
+}
+
+// Updated Wrapper Function: Check if restrictions are compatible with error handling
+bool check_restrictions(const std::vector<int>& res1, const std::vector<int>& res2) {
+    if (!restrictions_compatible(res1, res2)) {
+        std::cerr << "Restrictions incompatible.\n";
+        std::cerr << "Restrictions 1: ";
+        for (const auto& r : res1) {
+            std::cerr << r << " ";
+        }
+        std::cerr << "\nRestrictions 2: ";
+        for (const auto& r : res2) {
+            std::cerr << r << " ";
+        }
+        std::cerr << std::endl;
+        return false;
+    }
+    return true;
 }
 
 // Combine a pair of assumptions into a single set of assumptions
@@ -272,7 +290,7 @@ std::vector<int> combine_assumptions(const std::vector<int>& assm1, const std::v
 }
 
 // Check if assumptions are compatible
-bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
+bool assumptions_compatible(const std::vector<int>& assm1, const std::vector<int>& assm2) {
     if (assm1.empty() || assm2.empty()) {
         return true;
     }
@@ -288,6 +306,34 @@ bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& as
     }
 
     return true; // No conflicts
+}
+
+std::vector<int> merge_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
+    std::vector<int> merged = assm1;
+    for (const int& n : assm2) {
+        if (std::find(merged.begin(), merged.end(), n) == merged.end()) { // Avoid duplicates
+            merged.push_back(n);
+        }
+    }
+    return merged;
+}
+
+// Check if assumptions are compatible with error handling
+bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
+    if (!assumptions_compatible(assm1, assm2)) {
+        std::cerr << "Assumptions incompatible.\n";
+        std::cerr << "Assumptions 1: ";
+        for (const auto& a : assm1) {
+            std::cerr << a << " ";
+        }
+        std::cerr << "\nAssumptions 2: ";
+        for (const auto& a : assm2) {
+            std::cerr << a << " ";
+        }
+        std::cerr << std::endl;
+        return false;
+    }
+    return true;
 }
 
 // Initializes the hydra_graph and adds child hydras based on the tableau
