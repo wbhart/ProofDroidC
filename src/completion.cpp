@@ -207,7 +207,6 @@ bool check_done(context_t& ctx) {
         const tabline_t& target_line = ctx.tableau[target_idx];
         if (target_line.unifications.empty()) {
             // Step 4 Failure: At least one target has no unifications
-            std::cerr << "Error: Target line " << target_idx + 1 << " has no unifications.\n";
             return false;
         }
         unifications_lists.emplace_back(target_line.unifications);

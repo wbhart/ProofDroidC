@@ -1167,12 +1167,6 @@ bool conditional_premise(context_t& tab_ctx, int index) {
 
     tabline_t& tabline = tab_ctx.tableau[index];
 
-    // Check if the tabline is active and a target
-    if (!tabline.active) {
-        std::cerr << "Error: Selected formula is inactive." << std::endl;
-        return false;
-    }
-
     if (!tabline.target) {
         std::cerr << "Error: Selected formula is not a target." << std::endl;
         return false;

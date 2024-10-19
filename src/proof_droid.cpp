@@ -613,7 +613,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             if (move_applied) {
                 // After applying the move, run cleanup_moves automatically
                 cleanup_moves(tab_ctx, tab_ctx.upto);
-                
+
                 // Check if done
                 check_done(tab_ctx);
             } else {

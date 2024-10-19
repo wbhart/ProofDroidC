@@ -470,7 +470,7 @@ void context_t::select_targets() {
 
     // Extract target indices from the current leaf hydra
     std::vector<int> targets = current_leaf.target_indices;
-
+  
     // Pass the extracted targets to the original select_targets function
     select_targets(targets);
 }
@@ -485,15 +485,16 @@ void context_t::hydra_replace(int i, int j) {
     // Get the current leaf hydra (last in current_hydra)
     hydra& current_leaf = current_hydra.back();
 
+    // Create new target_indices by replacing i with j
+    std::vector<int> new_targets = current_leaf.target_indices;
+
     // Check if target i exists in the current leaf hydra
-    auto it = std::find(current_leaf.target_indices.begin(), current_leaf.target_indices.end(), i);
-    if (it == current_leaf.target_indices.end()) {
+    auto it = std::find(new_targets.begin(), new_targets.end(), i);
+    if (it == new_targets.end()) {
         std::cerr << "Error: Target " << i << " not found in the current leaf hydra." << std::endl;
         return;
     }
 
-    // Create new target_indices by replacing i with j
-    std::vector<int> new_targets = current_leaf.target_indices;
     *it = j; // Replace the first occurrence of i with j
 
     // Create a new hydra with the updated targets and copy 'proved' from current_leaf
@@ -642,12 +643,9 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
     hydra new_hydra;
     new_hydra.target_indices = new_targets;
     new_hydra.proved = current_leaf.proved; // Copy the 'proved' member
-
+ 
     // Create a shared_ptr for the new hydra
     std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_hydra);
-
-    // Attach the new hydra as a child of the current leaf
-    current_leaf.add_child(new_hydra_ptr);
 
     // Partition the new hydra if necessary
     std::vector<std::shared_ptr<hydra>> partitioned_hydras = partition_hydra(*new_hydra_ptr);
