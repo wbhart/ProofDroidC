@@ -76,6 +76,9 @@ public:
     // Prints the current state of variable indices for debugging
     void print_context() const;
 
+    // Purges all hypotheses that can only be used to prove dead targets
+    void purge_dead();
+
     // Array of tableau lines
     std::vector<tabline_t> tableau;
 

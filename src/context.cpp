@@ -200,6 +200,39 @@ void print_reason(const context_t& context, int index) {
     }
 }
 
+void context_t::purge_dead() {
+    // Iterate through all lines in the tableau
+    for (size_t j = 0; j < tableau.size(); ++j) {
+        tabline_t& current_line = tableau[j];
+        
+        // Check if the current line is a hypothesis
+        if (!current_line.target) {
+            // Proceed only if the restriction list is non-empty
+            if (!current_line.restrictions.empty()) {
+                bool all_targets_dead = true; // Flag to check if all restricted targets are dead
+                
+                // Iterate through each target index in the restriction list
+                for (int target_idx : current_line.restrictions) {
+                    const tabline_t& target_line = tableau[target_idx];
+                    
+                    // Check if the target is dead
+                    if (!target_line.dead) {
+                        // Found a target that is not dead; no need to purge this hypothesis
+                        all_targets_dead = false;
+                        break;
+                    }
+                }
+                
+                // If all restricted targets are dead, mark the hypothesis as dead and inactive
+                if (all_targets_dead) {
+                    current_line.dead = true;
+                    current_line.active = false;
+                }
+            }
+        }
+    }
+}
+
 // Combine a pair of restrictions into a single restriction
 std::vector<int> combine_restrictions(const std::vector<int>& res1, const std::vector<int>& res2) {
     if (res1.empty()) {

@@ -1,22 +1,24 @@
 Critical:
 
-* Add purge_dead which kills and deactivates all hypotheses which can only be used to prove dead targets.
-  Use it around line 339 of completion.
+* When moving to next target, must select assumptions that haven't been proved for
+  that target yet
 
-* When moving to next target, must check for next target that is not proved for current assumptions
+* When selecting targets, activate only those hyps whose assumptions are a subset
+  of an unproved set of assumptions for current leaf hydra
 
-* When adding new target, update restrictions of all hyps for new target if old allowed
+* When adding new target, update restrictions of all hyps that could be used to
+  prove the old target, to indicate that it can also be used to prove the new
+  target
+
+* Currently only the leaf hydra can be proved. Allow all hydras on the current_hydra
+  path to be checked for completion, and delete all descendants when proved and
+  update the proved field of all descendants otherwise
 
 * Check for tautologies in check_done
-
-* When selecting targets, activate only those hyps whose assumptions are a subset of an unproved
-  set of assumptions for current leaf hydra
 
 * Put assumptions/restrictions debugging code in print_tableau
 
 * Split iff's
-
-* Write completion checking function
 
 * Factor out dealing with restrictions/assumptions in moves by making functions that
   deal with tablines, e.g. copy_restrictions, combine_restrictions, etc.
@@ -33,9 +35,17 @@ Critical:
 
 * Deal with modus ponens case where single unit clause is a disjunction.
 
+* Add split_disjunction move (split tableau)
+
+Eventually:
+
+* Splitting on disjunctions sharing variables. Requires backtracking of proved
+  targets that wont unify on both branches of the assumption tree
+
 Noncritical:
 
-* Modify parser error to show position in string where error occurs with arrow pointing
+* Modify parser error to show position in string where error occurs with arrow
+  pointing
 
 * Allow user to enter hypotheses and targets manually
 

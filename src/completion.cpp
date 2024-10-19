@@ -352,6 +352,9 @@ bool check_done(context_t& ctx) {
                     }), children.end());
             }
 
+            // Kill all hypotheses that could only be used to prove dead targets
+            ctx.purge_dead();
+
             // Call get_hydra() and select_targets(targets)
             std::vector<int> new_targets = ctx.get_hydra();
 
