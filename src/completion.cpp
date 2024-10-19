@@ -191,7 +191,7 @@ bool check_done(context_t& ctx) {
 
     // Access the current leaf hydra (last entry in current_hydra)
     hydra& current_leaf_hydra = ctx.current_hydra.back().get();
-    const std::vector<int>& target_indices = current_leaf_hydra.target_indices;
+    std::vector<int>& target_indices = current_leaf_hydra.target_indices;
 
     // Ensure there is at least one target
     if (target_indices.empty()) {
@@ -315,40 +315,52 @@ bool check_done(context_t& ctx) {
         bool add_success = current_leaf_hydra.add_assumption(successful_merged_assumptions);
 
         if (add_success) {
-            // Prepare the list of target indices as a string for the message
-            std::string targets_proved = "";
-            for (size_t i = 0; i < target_indices.size(); ++i) {
-                targets_proved += std::to_string(target_indices[i] + 1);
-                if (i != target_indices.size() - 1) {
-                    targets_proved += ", ";
+            // keep removing proved targets and their parents
+            bool remove_hydra = true;
+            
+            while (remove_hydra) {
+                remove_hydra = false;
+
+                // Prepare the list of target indices as a string for the message
+                std::string targets_proved = "";
+                for (size_t i = 0; i < target_indices.size(); ++i) {
+                    targets_proved += std::to_string(target_indices[i] + 1);
+                    if (i != target_indices.size() - 1) {
+                        targets_proved += ", ";
+                    }
                 }
-            }
 
-            // Print the success message
-            std::cout << "Target(s) " << targets_proved << " proved.\n";
+                // Print the success message
+                if (!targets_proved.empty()) {
+                    std::cout << "Target(s) " << targets_proved << " proved.\n";
+                }
 
-            // Set targets to not active and dead in the tableau
-            for (int target_idx : target_indices) {
-                ctx.tableau[target_idx].active = false;
-                ctx.tableau[target_idx].dead = true;
-            }
+                // Set targets to not active and dead in the tableau
+                for (int target_idx : target_indices) {
+                    ctx.tableau[target_idx].active = false;
+                    ctx.tableau[target_idx].dead = true;
+                }
 
-            // Store a reference to the current hydra before popping
-            hydra& current_hydra_ref = ctx.current_hydra.back().get();
+                // Store a reference to the current hydra before popping
+                hydra& current_hydra_ref = ctx.current_hydra.back().get();
 
-            // Remove the current leaf hydra from current_hydra
-            ctx.current_hydra.pop_back();
+                // Remove the current leaf hydra from current_hydra
+                ctx.current_hydra.pop_back();
 
-            // Detach the current hydra from its parent hydra in the hydra graph
-            if (!ctx.current_hydra.empty()) {
-                hydra& parent_hydra_ref = ctx.current_hydra.back().get();
-                auto& children = parent_hydra_ref.children;
+                // Detach the current hydra from its parent hydra in the hydra graph
+                if (!ctx.current_hydra.empty()) {
+                    current_leaf_hydra = ctx.current_hydra.back().get();
+                    target_indices = current_leaf_hydra.target_indices;
+                    auto& children = current_leaf_hydra.children;
 
-                // Remove the child hydra from parent's children
-                children.erase(std::remove_if(children.begin(), children.end(),
-                    [&](const std::shared_ptr<hydra>& child_ptr) {
-                        return &(*child_ptr) == &current_hydra_ref;
-                    }), children.end());
+                    // Remove the child hydra from parent's children
+                    children.erase(std::remove_if(children.begin(), children.end(),
+                        [&](const std::shared_ptr<hydra>& child_ptr) {
+                            return &(*child_ptr) == &current_hydra_ref;
+                        }), children.end());
+
+                    remove_hydra = children.empty();
+                }
             }
 
             // Kill all hypotheses that could only be used to prove dead targets

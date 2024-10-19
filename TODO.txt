@@ -1,8 +1,8 @@
 Critical:
 
-* Set1 : p 3 1, p 3 2 segfaults
+* set1 : CP[6] remains after 8 proved.
 
-* Set1 : p 4 5 fails
+* Make skolem constants parameters?
 
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
@@ -27,7 +27,8 @@ Critical:
 * Factor out dealing with restrictions/assumptions in moves by making functions that
   deal with tablines, e.g. copy_restrictions, combine_restrictions, etc.
 
-* Should targets have restrictions/assumptions?
+* Should targets have restrictions/assumptions? Yes, they could have been reasoned
+  backwards to from other targets and hypotheses that have assumptions.
 
 * Make checking moves (e.g. check_restrictions/assumptions) optional, so this doesn't
   duplicate work automation will be doing before executing the moves
