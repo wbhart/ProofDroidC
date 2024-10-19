@@ -44,6 +44,7 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_EQUALS, {3, Associativity::NONE, Fixity::INFIX, "=", "="} },
     { SYMBOL_SUBSET, {3, Associativity::NONE, Fixity::INFIX, "\\subset", "⊂"} },
     { SYMBOL_SUBSETEQ, {3, Associativity::NONE, Fixity::INFIX, "\\subseteq", "⊆"} },
+    { SYMBOL_ELEM, {3, Associativity::NONE, Fixity::INFIX, "\\in", "∈"}},
     { SYMBOL_CAP, {2, Associativity::LEFT, Fixity::INFIX, "\\cap", "∩"} },
     { SYMBOL_CUP, {2, Associativity::LEFT, Fixity::INFIX, "\\cup", "∪"} },
     { SYMBOL_SETMINUS, {2, Associativity::LEFT, Fixity::INFIX, "\\setminus", "∖"} },

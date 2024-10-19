@@ -1,0 +1,3 @@
+P(a)
+\forall x (P(x) \implies Q(x))
+* Q(a)

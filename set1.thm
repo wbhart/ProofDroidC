@@ -1,0 +1,5 @@
+S \subseteq T
+T \subseteq U
+\forall X \forall Y (X \subseteq Y \implies \forall x (x \in X \implies x \in Y))
+\forall X \forall Y ((\forall x (x \in X \implies x \in Y)) \implies X \subseteq Y)
+* S \subseteq U

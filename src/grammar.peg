@@ -97,6 +97,7 @@ SimpleFormula
    / f:EqualPredicate { $$ = f; }
    / f:NeqPredicate { $$ = f; }
    / f:SubsetPredicate { $$ = f; }
+   / f:ElemPredicate { $$ = f; }
    / f:Predicate { $$ = f; }
    / f:Negation { $$ = f; }
    / f:TOP { $$ = f; }
@@ -135,6 +136,15 @@ SubsetPredicate
 SUBSETOP
   <- o:SUBSETEQ { $$ = o; }
    / o:SUBSET { $$ = o; }
+
+ElemPredicate
+  <- t1:Term _ o:ELEM _ t2:Term {
+        std::vector<node*> children;
+        children.push_back(o);  // Push the elem operator node
+        children.push_back(t1);  // Push the first term
+        children.push_back(t2);  // Push the second term
+        $$ = new node(APPLICATION, children);
+  }
 
 Predicate
   <- f:Application { f->children[0]->vdata->var_kind = PREDICATE; $$ = f; }
@@ -254,6 +264,9 @@ SUBSET
 
 SUBSETEQ
   <- '\\subseteq' { $$ = new node(BINARY_PRED, SYMBOL_SUBSETEQ); }
+
+ELEM
+  <- '\\in' { $$ = new node(BINARY_PRED, SYMBOL_ELEM); }
 
 EQUALS
   <- '=' { $$ = new node(BINARY_PRED, SYMBOL_EQUALS); }

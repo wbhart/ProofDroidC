@@ -1,5 +1,9 @@
 Critical:
 
+* Set1 : p 3 1, p 3 2 segfaults
+
+* Set1 : p 4 5 fails
+
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
 
