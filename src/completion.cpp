@@ -22,7 +22,7 @@ bool check_done(context_t& ctx) {
     for (int j = ctx.upto; j < static_cast<int>(ctx.tableau.size()); ++j) {
         tabline_t& current_line = ctx.tableau[j];
         if (!current_line.target) {
-            current_line.negation = negate_node(current_line.formula);
+            current_line.negation = negate_node(deep_copy(current_line.formula));
         }
     }
 

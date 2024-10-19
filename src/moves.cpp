@@ -287,9 +287,10 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
     // 9. Substitute the consequent with the combined substitution
     node* substituted_consequent = substitute(consequent, combined_subst);
-
+    
     // 10. Clean up and return the result
     delete implication_copy;
+
     return substituted_consequent;
 }
 
@@ -440,7 +441,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         ctx.hydra_replace_list(other_lines, ctx.tableau.size() - 1);
         ctx.select_targets();
     }
-    
+
     return true;
 }
 
@@ -1259,7 +1260,7 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
     bool moved = false;
     size_t start = start_line;
     size_t current_size = tab_ctx.tableau.size();
-
+            
     while (start < current_size) {
         // Apply moves in the specified order
 
@@ -1308,6 +1309,6 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
         // Update current_size to the new size of the tableau
         current_size = tab_ctx.tableau.size();
     }
-
+    
     return moved;
 }

@@ -619,7 +619,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             } else {
                 std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
             }
-
+            
             std::cout << std::endl;
             print_tableau(tab_ctx);
             std::cout << std::endl;
