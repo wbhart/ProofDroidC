@@ -78,24 +78,32 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
     int skolem_index = ctx.get_next_index(skolem_func_base);
     skolem_func_name = append_subscript(skolem_func_base, skolem_index);
 
-    // Create the Skolem function symbol node
-    node* fn_sym = new node(VARIABLE, skolem_func_name);
-    fn_sym->vdata->var_kind = FUNCTION;
-    fn_sym->vdata->arity = static_cast<int>(used_universals.size());
+    if (used_universals.empty()) {
+        node* skolem_const = new node(VARIABLE, skolem_func_name);
+        skolem_const->vdata->var_kind = PARAMETER;
 
-    // Construct the arguments for the Skolem function
-    std::vector<node*> children;
-    children.push_back(fn_sym); // Skolem function symbol
-    for (const auto& u : used_universals) {
-        node* arg = new node(VARIABLE, u); // Arguments of Skolem function
-        children.push_back(arg);
+        // Add the substitution: existential_var -> skolem_const
+        subst[existential_var] = skolem_const;
+    } else {
+        // Create the Skolem function symbol node
+        node* fn_sym = new node(VARIABLE, skolem_func_name);
+        fn_sym->vdata->var_kind = FUNCTION;
+        fn_sym->vdata->arity = static_cast<int>(used_universals.size());
+
+        // Construct the arguments for the Skolem function
+        std::vector<node*> children;
+        children.push_back(fn_sym); // Skolem function symbol
+        for (const auto& u : used_universals) {
+            node* arg = new node(VARIABLE, u); // Arguments of Skolem function
+            children.push_back(arg);
+        }
+
+        // Create the Skolem function node: skolem_func(y, z, ...)
+        node* skolem_func = new node(APPLICATION, children);
+
+        // Add the substitution: existential_var -> skolem_func
+        subst[existential_var] = skolem_func;
     }
-
-    // Create the Skolem function node: skolem_func(y, z, ...)
-    node* skolem_func = new node(APPLICATION, children);
-
-    // Add the substitution: existential_var -> skolem_func
-    subst[existential_var] = skolem_func;
 
     // Detach children to prevent deletion when deleting the quantifier node
     formula->children.clear();
@@ -1207,13 +1215,13 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     new_target.assumptions = tabline.assumptions;
     new_target.restrictions = tabline.restrictions;
                 
+    // Add restriction to the new hypothesis
+    new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+    
     // Append new hypothesis and target to the tableau
     tab_ctx.tableau.push_back(new_hypothesis);
     tab_ctx.tableau.push_back(new_target);
-
-    // Add restriction to the new hypothesis
-    new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
-                
+            
     // Replace hydra
     tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
