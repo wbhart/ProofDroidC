@@ -59,33 +59,6 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise", "Apply Conditional Premise: cp <index>"}
 };
 
-// Function to print all formulas in the tableau with reasons
-void print_tableau(const context_t& tab_ctx) {
-    std::cout << "Hypotheses:" << std::endl;
-    
-    // First, print all active Hypotheses
-    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
-        const tabline_t& tabline = tab_ctx.tableau[i];
-        if (tabline.active && !tabline.target) {
-            std::cout << " " << i + 1 << " "; // Line number
-            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
-            std::cout << ": " << tabline.formula->to_string(UNICODE) << std::endl;
-        }
-    }
-    
-    std::cout << std::endl << "Targets:" << std::endl;
-    
-    // Then, print all active Targets
-    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
-        const tabline_t& tabline = tab_ctx.tableau[i];
-        if (tabline.active && tabline.target) {
-            std::cout << " " << i + 1 << " "; // Line number
-            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
-            std::cout << ": " << tabline.negation->to_string(UNICODE) << std::endl;
-        }
-    }
-}
-
 // Function to print all active options in a concise summary
 void print_options(const std::vector<option_t>& active_options) {
     std::cout << "Options:";
@@ -623,6 +596,8 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             std::cout << std::endl;
             print_tableau(tab_ctx);
             std::cout << std::endl;
+
+            tab_ctx.print_hydras();
 
             // Before next prompt, re-print the summary of options
             print_summary(semi_auto_active_options);

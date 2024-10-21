@@ -8,6 +8,28 @@
 #include <iostream>
 #include <stdexcept>
 
+void tabline_t::print_restrictions() {
+    std::cout << "[";
+    for (size_t i = 0; i < restrictions.size(); i++) {
+        std::cout << restrictions[i];
+        if (i < restrictions.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "]";
+}
+
+void tabline_t::print_assumptions() {
+    std::cout << "[";
+    for (size_t i = 0; i < assumptions.size(); i++) {
+        std::cout << assumptions[i];
+        if (i < assumptions.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "]";
+}
+
 // Constructor: Initializes the context (empty var_indices)
 context_t::context_t() 
     : hydra_graph(),          // 1. hydra_graph
@@ -187,6 +209,13 @@ void print_reason(const context_t& context, int index) {
             break;
         }
 
+        case Reason::MaterialEquivalence: {
+            std::cout << "ME[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
         case Reason::ConditionalPremise: {
             std::cout << "CP[";
             std::cout << associated_lines[0] + 1;
@@ -252,7 +281,7 @@ std::vector<int> combine_restrictions(const std::vector<int>& res1, const std::v
     std::sort(sorted_res2.begin(), sorted_res2.end());
 
     // Perform set_union to merge without duplicates
-    std::set_union(sorted_res1.begin(), sorted_res1.end(),
+    std::set_intersection(sorted_res1.begin(), sorted_res1.end(),
                   sorted_res2.begin(), sorted_res2.end(),
                   std::back_inserter(combined));
 
@@ -351,7 +380,7 @@ std::vector<int> merge_assumptions(const std::vector<int>& assm1, const std::vec
     return merged;
 }
 
-// Check if assumptions are compatible with error handling
+// Check if assumptions are compatible with error reporting
 bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& assm2) {
     if (!assumptions_compatible(assm1, assm2)) {
         std::cerr << "Assumptions incompatible.\n";
@@ -367,6 +396,26 @@ bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& as
         return false;
     }
     return true;
+}
+
+void print_hydra_node(int tabs, std::shared_ptr<hydra> hyd) {
+    // print indents
+    for (int i = 0; i < tabs; i++) {
+        std::cout << "  ";
+    }
+    hyd->print_targets();
+    std::cout << std::endl;
+
+    for (size_t i = 0; i < hyd->children.size(); ++i) {
+        print_hydra_node(tabs + 1, hyd->children[i]);
+    }
+}
+
+void context_t::print_hydras() {
+    // function to recursively print hydras
+    for (size_t i = 0; i < hydra_graph.children.size(); i++) {
+        print_hydra_node(0, hydra_graph.children[i]);
+    }
 }
 
 // Initializes the hydra_graph and adds child hydras based on the tableau
@@ -530,6 +579,21 @@ void context_t::hydra_replace(int i, int j) {
     }
 }
 
+void context_t::restrictions_replace(int i, int j) {
+    for (size_t k = 0; k < tableau.size(); ++k) {
+        tabline_t& tabline = tableau[k];
+
+        if (!tabline.dead) {
+            // find i in restrictions
+            auto it = std::find(tabline.restrictions.begin(), tabline.restrictions.end(), i);
+            if (it != tabline.restrictions.end()) {
+                // add j to restrictions
+                tabline.restrictions.push_back(j);
+            }
+        }
+    }
+}
+
 // Splits target i into j1 and j2 in the current leaf hydra
 void context_t::hydra_split(int i, int j1, int j2) {
     if (current_hydra.empty()) {
@@ -590,6 +654,22 @@ void context_t::hydra_split(int i, int j1, int j2) {
 
     // Update current_hydra to point to the first new child hydra
     current_hydra.emplace_back(*new_children[0]);
+}
+
+void context_t::restrictions_split(int i, int j1, int j2) {
+    for (size_t k = 0; k < tableau.size(); ++k) {
+        tabline_t& tabline = tableau[k];
+
+        if (!tabline.dead) {
+            // find i in restrictions
+            auto it = std::find(tabline.restrictions.begin(), tabline.restrictions.end(), i);
+            if (it != tabline.restrictions.end()) {
+                // add j1 and j2 to restrictions
+                tabline.restrictions.push_back(j1);
+                tabline.restrictions.push_back(j2);
+            }
+        }
+    }
 }
 
 // Replaces a list of targets with a single target j in the current leaf hydra
@@ -658,6 +738,29 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
     // Make the first partitioned hydra the new current leaf
     if (!partitioned_hydras.empty()) {
         current_hydra.emplace_back(*partitioned_hydras[0]);
+    }
+}
+
+void context_t::restrictions_replace_list(const std::vector<int>& targets, int j) {
+    for (size_t k = 0; k < tableau.size(); ++k) {
+        tabline_t& tabline = tableau[k];
+
+        if (!tabline.dead) {
+            bool found_target = false; // whether a target in the list has been found
+            // find i in restrictions
+            for (size_t  m = 0; m < targets.size(); ++m) {
+                int i = targets[m];
+                auto it = std::find(tabline.restrictions.begin(), tabline.restrictions.end(), i);
+                if (it != tabline.restrictions.end()) {
+                    found_target = true;
+                    break;
+                }
+            }
+            
+            if (found_target){    // add j to restrictions
+                tabline.restrictions.push_back(j);
+            }
+        }
     }
 }
 
@@ -751,4 +854,31 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
     }
 
     return new_hydras;
+}
+
+// Function to print all formulas in the tableau with reasons
+void print_tableau(const context_t& tab_ctx) {
+    std::cout << "Hypotheses:" << std::endl;
+    
+    // First, print all active Hypotheses
+    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+        const tabline_t& tabline = tab_ctx.tableau[i];
+        if (tabline.active && !tabline.target) {
+            std::cout << " " << i + 1 << " "; // Line number
+            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
+            std::cout << ": " << tabline.formula->to_string(UNICODE) << std::endl;
+        }
+    }
+    
+    std::cout << std::endl << "Targets:" << std::endl;
+    
+    // Then, print all active Targets
+    for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+        const tabline_t& tabline = tab_ctx.tableau[i];
+        if (tabline.active && tabline.target) {
+            std::cout << " " << i + 1 << " "; // Line number
+            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
+            std::cout << ": " << tabline.negation->to_string(UNICODE) << std::endl;
+        }
+    }
 }

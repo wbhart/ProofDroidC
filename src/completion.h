@@ -4,6 +4,7 @@
 #define COMPLETION_H
 
 #include "context.h"
+#include "moves.h"
 
 // Function to perform the completion check as described
 bool check_done(context_t& ctx);

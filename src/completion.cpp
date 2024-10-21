@@ -26,16 +26,16 @@ bool check_done(context_t& ctx) {
         }
     }
 
-    // Step 2: compute potential unifications (incremental, from upto)
+    // Step 2: Compute potential unifications (incremental, from upto)
     for (int j = ctx.upto; j < static_cast<int>(ctx.tableau.size()); ++j) {
         tabline_t& current_line = ctx.tableau[j];
 
-        // **Ensure the current line is not dead**
+        // Ensure the current line is not dead
         if (current_line.dead) {
             continue; // Skip dead lines
         }
 
-        // **Determine if the current line is a target**
+        // Determine if the current line is a target
         bool is_current_target = current_line.target;
 
 #if DEBUG_STEP_2
@@ -55,12 +55,12 @@ bool check_done(context_t& ctx) {
         for (int i = 0; i < j; ++i) {
             tabline_t& previous_line = ctx.tableau[i];
 
-            // **Skip dead previous lines**
+            // Skip dead previous lines
             if (previous_line.dead) {
                 continue;
             }
 
-            // **If current_line is a target, only unify with non-dead hypotheses**
+            // If current_line is a target, only unify with non-dead hypotheses
             if (is_current_target && previous_line.target) {
                 continue; // Skip if previous_line is also a target
             }
@@ -79,7 +79,7 @@ bool check_done(context_t& ctx) {
             std::cout << "\n";
 #endif
 
-            // **Compatibility Checks**
+            // Compatibility Checks
             bool restrictions_ok = restrictions_compatible(current_line.restrictions, previous_line.restrictions);
             bool assumptions_ok = assumptions_compatible(current_line.assumptions, previous_line.assumptions);
 
@@ -97,7 +97,7 @@ bool check_done(context_t& ctx) {
                     std::cout << "    Unification Successful between Line " << j 
                               << " and Line " << i << "\n";
 #endif
-                    // **Determine where to append the unification pair (i, j)**
+                    // Determine where to append the unification pair (i, j)
                     if (is_current_target) {
                         // Current line is a target: append to current_line.unifications
                         current_line.unifications.emplace_back(i, j);
@@ -142,7 +142,7 @@ bool check_done(context_t& ctx) {
                         else {
                             // Append to specific targets based on combined restrictions
                             for (int target_idx : combined_targets) {
-                                // **Verify that target_idx is indeed a target and not out of bounds**
+                                // Verify that target_idx is indeed a target and not out of bounds
                                 if (target_idx >= 0 && target_idx < static_cast<int>(ctx.tableau.size())) {
                                     tabline_t& target_line = ctx.tableau[target_idx];
                                     if (target_line.target) {
@@ -180,7 +180,7 @@ bool check_done(context_t& ctx) {
         }
     }
 
-    // Step 3: update upto
+    // Step 3: Update 'upto'
     ctx.upto = static_cast<int>(ctx.tableau.size());
 
     // Step 4: Check that each target in the current leaf hydra has at least one unification pair
@@ -191,7 +191,7 @@ bool check_done(context_t& ctx) {
 
     // Access the current leaf hydra (last entry in current_hydra)
     hydra& current_leaf_hydra = ctx.current_hydra.back().get();
-    std::vector<int>& target_indices = current_leaf_hydra.target_indices;
+    std::vector<int> target_indices = current_leaf_hydra.target_indices;
 
     // Ensure there is at least one target
     if (target_indices.empty()) {
@@ -206,7 +206,6 @@ bool check_done(context_t& ctx) {
     for (int target_idx : target_indices) {
         const tabline_t& target_line = ctx.tableau[target_idx];
         if (target_line.unifications.empty()) {
-            // Step 4 Failure: At least one target has no unifications
             return false;
         }
         unifications_lists.emplace_back(target_line.unifications);
@@ -315,17 +314,21 @@ bool check_done(context_t& ctx) {
         bool add_success = current_leaf_hydra.add_assumption(successful_merged_assumptions);
 
         if (add_success) {
-            // keep removing proved targets and their parents
+            // Keep removing proved targets and their parents
             bool remove_hydra = true;
             
+            // Initialize a pointer to the current hydra
+            hydra* current_leaf_hydra_ptr = &current_leaf_hydra;
+            std::vector<int> target_indices_copy = target_indices; // Make a copy to avoid modifying during loop
+
             while (remove_hydra) {
                 remove_hydra = false;
 
                 // Prepare the list of target indices as a string for the message
                 std::string targets_proved = "";
-                for (size_t i = 0; i < target_indices.size(); ++i) {
-                    targets_proved += std::to_string(target_indices[i] + 1);
-                    if (i != target_indices.size() - 1) {
+                for (size_t i = 0; i < target_indices_copy.size(); ++i) {
+                    targets_proved += std::to_string(target_indices_copy[i] + 1); // Assuming line numbers start at 1
+                    if (i != target_indices_copy.size() - 1) {
                         targets_proved += ", ";
                     }
                 }
@@ -335,30 +338,50 @@ bool check_done(context_t& ctx) {
                     std::cout << "Target(s) " << targets_proved << " proved.\n";
                 }
 
+                ctx.print_hydras();
+
                 // Set targets to not active and dead in the tableau
-                for (int target_idx : target_indices) {
+                for (int target_idx : target_indices_copy) {
                     ctx.tableau[target_idx].active = false;
                     ctx.tableau[target_idx].dead = true;
                 }
 
-                // Store a reference to the current hydra before popping
-                hydra& current_hydra_ref = ctx.current_hydra.back().get();
+                // Store a pointer to the current hydra before popping
+                hydra* current_hydra_ptr = current_leaf_hydra_ptr;
 
                 // Remove the current leaf hydra from current_hydra
                 ctx.current_hydra.pop_back();
 
                 // Detach the current hydra from its parent hydra in the hydra graph
                 if (!ctx.current_hydra.empty()) {
-                    current_leaf_hydra = ctx.current_hydra.back().get();
-                    target_indices = current_leaf_hydra.target_indices;
-                    auto& children = current_leaf_hydra.children;
+                    hydra& parent_hydra_ref = ctx.current_hydra.back().get();
+                    hydra* parent_hydra_ptr = &parent_hydra_ref;
+                    auto& children = parent_hydra_ref.children;
 
+                    std::cout << "current_leaf_hydra" << std::endl;
+                    parent_hydra_ref.print_targets();
+                    std::cout << "\ncurrent_hydra_ref" << std::endl;
+                    current_hydra_ptr->print_targets();
+                    std::cout << std::endl;
+                    
                     // Remove the child hydra from parent's children
                     children.erase(std::remove_if(children.begin(), children.end(),
                         [&](const std::shared_ptr<hydra>& child_ptr) {
-                            return &(*child_ptr) == &current_hydra_ref;
+                            return child_ptr.get() == current_hydra_ptr;
                         }), children.end());
 
+                    std::cout << "after" << std::endl;
+
+                    // Now set current_leaf_hydra_ptr to the parent hydra
+                    current_leaf_hydra_ptr = parent_hydra_ptr;
+                    target_indices_copy = current_leaf_hydra_ptr->target_indices;
+
+                    // Debug: Print updated target_indices_copy
+                    std::cout << "current_hydra_ref" << std::endl;
+                    current_hydra_ptr->print_targets();
+                    std::cout << std::endl;
+
+                    // Determine if we need to remove the parent hydra as well
                     remove_hydra = children.empty();
                 }
             }
@@ -371,13 +394,16 @@ bool check_done(context_t& ctx) {
 
             if (new_targets.empty()) {
                 std::cout << "All targets proved!" << std::endl;
-
                 return true;
             }
 
             ctx.select_targets(new_targets);
 
-            return false; // New targets to prove
+            ctx.upto = 0;
+            cleanup_moves(ctx, ctx.upto);
+
+            // Check if done
+            return check_done(ctx);
         }
         else {
             return false; // Not fully proved yet

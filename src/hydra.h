@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <iostream>
 
 class hydra {
 public:
@@ -21,6 +22,7 @@ public:
     bool add_assumption(const std::vector<int>& assumption); // Returns true if 'proved' is empty after adding
     void add_child(const std::shared_ptr<hydra>& child);
     bool find_conflict(const std::vector<int>& existing, const std::vector<int>& incoming, int& conflicting_n) const;
+    void print_targets();
 
     // Public Members
     std::vector<int> target_indices;                       // List of target indices

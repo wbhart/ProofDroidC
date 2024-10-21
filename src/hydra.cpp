@@ -121,3 +121,14 @@ void hydra::add_child(const std::shared_ptr<hydra>& child) {
         children.push_back(child);
     }
 }
+
+void hydra::print_targets() {
+    std::cout << "{";
+    for (size_t i = 0; i < target_indices.size(); i++) {
+        std::cout << target_indices[i] + 1;
+        if (i < target_indices.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "}";
+}

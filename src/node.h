@@ -109,6 +109,10 @@ public:
         return (type == LOGICAL_BINARY && symbol == SYMBOL_IMPLIES);
     }
     
+    bool is_equivalence() const {
+        return (type == LOGICAL_BINARY && symbol == SYMBOL_IFF);
+    }
+    
     // Function to get the variable name if the node is of type VARIABLE
     std::string name() const {
         if (type == VARIABLE && vdata) {
@@ -255,7 +259,7 @@ private:
 
 node* deep_copy(const node* n);
 
-node* negate_node(node *n);
+node* negate_node(node *n, bool rewrite_disj = false);
 
 void bind_var(node* current, const std::string& var_name);
 

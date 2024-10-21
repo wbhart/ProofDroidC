@@ -1,18 +1,18 @@
 Critical:
 
-* set1 : CP[6] remains after 8 proved.
+* Add material equivalence option to manual mode
 
-* Make skolem constants parameters?
+* When doing material equivalence (and possibly other moves), cleanup moves are not
+  done on both new targets, only on the one selected (see test4 after first impl
+  proved)
+
+* Exiting semiautomated mode messes up the hydra graph
 
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
 
 * When selecting targets, activate only those hyps whose assumptions are a subset
   of an unproved set of assumptions for current leaf hydra
-
-* When adding new target, update restrictions of all hyps that could be used to
-  prove the old target, to indicate that it can also be used to prove the new
-  target
 
 * Currently only the leaf hydra can be proved. Allow all hydras on the current_hydra
   path to be checked for completion, and delete all descendants when proved and
@@ -21,8 +21,6 @@ Critical:
 * Check for tautologies in check_done
 
 * Put assumptions/restrictions debugging code in print_tableau
-
-* Split iff's
 
 * Factor out dealing with restrictions/assumptions in moves by making functions that
   deal with tablines, e.g. copy_restrictions, combine_restrictions, etc.

@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <vector>
 
+// Define DEBUG_CLEANUP to enable debug traces for cleanup moves
+#define DEBUG_CLEANUP 1
+
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
     // If the node is a free individual variable, change it to parameter
@@ -447,6 +450,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     if (!forward) {
         ctx.hydra_replace_list(other_lines, ctx.tableau.size() - 1);
+        ctx.restrictions_replace_list(other_lines, ctx.tableau.size() - 1);
         ctx.select_targets();
     }
 
@@ -541,6 +545,7 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
                 // Replace hydra
                 tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                tab_ctx.restrictions_replace(i, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
             }
 
@@ -613,6 +618,7 @@ bool move_ci(context_t& tab_ctx, size_t start) {
                 
                 // Replace hydra
                 tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                tab_ctx.restrictions_replace(i, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
             }
 
@@ -669,14 +675,8 @@ bool move_sc(context_t& tab_ctx, size_t start) {
             }
             else {
                 // Original is a target, new tablines are targets
-                node* neg_P = negate_node(deep_copy(P));
-                node* neg_Q = negate_node(deep_copy(Q));
-
-                if (!neg_P || !neg_Q) {
-                    // Handle negation failure as per your error handling strategy
-                    // For example, you might skip processing this line or abort
-                    continue;
-                }
+                node* neg_P = negate_node(deep_copy(P), true);
+                node* neg_Q = negate_node(deep_copy(Q), true);
 
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
                 tabline_t new_tabline_Q(deep_copy(Q), neg_Q);
@@ -697,6 +697,7 @@ bool move_sc(context_t& tab_ctx, size_t start) {
 
                 // Split the hydra
                 tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
 
                 // Select targets based on the updated hydra graph
                 tab_ctx.select_targets();
@@ -853,6 +854,7 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
 
                         // Split the hydra and select targets
                         tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                        tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                         tab_ctx.select_targets();
 
                         moved = true;
@@ -1024,6 +1026,7 @@ bool move_sci(context_t& tab_ctx, size_t start) {
 
                         // Split the hydra and select targets
                         tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                        tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                         tab_ctx.select_targets();
 
                         // Indicate that a move was made
@@ -1154,6 +1157,125 @@ bool move_ni(context_t& tab_ctx, size_t start) {
 
                 // Split the hydra and select targets
                 tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.select_targets();
+
+                moved = true;
+            }
+        }
+
+        i++;
+    }
+
+    return moved;
+}
+
+bool move_me(context_t& tab_ctx, size_t start) {
+    bool moved = false;
+    size_t i = start;
+
+    while (i < tab_ctx.tableau.size()) {
+        tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Skip inactive formulas
+        if (!tabline.active) {
+            i++;
+            continue;
+        }
+
+        if (!tabline.target) {
+            // **Target Case:** Look for formulas of the form P ↔ Q
+            if (tabline.formula->is_equivalence()) {
+                node* P = tabline.formula->children[0];
+                node* Q = tabline.formula->children[1];
+
+                // Deep copy P and Q
+                node* P_copy1 = deep_copy(P);
+                node* P_copy2 = deep_copy(P);
+                node* Q_copy1 = deep_copy(Q);
+                node* Q_copy2 = deep_copy(Q);
+                std::vector<node*> children1, children2;
+                children1.push_back(P_copy1);
+                children1.push_back(Q_copy1);
+                children2.push_back(Q_copy2);
+                children2.push_back(P_copy2);
+                node* P_implies_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children1);
+                node* Q_implies_P = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children2);
+                
+                // Create new target tablines
+                tabline_t new_tabline_P_implies_Q(P_implies_Q);
+                tabline_t new_tabline_Q_implies_P(Q_implies_P);
+                
+                // Copy restrictions and assumptions
+                new_tabline_P_implies_Q.assumptions = tabline.assumptions;
+                new_tabline_P_implies_Q.restrictions = tabline.restrictions;
+                new_tabline_Q_implies_P.assumptions = tabline.assumptions;
+                new_tabline_Q_implies_P.restrictions = tabline.restrictions;
+                
+                // Set justifications
+                new_tabline_P_implies_Q.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
+                new_tabline_Q_implies_P.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
+
+                // Append new target tablines to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
+                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
+
+                // Mark the original equivalence as inactive and dead
+                tabline.active = false;
+                tabline.dead = true;
+
+                moved = true;
+            }
+        }
+        else {
+            // **Target Case:** Look for formulas of the form P ↔ Q
+            if (tabline.negation->is_equivalence()) {
+                node* P = tabline.negation->children[0];
+                node* Q = tabline.negation->children[1];
+
+                // Deep copy P and Q
+                node* P_copy1 = deep_copy(P);
+                node* P_copy2 = deep_copy(P);
+                node* Q_copy1 = deep_copy(Q);
+                node* Q_copy2 = deep_copy(Q);
+                std::vector<node*> children1, children2;
+                children1.push_back(P_copy1);
+                children1.push_back(Q_copy1);
+                children2.push_back(Q_copy2);
+                children2.push_back(P_copy2);
+                node* P_implies_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children1);
+                node* Q_implies_P = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children2);
+                node* neg1 = negate_node(deep_copy(P_implies_Q));
+                node* neg2 = negate_node(deep_copy(Q_implies_P));
+
+                // Create new target tablines
+                tabline_t new_tabline_P_implies_Q(neg1, P_implies_Q);
+                tabline_t new_tabline_Q_implies_P(neg2, Q_implies_P);
+                
+                // Copy restrictions and assumptions
+                new_tabline_P_implies_Q.assumptions = tabline.assumptions;
+                new_tabline_P_implies_Q.restrictions = tabline.restrictions;
+                new_tabline_Q_implies_P.assumptions = tabline.assumptions;
+                new_tabline_Q_implies_P.restrictions = tabline.restrictions;
+                
+                // Set justifications
+                new_tabline_P_implies_Q.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
+                new_tabline_Q_implies_P.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
+
+                // Append new target tablines to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
+                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
+
+                // **Critical Fix: Set flags before hydra operations**
+                // Already set flags before modifying the vector
+
+                // Mark the original equivalence as inactive and dead
+                tabline.active = false;
+                tabline.dead = true;
+
+                // Split the hydra and select targets
+                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
 
                 moved = true;
@@ -1216,7 +1338,7 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     new_target.restrictions = tabline.restrictions;
                 
     // Add restriction to the new hypothesis
-    new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() - 1));
+    new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() + 1));
     
     // Append new hypothesis and target to the tableau
     tab_ctx.tableau.push_back(new_hypothesis);
@@ -1224,6 +1346,7 @@ bool conditional_premise(context_t& tab_ctx, int index) {
             
     // Replace hydra
     tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
+    tab_ctx.restrictions_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
 
     // Deactivate the original formula
@@ -1259,7 +1382,7 @@ bool move_cp(context_t& tab_ctx, size_t start) {
 }
 
 bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
-    bool moved = false;
+    bool moved = false, moved1;
     size_t start = start_line;
     size_t current_size = tab_ctx.tableau.size();
             
@@ -1267,44 +1390,129 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
         // Apply moves in the specified order
 
         // 1. skolemize_all
+        moved1 = false;
         if (skolemize_all(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 2. move_cp
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "skolemize:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 2. move_me
+        moved1 = false;
+        if (move_me(tab_ctx, start)) {
+            moved = moved1 = true;
+        }
+
+ #if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "material equivalence:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+        // 3. move_cp
+        moved1 = false;
         if (move_cp(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 3. move_sc
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "conditional premise:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 4. move_sc
+        moved1 = false;
         if (move_sc(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 4. move_ni
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "split conjunctions:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 5. move_ni
+        moved1 = false;
         if (move_ni(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 5. move_sdi
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "negated implication:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 6. move_sdi
+        moved1 = false;
         if (move_sdi(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 6. move_sci
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "split disjunctive implication:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 7. move_sci
+        moved1 = false;
         if (move_sci(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 7. move_di
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "split conjunctive implication:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 8. move_di
+        moved1 = false;
         if (move_di(tab_ctx, start)) {
-            moved = true;
+            moved = moved1 = true;
         }
 
-        // 8. move_ci
-        if (move_ci(tab_ctx, start)) {
-            moved = true;
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "disjunctive idempotence:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
         }
+#endif
+
+        // 9. move_ci
+        moved1 = false;
+        if (move_ci(tab_ctx, start)) {
+            moved = moved1 = true;
+        }
+
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "conjunctive idempotence:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
 
         // Update start_line to previous current_size before moves were applied
         start = current_size;

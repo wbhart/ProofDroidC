@@ -67,11 +67,7 @@ node* create_negation(node* child) {
 }
 
 // The negate_node function implementation
-node* negate_node(node* n) {
-    if (n == nullptr) {
-        throw std::invalid_argument("Cannot negate a null node");
-    }
-
+node* negate_node(node* n, bool rewrite_disj) {
     switch (n->type) {
         case UNARY_PRED:
         case BINARY_PRED: {
@@ -89,7 +85,7 @@ node* negate_node(node* n) {
                 // Delete the NOT node
                 delete n;
                 // Return φ as the negated result
-                return phi;
+                return rewrite_disj ? disjunction_to_implication(phi) : phi;
             } else {
                 // For other unary logical operators, wrap with NOT
                 return create_negation(n);
@@ -97,10 +93,6 @@ node* negate_node(node* n) {
 
         case LOGICAL_BINARY: {
             // Apply De Morgan's laws and other logical negations
-            if (n->children.size() != 2) {
-                throw std::logic_error("Logical binary node must have exactly two children");
-            }
-
             if (n->symbol == SYMBOL_AND) {
                 // ¬(φ ∧ ψ) ≡ ¬φ ∨ ¬ψ
                 node* left_neg = negate_node(n->children[0]);
@@ -108,7 +100,8 @@ node* negate_node(node* n) {
                 std::vector<node*> children;
                 children.push_back(left_neg);
                 children.push_back(right_neg);
-                return new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                node* res = new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                return rewrite_disj ? disjunction_to_implication(res) : res;
             }
             else if (n->symbol == SYMBOL_OR) {
                 // ¬(φ ∨ ψ) ≡ ¬φ ∧ ¬ψ
@@ -154,7 +147,8 @@ node* negate_node(node* n) {
                 std::vector<node*> children;
                 children.push_back(left_clause);
                 children.push_back(right_clause);
-                return new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                node* res = new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                return rewrite_disj ? disjunction_to_implication(res) : res;
             }
             else {
                 // For other binary operators, wrap with NOT

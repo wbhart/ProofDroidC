@@ -28,6 +28,7 @@ enum class Reason {
     SplitDisjunctiveImplication,
     SplitConjunctiveImplication,
     NegatedImplication,
+    MaterialEquivalence,
     ConditionalPremise
 };
 
@@ -50,6 +51,13 @@ public:
     
     tabline_t(node* form, node* neg) 
         : target(true), active(true), dead(false), formula(form), negation(neg), unifications() {}
+
+    // Print a list of restrictions
+    void print_restrictions();
+
+    // Print a list of restrictions
+    void print_assumptions();
+
 };
 
 class context_t {
@@ -108,11 +116,23 @@ public:
     // Replaces target i with j in the current leaf hydra
     void hydra_replace(int i, int j);
 
+    // Update all restrictions including i to include j as well
+    void restrictions_replace(int i, int j);
+
     // Splits target i into j1 and j2 in the current leaf hydra
     void hydra_split(int i, int j1, int j2);
 
+    // Update all restrictions including i to include j1 and j2 as well
+    void restrictions_split(int i, int j1, int j2);
+
     // Replaces a list of targets with a single target j in the current leaf hydra
     void hydra_replace_list(const std::vector<int>& targets, int j);
+
+    // Update all restrictions including a target in the list to include j as well
+    void restrictions_replace_list(const std::vector<int>& targets, int j);
+
+    // Print hydra graph
+    void print_hydras();
 
 private:
     // Maps variable base names to their latest index
@@ -147,5 +167,8 @@ bool check_assumptions(const std::vector<int>& assm1, const std::vector<int>& as
 
 // Return true if assumptions are compatible
 bool assumptions_compatible(const std::vector<int>& assm1, const std::vector<int>& assm2);
+
+// Print the tableau, showing only active lines
+void print_tableau(const context_t& tab_ctx);
 
 #endif // CONTEXT_H
