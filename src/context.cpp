@@ -412,16 +412,24 @@ void print_hydra_node(int tabs, std::shared_ptr<hydra> hyd) {
 }
 
 void context_t::print_hydras() {
-    // function to recursively print hydras
-    for (size_t i = 0; i < hydra_graph.children.size(); i++) {
-        print_hydra_node(0, hydra_graph.children[i]);
+    // Check if hydra_graph is initialized
+    if (!hydra_graph) {
+        std::cerr << "Hydra graph is not initialized.\n";
+        return;
+    }
+
+    // Function to recursively print hydras
+    for (const auto& child_hydra : hydra_graph->children) {
+        print_hydra_node(0, child_hydra);
     }
 }
 
-// Initializes the hydra_graph and adds child hydras based on the tableau
 void context_t::initialize_hydras() {
-    // Initialize the root hydra with no targets and empty proved
-    hydra_graph = hydra({}, {}); // hydra_graph.proved is empty
+    // Initialize the root hydra with no targets and empty proved using make_shared
+    hydra_graph = std::make_shared<hydra>(
+        std::vector<int>{}, // Empty targets
+        std::vector<std::vector<int>>{} // Empty proved
+    );
 
     // Iterate through the tableau to add child hydras for target lines
     for (size_t i = 0; i < tableau.size(); ++i) {
@@ -430,21 +438,19 @@ void context_t::initialize_hydras() {
         if (tabline.target) {
             // Create a new hydra with the current index as its target
             std::vector<int> targets = { static_cast<int>(i) };
-            std::vector<std::vector<int>> prfs = hydra_graph.proved; // Correct reference
+            std::vector<std::vector<int>> prfs = hydra_graph->proved; // Correct reference
 
-            hydra new_hydra_instance(targets, prfs); // Use 'prfs' instead of '{}'
-
-            // Create a shared_ptr for the new hydra
-            std::shared_ptr<hydra> new_hydra = std::make_shared<hydra>(new_hydra_instance);
+            // Create a shared_ptr for the new hydra directly without creating an instance
+            std::shared_ptr<hydra> new_hydra = std::make_shared<hydra>(targets, prfs);
 
             // Add the new hydra as a child to the hydra_graph
-            hydra_graph.add_child(new_hydra);
+            hydra_graph->add_child(new_hydra);
         }
     }
 
     // After initialization, set current_hydra to point to the first child hydra
-    if (!hydra_graph.children.empty()) {
-        current_hydra.emplace_back(*hydra_graph.children.front());
+    if (!hydra_graph->children.empty()) {
+        current_hydra.emplace_back(hydra_graph->children.front());
     }
 }
 
@@ -453,25 +459,31 @@ std::vector<int> context_t::get_hydra() {
     // Clear the current_hydra path
     current_hydra.clear();
 
-    // Add the root hydra to the path
-    current_hydra.emplace_back(std::ref(hydra_graph));
+    // Check if hydra_graph is initialized
+    if (!hydra_graph) {
+        std::cerr << "Hydra graph is not initialized.\n";
+        return {};
+    }
 
-    // Initialize a pointer to traverse the hydra tree
-    hydra* current_node = &hydra_graph;
+    // Add the root hydra to the path
+    current_hydra.emplace_back(hydra_graph);
+
+    // Initialize a shared_ptr to traverse the hydra tree
+    std::shared_ptr<hydra> current_node = hydra_graph;
 
     // Traverse the first child recursively until a leaf is found
-    while (!current_node->children.empty()) { // Direct access to 'children'
-        std::shared_ptr<hydra> child_ptr = current_node->children.front(); // Direct access to 'children'
+    while (!current_node->children.empty()) {
+        std::shared_ptr<hydra> child_ptr = current_node->children.front();
         if (child_ptr) {
-            current_hydra.emplace_back(*child_ptr);
-            current_node = child_ptr.get();
+            current_hydra.emplace_back(child_ptr);
+            current_node = child_ptr;
         }
         else {
+            std::cerr << "Encountered a null child hydra. Stopping traversal.\n";
             break; // No valid child found
         }
     }
 
-    // At this point, current_node points to the leaf hydra
     // Return the list of targets in the leaf hydra
     return current_node->target_indices;
 }
@@ -513,13 +525,20 @@ void context_t::select_targets(const std::vector<int>& targets) {
     }
 }
 
+// Selects targets based on the current leaf hydra
 void context_t::select_targets() {
+    // Check if current_hydra is not empty
+    if (current_hydra.empty()) {
+        std::cerr << "Error: current_hydra is empty. Cannot select targets.\n";
+        return;
+    }
+
     // Access the current leaf hydra (last hydra in the current_hydra path)
-    hydra& current_leaf = current_hydra.back().get();
+    std::shared_ptr<hydra> current_leaf = current_hydra.back();
 
     // Extract target indices from the current leaf hydra
-    std::vector<int> targets = current_leaf.target_indices;
-  
+    std::vector<int> targets = current_leaf->target_indices;
+
     // Pass the extracted targets to the original select_targets function
     select_targets(targets);
 }
@@ -532,10 +551,10 @@ void context_t::hydra_replace(int i, int j) {
     }
 
     // Get the current leaf hydra (last in current_hydra)
-    hydra& current_leaf = current_hydra.back();
+    std::shared_ptr<hydra> current_leaf = current_hydra.back();
 
     // Create new target_indices by replacing i with j
-    std::vector<int> new_targets = current_leaf.target_indices;
+    std::vector<int> new_targets = current_leaf->target_indices;
 
     // Check if target i exists in the current leaf hydra
     auto it = std::find(new_targets.begin(), new_targets.end(), i);
@@ -547,47 +566,42 @@ void context_t::hydra_replace(int i, int j) {
     *it = j; // Replace the first occurrence of i with j
 
     // Create a new hydra with the updated targets and copy 'proved' from current_leaf
-    hydra new_hydra;
-    new_hydra.target_indices = new_targets;
-    new_hydra.proved = current_leaf.proved; // Copy the 'proved' member
+    std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_targets, current_leaf->proved);
 
     // Check if the current leaf hydra has only target j (after replacement)
-    if (current_leaf.target_indices.size() == 1 && current_leaf.target_indices[0] == j) {
-        // Create a shared_ptr for the new hydra
-        std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_hydra);
-
+    if (current_leaf->target_indices.size() == 1 && current_leaf->target_indices[0] == j) {
         // Attach the new hydra as the sole child of the current leaf
-        current_leaf.add_child(new_hydra_ptr);
+        current_leaf->add_child(new_hydra_ptr);
 
         // Make the new hydra the current leaf by appending it to current_hydra
-        current_hydra.emplace_back(*new_hydra_ptr);
+        current_hydra.emplace_back(new_hydra_ptr);
     }
     else {
         // If there are multiple targets, partition the new hydra
-        std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_hydra);
         std::vector<std::shared_ptr<hydra>> partitioned_hydras = partition_hydra(*new_hydra_ptr);
 
         // Attach all partitioned hydras as children of the current leaf
         for (auto& hyd_ptr : partitioned_hydras) {
-            current_leaf.add_child(hyd_ptr);
+            current_leaf->add_child(hyd_ptr);
         }
 
         // Make the first partitioned hydra the new current leaf
         if (!partitioned_hydras.empty()) {
-            current_hydra.emplace_back(*partitioned_hydras[0]);
+            current_hydra.emplace_back(partitioned_hydras[0]);
         }
     }
 }
 
+// Replaces target i with j in all restrictions
 void context_t::restrictions_replace(int i, int j) {
     for (size_t k = 0; k < tableau.size(); ++k) {
         tabline_t& tabline = tableau[k];
 
         if (!tabline.dead) {
-            // find i in restrictions
+            // Find i in restrictions
             auto it = std::find(tabline.restrictions.begin(), tabline.restrictions.end(), i);
             if (it != tabline.restrictions.end()) {
-                // add j to restrictions
+                // Add j to restrictions
                 tabline.restrictions.push_back(j);
             }
         }
@@ -602,25 +616,25 @@ void context_t::hydra_split(int i, int j1, int j2) {
     }
 
     // Get the current leaf hydra
-    hydra& current_leaf = current_hydra.back();
+    std::shared_ptr<hydra> current_leaf = current_hydra.back();
 
     // Find target i in target_indices
-    auto it = std::find(current_leaf.target_indices.begin(), current_leaf.target_indices.end(), i);
-    if (it == current_leaf.target_indices.end()) {
+    auto it = std::find(current_leaf->target_indices.begin(), current_leaf->target_indices.end(), i);
+    if (it == current_leaf->target_indices.end()) {
         std::cerr << "Error: Target " << i << " not found in the current leaf hydra." << std::endl;
         return;
     }
 
     // Create two new target lists by replacing i with j1 and j2
-    std::vector<int> new_targets_j1 = current_leaf.target_indices;
+    std::vector<int> new_targets_j1 = current_leaf->target_indices;
     *std::find(new_targets_j1.begin(), new_targets_j1.end(), i) = j1;
 
-    std::vector<int> new_targets_j2 = current_leaf.target_indices;
+    std::vector<int> new_targets_j2 = current_leaf->target_indices;
     *std::find(new_targets_j2.begin(), new_targets_j2.end(), i) = j2;
 
     // Function to check for duplicate hydras based on target_indices
     auto is_duplicate = [&](const std::vector<int>& new_targets) -> bool {
-        for (const auto& child_ptr : current_leaf.children) {
+        for (const auto& child_ptr : current_leaf->children) {
             if (child_ptr->target_indices == new_targets) {
                 return true;
             }
@@ -633,17 +647,15 @@ void context_t::hydra_split(int i, int j1, int j2) {
 
     // Replacement j1
     if (!is_duplicate(new_targets_j1)) {
-        hydra new_hydra_j1(new_targets_j1, current_leaf.proved); // Copy 'proved'
-        std::shared_ptr<hydra> new_hydra_ptr_j1 = std::make_shared<hydra>(new_hydra_j1);
-        current_leaf.add_child(new_hydra_ptr_j1);
+        std::shared_ptr<hydra> new_hydra_ptr_j1 = std::make_shared<hydra>(new_targets_j1, current_leaf->proved);
+        current_leaf->add_child(new_hydra_ptr_j1);
         new_children.push_back(new_hydra_ptr_j1);
     }
 
     // Replacement j2
     if (!is_duplicate(new_targets_j2)) {
-        hydra new_hydra_j2(new_targets_j2, current_leaf.proved); // Copy 'proved'
-        std::shared_ptr<hydra> new_hydra_ptr_j2 = std::make_shared<hydra>(new_hydra_j2);
-        current_leaf.add_child(new_hydra_ptr_j2);
+        std::shared_ptr<hydra> new_hydra_ptr_j2 = std::make_shared<hydra>(new_targets_j2, current_leaf->proved);
+        current_leaf->add_child(new_hydra_ptr_j2);
         new_children.push_back(new_hydra_ptr_j2);
     }
 
@@ -653,7 +665,7 @@ void context_t::hydra_split(int i, int j1, int j2) {
     }
 
     // Update current_hydra to point to the first new child hydra
-    current_hydra.emplace_back(*new_children[0]);
+    current_hydra.emplace_back(new_children[0]);
 }
 
 void context_t::restrictions_split(int i, int j1, int j2) {
@@ -680,11 +692,11 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
     }
 
     // Get the current leaf hydra
-    hydra& current_leaf = current_hydra.back();
+    std::shared_ptr<hydra> current_leaf = current_hydra.back();
 
     // Verify that all targets in the list exist in the current leaf hydra
     for (const int& t : targets) {
-        if (std::find(current_leaf.target_indices.begin(), current_leaf.target_indices.end(), t) == current_leaf.target_indices.end()) {
+        if (std::find(current_leaf->target_indices.begin(), current_leaf->target_indices.end(), t) == current_leaf->target_indices.end()) {
             std::cerr << "Error: Target " << t << " not found in the current leaf hydra." << std::endl;
             return;
         }
@@ -692,9 +704,9 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
 
     // Create a new target list by removing all targets in 'targets' and adding 'j' once
     std::vector<int> new_targets;
-    new_targets.reserve(current_leaf.target_indices.size() - targets.size() + 1);
+    new_targets.reserve(current_leaf->target_indices.size() - targets.size() + 1);
 
-    for (const int& t : current_leaf.target_indices) {
+    for (const int& t : current_leaf->target_indices) {
         if (std::find(targets.begin(), targets.end(), t) == targets.end()) {
             new_targets.push_back(t);
         }
@@ -707,7 +719,7 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
 
     // Check if the new target list already exists among children hydras
     bool duplicate = false;
-    for (const auto& child_ptr : current_leaf.children) {
+    for (const auto& child_ptr : current_leaf->children) {
         if (child_ptr->target_indices == new_targets) {
             duplicate = true;
             break;
@@ -720,24 +732,19 @@ void context_t::hydra_replace_list(const std::vector<int>& targets, int j) {
     }
 
     // Create a new hydra with the updated targets and copy 'proved' from current_leaf
-    hydra new_hydra;
-    new_hydra.target_indices = new_targets;
-    new_hydra.proved = current_leaf.proved; // Copy the 'proved' member
- 
-    // Create a shared_ptr for the new hydra
-    std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_hydra);
+    std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(new_targets, current_leaf->proved);
 
     // Partition the new hydra if necessary
     std::vector<std::shared_ptr<hydra>> partitioned_hydras = partition_hydra(*new_hydra_ptr);
 
     // Attach all partitioned hydras as children of the current leaf
     for (auto& hyd_ptr : partitioned_hydras) {
-        current_leaf.add_child(hyd_ptr);
+        current_leaf->add_child(hyd_ptr);
     }
 
     // Make the first partitioned hydra the new current leaf
     if (!partitioned_hydras.empty()) {
-        current_hydra.emplace_back(*partitioned_hydras[0]);
+        current_hydra.emplace_back(partitioned_hydras[0]);
     }
 }
 
@@ -830,18 +837,16 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
 
     // Create new hydras for each partition
     std::vector<std::shared_ptr<hydra>> new_hydras;
+    new_hydras.reserve(partitions.size()); // Optional: reserve space to optimize
+
     for (const auto& [root, partition_targets] : partitions) {
         if (partition_targets.empty()) {
             continue; // Skip empty partitions
         }
 
-        // Initialize proved with the copied 'proved' from the original hydra
-        // Since 'proved' is a list of lists of assumptions under which the hydra has been proved,
-        // and no computation of assumptions is needed, we simply copy the 'proved' member.
-
         // Create a new hydra for this partition
         std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(
-            partition_targets,
+            partition_targets, // Passed by value; hydra constructor copies
             h.proved // Copy the 'proved' member from the original hydra
         );
 

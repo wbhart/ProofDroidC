@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -Wall
+CXXFLAGS = -Wall -g
 
 # PackCC tool for PEG parsing
 PACKCC = packcc

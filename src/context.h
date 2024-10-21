@@ -92,7 +92,7 @@ public:
 
     // Hydra graph representing the target tree.
     // Initialized to be empty when a context_t instance is created.
-    hydra hydra_graph;
+    std::shared_ptr<hydra> hydra_graph;
 
     // Initializes hydras based on the tableau
     void initialize_hydras();
@@ -102,8 +102,8 @@ public:
     std::vector<int> get_hydra();
 
     // Path to current hydra (list of references to hydras along the way)
-    std::vector<std::reference_wrapper<hydra>> current_hydra;
-    
+    std::vector<std::shared_ptr<hydra>> current_hydra;
+        
     // Lines already dealt with (used for incremental completion checking)
     int upto = 0;
 

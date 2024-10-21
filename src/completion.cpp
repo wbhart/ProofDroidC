@@ -16,6 +16,7 @@
 
 // Define DEBUG_STEP_2 to enable debug traces for Step 2
 #define DEBUG_STEP_2 0
+#define DEBUG_CHECK 0
 
 bool check_done(context_t& ctx) {
     // Step 1: Negate formulas of all non-target lines starting from 'upto'
@@ -190,8 +191,11 @@ bool check_done(context_t& ctx) {
     }
 
     // Access the current leaf hydra (last entry in current_hydra)
-    hydra& current_leaf_hydra = ctx.current_hydra.back().get();
-    std::vector<int> target_indices = current_leaf_hydra.target_indices;
+        // Access the current leaf hydra as a shared_ptr
+    std::shared_ptr<hydra> current_leaf_hydra = ctx.current_hydra.back();
+
+    // Extract target indices from the current leaf hydra
+    std::vector<int> target_indices = current_leaf_hydra->target_indices;
 
     // Ensure there is at least one target
     if (target_indices.empty()) {
@@ -311,14 +315,14 @@ bool check_done(context_t& ctx) {
 
     if (simultaneous_unification_found) {
         // Step 6: Add the merged assumptions to the current leaf hydra
-        bool add_success = current_leaf_hydra.add_assumption(successful_merged_assumptions);
+        bool add_success = current_leaf_hydra->add_assumption(successful_merged_assumptions);
 
         if (add_success) {
             // Keep removing proved targets and their parents
             bool remove_hydra = true;
             
-            // Initialize a pointer to the current hydra
-            hydra* current_leaf_hydra_ptr = &current_leaf_hydra;
+            // Initialize a shared_ptr to the current hydra
+            std::shared_ptr<hydra> current_leaf_hydra_ptr = current_leaf_hydra;
             std::vector<int> target_indices_copy = target_indices; // Make a copy to avoid modifying during loop
 
             while (remove_hydra) {
@@ -338,7 +342,10 @@ bool check_done(context_t& ctx) {
                     std::cout << "Target(s) " << targets_proved << " proved.\n";
                 }
 
+#if DEBUG_CHECK
                 ctx.print_hydras();
+                std::cout << std::endl;
+#endif
 
                 // Set targets to not active and dead in the tableau
                 for (int target_idx : target_indices_copy) {
@@ -346,40 +353,45 @@ bool check_done(context_t& ctx) {
                     ctx.tableau[target_idx].dead = true;
                 }
 
-                // Store a pointer to the current hydra before popping
-                hydra* current_hydra_ptr = current_leaf_hydra_ptr;
+                // Store a shared_ptr to the current hydra before popping
+                std::shared_ptr<hydra> current_hydra_ptr = current_leaf_hydra_ptr;
 
                 // Remove the current leaf hydra from current_hydra
                 ctx.current_hydra.pop_back();
 
                 // Detach the current hydra from its parent hydra in the hydra graph
                 if (!ctx.current_hydra.empty()) {
-                    hydra& parent_hydra_ref = ctx.current_hydra.back().get();
-                    hydra* parent_hydra_ptr = &parent_hydra_ref;
-                    auto& children = parent_hydra_ref.children;
+                    // Access the parent hydra as a shared_ptr
+                    std::shared_ptr<hydra> parent_hydra_ptr = ctx.current_hydra.back();
+                    
+                    // Access the children vector of the parent hydra
+                    auto& children = parent_hydra_ptr->children;
 
+#if DEBUG_CHECK
                     std::cout << "current_leaf_hydra" << std::endl;
-                    parent_hydra_ref.print_targets();
-                    std::cout << "\ncurrent_hydra_ref" << std::endl;
+                    parent_hydra_ptr->print_targets();
+                    std::cout << std::endl;
+
+                    std::cout << "current_hydra_ref" << std::endl;
                     current_hydra_ptr->print_targets();
                     std::cout << std::endl;
-                    
+#endif
+
                     // Remove the child hydra from parent's children
                     children.erase(std::remove_if(children.begin(), children.end(),
                         [&](const std::shared_ptr<hydra>& child_ptr) {
-                            return child_ptr.get() == current_hydra_ptr;
+                            return child_ptr == current_hydra_ptr;
                         }), children.end());
-
-                    std::cout << "after" << std::endl;
 
                     // Now set current_leaf_hydra_ptr to the parent hydra
                     current_leaf_hydra_ptr = parent_hydra_ptr;
                     target_indices_copy = current_leaf_hydra_ptr->target_indices;
 
-                    // Debug: Print updated target_indices_copy
+#if DEBUG_CHECK
                     std::cout << "current_hydra_ref" << std::endl;
-                    current_hydra_ptr->print_targets();
+                    current_hydra_ptr->print_targets(); // Ensure current_hydra_ptr is a std::shared_ptr<hydra>
                     std::cout << std::endl;
+#endif
 
                     // Determine if we need to remove the parent hydra as well
                     remove_hydra = children.empty();

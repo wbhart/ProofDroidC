@@ -13,6 +13,8 @@
 #include <sstream>
 #include <set>
 
+#define DEBUG_HYDRAS 0 // Whether to print hydras after every move in semiautomatic mode
+
 // Enum representing the possible user options
 enum class option_t {
     OPTION_QUIT,
@@ -597,7 +599,9 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             print_tableau(tab_ctx);
             std::cout << std::endl;
 
+#if DEBUG_HYDRAS
             tab_ctx.print_hydras();
+#endif
 
             // Before next prompt, re-print the summary of options
             print_summary(semi_auto_active_options);

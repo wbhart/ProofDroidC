@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -422,7 +422,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         new_tabline.target = true;
 
         // Negate the result and store in the negation field
-        node* neg_result = negate_node(deep_copy(result));
+        node* neg_result = negate_node(deep_copy(result), true);
         new_tabline.negation = neg_result;
     }
 
@@ -528,7 +528,7 @@ bool move_di(context_t& tab_ctx, size_t start) {
             }
             else {
                 // Original is a target, new tablines are targets
-                node* neg_P = negate_node(deep_copy(P));
+                node* neg_P = negate_node(deep_copy(P), true);
 
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
 
@@ -601,7 +601,7 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             }
             else {
                 // Original is a target, new tablines are targets
-                node* neg_P = negate_node(deep_copy(P));
+                node* neg_P = negate_node(deep_copy(P), true);
 
                 tabline_t new_tabline_P(deep_copy(P), neg_P);
 
@@ -1003,8 +1003,8 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         node* P_and_Q = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy1, Q_copy });
                         node* P_and_R = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy2, R_copy });
 
-                        node* neg_P_and_Q = negate_node(deep_copy(P_and_Q));
-                        node* neg_P_and_R = negate_node(deep_copy(P_and_R));
+                        node* neg_P_and_Q = negate_node(deep_copy(P_and_Q), true);
+                        node* neg_P_and_R = negate_node(deep_copy(P_and_R), true);
 
                         // Create new tablines as targets
                         tabline_t new_tabline_neg_P_and_Q(P_and_Q, neg_P_and_Q);
@@ -1127,8 +1127,9 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 // Deep copy P and Q
                 node* P_copy = deep_copy(P);
                 node* Q_copy = deep_copy(Q);
+                P_copy = disjunction_to_implication(P_copy);
                 node* neg_P_copy = negate_node(deep_copy(P));
-                node* neg_Q_copy = negate_node(deep_copy(Q));
+                node* neg_Q_copy = negate_node(deep_copy(Q), true);
 
                 // Create new target tablines
                 tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming constructor takes formula and negation
@@ -1216,13 +1217,13 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 new_tabline_P_implies_Q.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
                 new_tabline_Q_implies_P.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
 
-                // Append new target tablines to the tableau
-                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
-                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
-
                 // Mark the original equivalence as inactive and dead
                 tabline.active = false;
                 tabline.dead = true;
+
+                // Append new target tablines to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
+                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
 
                 moved = true;
             }
@@ -1262,10 +1263,6 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 new_tabline_P_implies_Q.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
                 new_tabline_Q_implies_P.justification = { Reason::MaterialEquivalence, { static_cast<int>(i) } };
 
-                // Append new target tablines to the tableau
-                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
-                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
-
                 // **Critical Fix: Set flags before hydra operations**
                 // Already set flags before modifying the vector
 
@@ -1273,6 +1270,10 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 tabline.active = false;
                 tabline.dead = true;
 
+                // Append new target tablines to the tableau
+                tab_ctx.tableau.push_back(new_tabline_P_implies_Q);
+                tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
+                
                 // Split the hydra and select targets
                 tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
@@ -1316,6 +1317,7 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     // Deep copy P and Q
     node* P_copy = deep_copy(P);
     node* Q_copy = deep_copy(Q);
+    Q_copy = disjunction_to_implication(Q_copy);
     node* neg_Q_copy = negate_node(deep_copy(Q)); // For the new target Q
 
     // Create new hypothesis P

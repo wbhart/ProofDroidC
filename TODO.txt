@@ -1,10 +1,8 @@
 Critical:
 
-* Add material equivalence option to manual mode
+* Segfault in set4 (without valgrind)
 
-* When doing material equivalence (and possibly other moves), cleanup moves are not
-  done on both new targets, only on the one selected (see test4 after first impl
-  proved)
+* Add material equivalence option to manual mode
 
 * Exiting semiautomated mode messes up the hydra graph
 
@@ -34,7 +32,7 @@ Critical:
 * Should skolem functions be renamed to prevent capture in modus_ponens?
   What about non-skolem functions?
 
-* Add special implication-to-disjunction case to modus_ponens.
+* Add special implication-as-disjunction case to modus_ponens.
 
 * Deal with modus ponens case where single unit clause is a disjunction.
 

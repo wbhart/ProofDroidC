@@ -4,16 +4,22 @@
 #include <algorithm>
 #include <unordered_set>
 
-// Default Constructor
-hydra::hydra() : target_indices(), proved(), children() {}
+#include "hydra.h"
 
-// Parameterized Constructor
-hydra::hydra(const std::vector<int>& targets, const std::vector<std::vector<int>>& proved_assumptions)
-    : target_indices(targets), proved(proved_assumptions), children() {}
+// Initialize static member
+int hydra::id_counter = 0;
 
-// Destructor
-hydra::~hydra() {
-    // No explicit cleanup required as we're using smart pointers
+// Default constructor implementation
+hydra::hydra() : id(id_counter++) {
+}
+
+void hydra::print_targets() const {
+    std::cout << "{";
+    for (size_t i = 0; i < target_indices.size(); ++i) {
+        if (i != 0) std::cout << ", ";
+        std::cout << target_indices[i];
+    }
+    std::cout << "}";
 }
 
 // Adds a target index to the node
@@ -117,18 +123,5 @@ bool hydra::add_assumption(const std::vector<int>& new_assumption) {
 
 // Adds a child hydra node
 void hydra::add_child(const std::shared_ptr<hydra>& child) {
-    if (child) {
-        children.push_back(child);
-    }
-}
-
-void hydra::print_targets() {
-    std::cout << "{";
-    for (size_t i = 0; i < target_indices.size(); i++) {
-        std::cout << target_indices[i] + 1;
-        if (i < target_indices.size() - 1) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << "}";
+    children.emplace_back(child);
 }
