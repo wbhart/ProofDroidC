@@ -101,6 +101,8 @@ node* negate_node(node* n, bool rewrite_disj) {
                 children.push_back(left_neg);
                 children.push_back(right_neg);
                 node* res = new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                n->children.clear();
+                delete n;
                 return rewrite_disj ? disjunction_to_implication(res) : res;
             }
             else if (n->symbol == SYMBOL_OR) {
@@ -110,6 +112,8 @@ node* negate_node(node* n, bool rewrite_disj) {
                 std::vector<node*> children;
                 children.push_back(left_neg);
                 children.push_back(right_neg);
+                n->children.clear();
+                delete n;
                 return new node(LOGICAL_BINARY, SYMBOL_AND, children);
             }
             else if (n->symbol == SYMBOL_IMPLIES) {
@@ -123,6 +127,8 @@ node* negate_node(node* n, bool rewrite_disj) {
                 std::vector<node*> children;
                 children.push_back(phi);
                 children.push_back(negated_psi);
+                n->children.clear();
+                delete n;
                 return new node(LOGICAL_BINARY, SYMBOL_AND, children);
             }
             else if (n->symbol == SYMBOL_IFF) {
@@ -148,6 +154,8 @@ node* negate_node(node* n, bool rewrite_disj) {
                 children.push_back(left_clause);
                 children.push_back(right_clause);
                 node* res = new node(LOGICAL_BINARY, SYMBOL_OR, children);
+                n->children.clear();
+                delete n;
                 return rewrite_disj ? disjunction_to_implication(res) : res;
             }
             else {
@@ -160,15 +168,14 @@ node* negate_node(node* n, bool rewrite_disj) {
             // Negate quantifiers: ¬∀x φ ≡ ∃x ¬φ and ¬∃x φ ≡ ∀x ¬φ
             symbol_enum new_quantifier = (n->symbol == SYMBOL_FORALL) ? SYMBOL_EXISTS : SYMBOL_FORALL;
 
-            if (n->children.size() != 2) {
-                throw std::logic_error("Quantifier node must have exactly two children");
-            }
-
             node* variable = n->children[0];
             node* formula = n->children[1];
 
             // Clear children to prevent deletion
             n->children.clear();
+            
+            // Clean up original node
+            delete n;
 
             // Negate the formula
             node* negated_formula = negate_node(formula);
@@ -187,10 +194,14 @@ node* negate_node(node* n, bool rewrite_disj) {
         }
 
         case CONSTANT: {
-            if (n->symbol == SYMBOL_TOP)
+            if (n->symbol == SYMBOL_TOP) {
+                delete n;
                 return new node(CONSTANT, SYMBOL_BOT);
-            else if (n->symbol == SYMBOL_BOT)
+            }
+            else if (n->symbol == SYMBOL_BOT) {
+                delete n;
                 return new node(CONSTANT, SYMBOL_TOP);
+            }
             else
                 throw std::logic_error("Cannot negate a term. Only predicates and logical formulas can be negated.");
         }

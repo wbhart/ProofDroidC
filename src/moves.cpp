@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -158,6 +158,8 @@ node* skolem_form(context_t& ctx, node* formula) {
 
     // Apply all accumulated substitutions to the formula
     node* skolemized_formula = substitute(formula, subst);
+    cleanup_subst(subst);
+    delete formula;
 
     return skolemized_formula;
 }
@@ -199,6 +201,12 @@ bool skolemize_all(context_t& tab_ctx, size_t start) {
     }
 
     return moved;
+}
+
+void cleanup_conjuncts(std::vector<node*> conjuncts) {
+    for (auto conjunct : conjuncts)
+        delete conjunct;
+    conjuncts.clear();
 }
 
 node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
@@ -249,6 +257,7 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     if (unit_clauses.size() != conjuncts.size()) {
         std::cerr << "Error: Number of unit clauses (" << unit_clauses.size()
                   << ") does not match number of antecedent conjuncts (" << conjuncts.size() << ")." << std::endl;
+        cleanup_conjuncts(conjuncts);
         delete implication_copy;
         return nullptr;
     }
@@ -260,24 +269,14 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
         node* conjunct = conjuncts[i];
         node* unit = unit_clauses[i];
 
-        // a. Deep copy the conjunct to avoid modifying the implication_copy
-        node* conjunct_copy = deep_copy(conjunct);
-        if (!conjunct_copy) {
-            std::cerr << "Error: Failed to deep copy conjunct " << (i + 1) << "." << std::endl;
-            // Clean up and exit
-            delete implication_copy;
-            cleanup_subst(combined_subst);
-            return nullptr;
-        }
-
         // e. Unify the renamed conjunct with the unit clause
         Substitution subst;
-        std::optional<Substitution> maybe_subst = unify(conjunct_copy, unit, subst);
+        std::optional<Substitution> maybe_subst = unify(conjunct, unit, subst);
         if (!maybe_subst.has_value()) {
             std::cerr << "Error: Unification failed between conjunct " << (i + 1) << " and unit clause." << std::endl;
-            std::cerr << "Conjunct: " << conjunct_copy->to_string(UNICODE) 
+            std::cerr << "Conjunct: " << conjunct->to_string(UNICODE) 
                       << " | Unit Clause: " << unit->to_string(UNICODE) << std::endl;
-            delete conjunct_copy;
+            cleanup_conjuncts(conjuncts);
             delete implication_copy;
             cleanup_subst(combined_subst);
             return nullptr;
@@ -290,7 +289,7 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
             if (it != combined_subst.end()) {
                 if (it->second->to_string(REPR) != value->to_string(REPR)) {
                     std::cerr << "Error: Conflicting substitutions for variable '" << key << "'." << std::endl;
-                    delete conjunct_copy;
+                    cleanup_conjuncts(conjuncts);
                     delete implication_copy;
                     cleanup_subst(combined_subst);
                     return nullptr;
@@ -304,10 +303,10 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
                 combined_subst[key] = value_copy; // Store the deep copy
             }
         }
-
-        // g. Clean up the conjunct copy
-        delete conjunct_copy;
     }
+
+    // g. Clean up the conjuncts
+    cleanup_conjuncts(conjuncts);
 
     // 9. Substitute the consequent with the combined substitution
     node* substituted_consequent = substitute(consequent, combined_subst);
