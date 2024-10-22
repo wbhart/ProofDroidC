@@ -33,3 +33,9 @@ node* substitute(node* formula, const Substitution& subst) {
     return deep_copy(formula);
 }
 
+void cleanup_subst(Substitution& subst) {
+    for (auto& [key, value] : subst) {
+        delete value;
+    }
+    subst.clear();
+}

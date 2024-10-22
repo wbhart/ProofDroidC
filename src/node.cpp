@@ -19,7 +19,7 @@ node* deep_copy(const node* n) {
 
     switch (n->type) {
         case VARIABLE:
-            copied_node = new node(VARIABLE, n->name());
+            copied_node = new node(VARIABLE);
             copied_node->vdata = deep_copy(n->vdata);
             break;
         case CONSTANT:

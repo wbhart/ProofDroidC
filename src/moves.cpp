@@ -262,33 +262,46 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
         // a. Deep copy the conjunct to avoid modifying the implication_copy
         node* conjunct_copy = deep_copy(conjunct);
+        if (!conjunct_copy) {
+            std::cerr << "Error: Failed to deep copy conjunct " << (i + 1) << "." << std::endl;
+            // Clean up and exit
+            delete implication_copy;
+            cleanup_subst(combined_subst);
+            return nullptr;
+        }
 
         // e. Unify the renamed conjunct with the unit clause
         Substitution subst;
         std::optional<Substitution> maybe_subst = unify(conjunct_copy, unit, subst);
         if (!maybe_subst.has_value()) {
             std::cerr << "Error: Unification failed between conjunct " << (i + 1) << " and unit clause." << std::endl;
-            std::cerr << conjunct_copy->to_string(UNICODE) << " " << unit->to_string(UNICODE) << std::endl;
+            std::cerr << "Conjunct: " << conjunct_copy->to_string(UNICODE) 
+                      << " | Unit Clause: " << unit->to_string(UNICODE) << std::endl;
             delete conjunct_copy;
             delete implication_copy;
+            cleanup_subst(combined_subst);
             return nullptr;
         }
 
         // f. Combine substitutions, ensuring no conflicts
         for (const auto& [key, value] : maybe_subst.value()) {
             // Check if the variable already has a substitution
-            if (combined_subst.find(key) != combined_subst.end()) {
-                if (combined_subst[key]->to_string(REPR) != value->to_string(REPR)) {
+            auto it = combined_subst.find(key);
+            if (it != combined_subst.end()) {
+                if (it->second->to_string(REPR) != value->to_string(REPR)) {
                     std::cerr << "Error: Conflicting substitutions for variable '" << key << "'." << std::endl;
                     delete conjunct_copy;
                     delete implication_copy;
+                    cleanup_subst(combined_subst);
                     return nullptr;
                 }
                 // Else, same substitution; no action needed
             }
             else {
                 // Add the substitution to the combined substitution
-                combined_subst[key] = deep_copy(value); // Deep copy to own the substitution
+                node* value_copy = deep_copy(value); // Deep copy to own the substitution
+
+                combined_subst[key] = value_copy; // Store the deep copy
             }
         }
 
@@ -298,8 +311,16 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
     // 9. Substitute the consequent with the combined substitution
     node* substituted_consequent = substitute(consequent, combined_subst);
+    if (!substituted_consequent) {
+        std::cerr << "Error: Substitution failed on the consequent." << std::endl;
+        // Clean up and exit
+        delete implication_copy;
+        cleanup_subst(combined_subst);
+        return nullptr;
+    }
     
-    // 10. Clean up and return the result
+    // 10. Clean up combined_subst and implication_copy
+    cleanup_subst(combined_subst);
     delete implication_copy;
 
     return substituted_consequent;

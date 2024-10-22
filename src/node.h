@@ -64,6 +64,9 @@ public:
     node(node_type t, const std::string& name)
         : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, 0, name}), children() {}
 
+    node(node_type t)
+        : type(t), symbol(SYMBOL_NONE), vdata(nullptr), children() {}
+
     node(node_type t, symbol_enum sym)
         : type(t), symbol(sym), vdata(nullptr), children() {}
 
@@ -80,6 +83,7 @@ public:
         for (auto child : children) {
             delete child;
         }
+        children.clear();
     }
 
     bool is_predicate() const {

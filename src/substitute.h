@@ -13,5 +13,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
 
 node* substitute(node* formula, const Substitution& subst);
 
+void cleanup_subst(Substitution& subst);
+
 #endif // SUBSTITUTE_H
 
