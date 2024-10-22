@@ -23,14 +23,13 @@ node* substitute(node* formula, const Substitution& subst) {
         node* substituted_child = substitute(child, subst);
         if (substituted_child != child) {
             formula->children[i] = substituted_child;
-            
-	    delete child;
+            delete child;
         }
     }
 
     // Functions are not substituted for now
 
     // Return the modified formula node
-    return formula;
+    return deep_copy(formula);
 }
 

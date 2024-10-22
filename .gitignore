@@ -3,4 +3,3 @@ build/
 src/grammar.c
 src/grammar.h
 proof_droid
-test.thm

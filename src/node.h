@@ -77,6 +77,9 @@ public:
         if (vdata) {
             delete vdata;
         }
+        for (auto child : children) {
+            delete child;
+        }
     }
 
     bool is_predicate() const {

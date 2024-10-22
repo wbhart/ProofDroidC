@@ -126,7 +126,7 @@ node* negate_node(node* n, bool rewrite_disj) {
                 return new node(LOGICAL_BINARY, SYMBOL_AND, children);
             }
             else if (n->symbol == SYMBOL_IFF) {
-                // ¬(φ ↔ ψ) ≡ (φ ∧ ¬ψ) ∨ (¬φ ∧ ψ)
+                // ¬(φ ↔ ψ) ≡ (φ ∧ ¬ψ) ∨ (ψ ∧ ¬φ)
                 node* phi = n->children[0];
                 node* psi = n->children[1];
                 node* neg_phi = negate_node(deep_copy(phi));
@@ -138,10 +138,10 @@ node* negate_node(node* n, bool rewrite_disj) {
                 left_children.push_back(phi);
                 left_children.push_back(neg_psi);
                 node* left_clause = new node(LOGICAL_BINARY, SYMBOL_AND, left_children);
-                // Create (¬φ ∧ ψ)
+                // Create (ψ ∧ ¬φ)
                 std::vector<node*> right_children;
-                right_children.push_back(neg_phi);
                 right_children.push_back(psi);
+                right_children.push_back(neg_phi);
                 node* right_clause = new node(LOGICAL_BINARY, SYMBOL_AND, right_children);
                 // Create OR node
                 std::vector<node*> children;
@@ -340,7 +340,7 @@ void rename_vars(node* root, const std::vector<std::pair<std::string, std::strin
 node* disjunction_to_implication(node* formula) {
    if (formula->is_disjunction()) {
        node* antecedent = formula->children[0];
-       node* negated = negate_node(antecedent);
+       node* negated = negate_node(antecedent, true);
 
        std::vector<node*> children;
        children.push_back(negated);
@@ -349,6 +349,8 @@ node* disjunction_to_implication(node* formula) {
        node* impl = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
 
        formula->children.clear();
+
+       delete formula;
 
        return impl;
    } else
