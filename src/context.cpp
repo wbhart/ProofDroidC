@@ -425,13 +425,18 @@ void context_t::print_hydras() {
 }
 
 void context_t::initialize_hydras() {
+    // exit if already initialized
+    if (hydra_graph) {
+        return;
+    }
+    
     // Initialize the root hydra with no targets and empty proved using make_shared
     hydra_graph = std::make_shared<hydra>(
         std::vector<int>{}, // Empty targets
         std::vector<std::vector<int>>{} // Empty proved
     );
 
-    // Iterate through the tableau to add child hydras for target lines
+    // Iterate through the tableau to add child hydras for active target lines
     for (size_t i = 0; i < tableau.size(); ++i) {
         const tabline_t& tabline = tableau[i];
 

@@ -14,9 +14,8 @@
 #include <vector>
 #include <string>
 
-// Define DEBUG_STEP_2 to enable debug traces for Step 2
-#define DEBUG_STEP_2 0
-#define DEBUG_CHECK 0
+#define DEBUG_STEP_2 0 // enable debug traces for Step 2
+#define DEBUG_CHECK 1 // print tableaus and hydras for check_done
 
 bool check_done(context_t& ctx, bool apply_cleanup) {
     // Step 1: Negate formulas of all non-target lines starting from 'upto'

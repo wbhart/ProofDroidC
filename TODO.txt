@@ -1,11 +1,5 @@
 Critical:
 
-* Segfault in set4 (without valgrind)
-
-* Add material equivalence option to manual mode
-
-* Exiting semiautomated mode messes up the hydra graph
-
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
 
