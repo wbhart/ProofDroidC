@@ -161,7 +161,7 @@ node* skolem_form(context_t& ctx, node* formula) {
     cleanup_subst(subst);
     delete formula;
 
-    return skolemized_formula;
+    return disjunction_to_implication(skolemized_formula);
 }
 
 bool skolemize_all(context_t& tab_ctx, size_t start) {
@@ -322,7 +322,7 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     cleanup_subst(combined_subst);
     delete implication_copy;
 
-    return substituted_consequent;
+    return disjunction_to_implication(substituted_consequent);
 }
 
 node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
