@@ -351,7 +351,7 @@ void rename_vars(node* root, const std::vector<std::pair<std::string, std::strin
 node* disjunction_to_implication(node* formula) {
    if (formula->is_disjunction()) {
        node* antecedent = formula->children[0];
-       node* negated = negate_node(antecedent, true);
+       node* negated = negate_node(antecedent);
 
        std::vector<node*> children;
        children.push_back(negated);

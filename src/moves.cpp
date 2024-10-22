@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 0
+#define DEBUG_CLEANUP 1
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -161,7 +161,7 @@ node* skolem_form(context_t& ctx, node* formula) {
     cleanup_subst(subst);
     delete formula;
 
-    return disjunction_to_implication(skolemized_formula);
+    return skolemized_formula;
 }
 
 bool skolemize_all(context_t& tab_ctx, size_t start) {
@@ -178,11 +178,14 @@ bool skolemize_all(context_t& tab_ctx, size_t start) {
             if (skolemized != tabline.formula) { // if anything changed
                 moved = true;
 
-                // Replace the original formula with the skolemized formula
-                tabline.formula = skolemized;
-
                 // If the formula is a target, re-negate it
-                if (tabline.target) {
+                if (!tabline.target) {
+                    // Replace the original formula with the skolemized formula
+                    tabline.formula = disjunction_to_implication(skolemized);
+                } else {
+                    // Replace the original formula with the skolemized formula
+                    tabline.formula = skolemized;
+
                     // Delete existing negation to prevent memory leaks
                     delete tabline.negation;
 
@@ -322,7 +325,7 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     cleanup_subst(combined_subst);
     delete implication_copy;
 
-    return disjunction_to_implication(substituted_consequent);
+    return substituted_consequent;
 }
 
 node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
@@ -436,6 +439,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     if (forward) {
         // Insert as a hypothesis
         new_tabline.target = false;
+        new_tabline.formula = disjunction_to_implication(new_tabline.formula);
     }
     else {
         // Insert as a target
@@ -784,27 +788,49 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         node* R_copy1 = deep_copy(R);
                         node* R_copy2 = deep_copy(R);
 
-                        // Create new implications P → R and Q → R
-                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
-                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
+                        if (!equal(P_copy, R_copy1)) {
+                            // Create new implication P → R
+                            node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
+                            
+                            // Create new tabline as hypothesis
+                            tabline_t new_tabline_P_imp(P_imp_R);
+                            
+                            // Copy restrictions and assumptions
+                            new_tabline_P_imp.assumptions = tabline.assumptions;
+                            new_tabline_P_imp.restrictions = tabline.restrictions;
+                            
+                            // Set justification
+                            new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                            
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_P_imp);
+                        } else {
+                            // clean up unused nodes
+                            delete P_copy;
+                            delete R_copy1;
+                        }
 
-                        // Create new tablines as hypotheses
-                        tabline_t new_tabline_P_imp(P_imp_R); // Assuming constructor for hypothesis
-                        tabline_t new_tabline_Q_imp(Q_imp_R);
+                        if (!equal(Q_copy, R_copy2)) {
+                            // Create new implication Q → R
+                            node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
 
-                        // Copy restrictions and assumptions
-                        new_tabline_P_imp.assumptions = tabline.assumptions;
-                        new_tabline_P_imp.restrictions = tabline.restrictions;
-                        new_tabline_Q_imp.assumptions = tabline.assumptions;
-                        new_tabline_Q_imp.restrictions = tabline.restrictions;
-                
-                        // Set justifications
-                        new_tabline_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
-                        new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                            // Create new tabline as hypothesis
+                            tabline_t new_tabline_Q_imp(Q_imp_R);
 
-                        // Append new tablines to the tableau
-                        tab_ctx.tableau.push_back(new_tabline_P_imp);
-                        tab_ctx.tableau.push_back(new_tabline_Q_imp);
+                            // Copy restrictions and assumptions
+                            new_tabline_Q_imp.assumptions = tabline.assumptions;
+                            new_tabline_Q_imp.restrictions = tabline.restrictions;
+                    
+                            // Set justification
+                            new_tabline_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_Q_imp);
+                        } else {
+                            // clean up unused nodes
+                            delete Q_copy;
+                            delete R_copy2;
+                        }
 
                         moved = true;
                     }
@@ -947,27 +973,49 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         node* Q_copy = deep_copy(Q);
                         node* R_copy = deep_copy(R);
 
-                        // Create new implications P → Q and P → R
-                        node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy1, Q_copy });
-                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy2, R_copy });
+                        if (!equal(P_copy1, Q_copy)) {
+                            // Create new implications P → Q
+                            node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy1, Q_copy });
+                            
+                            // Create new tabline as hypothesis
+                            tabline_t new_tabline_P_imp_Q(P_imp_Q);
+                            
+                            // Copy restrictions and assumptions
+                            new_tabline_P_imp_Q.assumptions = tabline.assumptions;
+                            new_tabline_P_imp_Q.restrictions = tabline.restrictions;
+                            
+                            // Set justification
+                            new_tabline_P_imp_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                            
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_P_imp_Q);
+                        } else {
+                            // clean up unused nodes
+                            delete P_copy1;
+                            delete Q_copy;
+                        }
 
-                        // Create new tablines as hypotheses
-                        tabline_t new_tabline_P_imp_Q(P_imp_Q);
-                        tabline_t new_tabline_P_imp_R(P_imp_R);
+                        if (!equal(P_copy2, R_copy)) {
+                            // Create new implications P → R
+                            node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy2, R_copy });
 
-                        // Copy restrictions and assumptions
-                        new_tabline_P_imp_Q.assumptions = tabline.assumptions;
-                        new_tabline_P_imp_Q.restrictions = tabline.restrictions;
-                        new_tabline_P_imp_R.assumptions = tabline.assumptions;
-                        new_tabline_P_imp_R.restrictions = tabline.restrictions;
+                            // Create new tabline as hypothesis
+                            tabline_t new_tabline_P_imp_R(P_imp_R);
+
+                            // Copy restrictions and assumptions
+                            new_tabline_P_imp_R.assumptions = tabline.assumptions;
+                            new_tabline_P_imp_R.restrictions = tabline.restrictions;
                 
-                        // Set justifications
-                        new_tabline_P_imp_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
-                        new_tabline_P_imp_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                            // Set justification
+                            new_tabline_P_imp_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
 
-                        // Append new tablines to the tableau
-                        tab_ctx.tableau.push_back(new_tabline_P_imp_Q);
-                        tab_ctx.tableau.push_back(new_tabline_P_imp_R);
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_P_imp_R);
+                        } else {
+                            // clean up unused nodes
+                            delete P_copy2;
+                            delete R_copy;
+                        }
 
                         // Indicate that a move was made
                         moved = true;
