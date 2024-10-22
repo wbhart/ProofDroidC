@@ -1,5 +1,7 @@
 \forall X \forall Y (X = Y \iff (\forall x (x \in X \iff x \in Y)))
 \forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
+\forall X \forall Y (X = Y \iff X \subseteq Y \wedge Y \subseteq X)
+\forall X \forall Y \forall Z (X \subseteq Y \wedge Y \subseteq Z \implies X \subseteq Z)
 S \subseteq T
 T \subseteq U
 U \subseteq S

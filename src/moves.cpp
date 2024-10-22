@@ -942,13 +942,14 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         tabline.dead = true;
 
                         // Deep copy P, Q, R
-                        node* P_copy = deep_copy(antecedent);
+                        node* P_copy1 = deep_copy(antecedent);
+                        node* P_copy2 = deep_copy(antecedent);
                         node* Q_copy = deep_copy(Q);
                         node* R_copy = deep_copy(R);
 
                         // Create new implications P → Q and P → R
-                        node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, Q_copy });
-                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy });
+                        node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy1, Q_copy });
+                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy2, R_copy });
 
                         // Create new tablines as hypotheses
                         tabline_t new_tabline_P_imp_Q(P_imp_Q);
