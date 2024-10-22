@@ -18,7 +18,7 @@
 #define DEBUG_STEP_2 0
 #define DEBUG_CHECK 0
 
-bool check_done(context_t& ctx) {
+bool check_done(context_t& ctx, bool apply_cleanup) {
     // Step 1: Negate formulas of all non-target lines starting from 'upto'
     for (int j = ctx.upto; j < static_cast<int>(ctx.tableau.size()); ++j) {
         tabline_t& current_line = ctx.tableau[j];
@@ -413,11 +413,15 @@ bool check_done(context_t& ctx) {
 
             ctx.select_targets(new_targets);
 
-            ctx.upto = 0;
-            cleanup_moves(ctx, ctx.upto);
+            if (apply_cleanup) {
+                ctx.upto = 0;
+                cleanup_moves(ctx, ctx.upto);
 
-            // Check if done
-            return check_done(ctx);
+                // Check if done
+                return check_done(ctx);
+            } else {
+                return false; // Not fully proved yet
+            }
         }
         else {
             return false; // Not fully proved yet

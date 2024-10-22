@@ -31,7 +31,8 @@ enum class option_t {
     OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
     OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
     OPTION_NEGATED_IMPLICATION,
-    OPTION_CONDITIONAL_PREMISE
+    OPTION_CONDITIONAL_PREMISE,
+    OPTION_MATERIAL_EQUIVALENCE
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -47,18 +48,19 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_QUIT, "q", "quit", "Quit the program"},
     {option_t::OPTION_MANUAL, "m", "manual mode", "Enter manual mode"},
     {option_t::OPTION_SEMI_AUTOMATIC, "s", "semi-automatic mode", "Enter semi-automatic mode"}, // Newly added option
-    {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization"},
-    {option_t::OPTION_MODUS_PONENS, "p", "modus ponens", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
-    {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
+    {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization and Quantifier Elimination"},
+    {option_t::OPTION_MODUS_PONENS, "p", "modus ponens P → Q, P", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
+    {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens P → Q, ¬Q", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
     {option_t::OPTION_EXIT_SEMIAUTO, "x", "exit semiautomatic mode", "Exit semiautomatic mode"},
-    {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence", "Apply Conjunctive Idempotence P ∧ P -> P"},
-    {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence", "Apply Disjunctive Idempotence P ∨ P -> P"},
-    {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions", "Apply Split Conjunctions"},
-    {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication", "Apply Split Disjunctive Implication"},
-    {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication", "Apply Split Conjunctive Implication"},
-    {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication", "Apply Negated Implication"},
-    {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise", "Apply Conditional Premise: cp <index>"}
+    {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence P ∧ P", "Apply Conjunctive Idempotence"},
+    {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence P ∨ P", "Apply Disjunctive Idempotence"},
+    {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions P ∧ Q", "Apply Split Conjunctions"},
+    {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication P ∨ Q → R", "Apply Split Disjunctive Implication"},
+    {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication P → Q ∧ R", "Apply Split Conjunctive Implication"},
+    {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication ¬(P → Q)", "Apply Negated Implication"},
+    {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise (target) P → Q", "Apply Conditional Premise: cp <index>"},
+    {option_t::OPTION_MATERIAL_EQUIVALENCE, "me", "material equivalence P ↔ Q", "Apply material equivalence"}
 };
 
 // Function to print all active options in a concise summary
@@ -267,7 +269,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             continue;
         }
 
-        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', and 'cp', handle accordingly
+        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'me' and 'cp', handle accordingly
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS ||
             selected_option == option_t::OPTION_CONJ_IDEM ||
@@ -276,7 +278,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
             selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
             selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
-            selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+            selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
+            selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
             
             // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', and 'cp', handle without additional arguments
             if (selected_option == option_t::OPTION_CONJ_IDEM || 
@@ -285,43 +288,50 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
-                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+                selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
+                selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
                 
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
                     bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
                     bool applied = move_di(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
                     bool applied = move_sc(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
                     bool applied = move_sci(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
                     bool applied = move_sdi(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
                     bool applied = move_ni(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
+                    bool applied = move_me(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
                     }
                 } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
                     // Handle the new 'cp' move for Conditional Premise
@@ -347,7 +357,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                     bool cp_moved = conditional_premise(tab_ctx, target_index);
                     if (cp_moved) {
                         // Check if done
-                        check_done(tab_ctx);
+                        check_done(tab_ctx, false);
                     }
                 }
 
@@ -414,7 +424,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                     std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
                 } else {
                     // Check if done
-                    check_done(tab_ctx);
+                    check_done(tab_ctx, false);
                 }
 
                 std::cout << std::endl;
@@ -743,13 +753,14 @@ int main(int argc, char** argv) {
                         option_t::OPTION_SKOLEMIZE,
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_CONJ_IDEM,                      // Renamed Conjunctive Idempotence
-                        option_t::OPTION_DISJ_IDEM,                      // Added Disjunctive Idempotence
-                        option_t::OPTION_SPLIT_CONJUNCTION,               // Added Split Conjunctions
-                        option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,   // Added Split Conjunctive Implication
-                        option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,   // Existing Split Disjunctive Implication
-                        option_t::OPTION_NEGATED_IMPLICATION,            // Added Negated Implication
-                        option_t::OPTION_CONDITIONAL_PREMISE,            // Added Conditional Premise
+                        option_t::OPTION_CONJ_IDEM,
+                        option_t::OPTION_DISJ_IDEM,
+                        option_t::OPTION_SPLIT_CONJUNCTION,
+                        option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
+                        option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
+                        option_t::OPTION_NEGATED_IMPLICATION,
+                        option_t::OPTION_CONDITIONAL_PREMISE,
+                        option_t::OPTION_MATERIAL_EQUIVALENCE,
                         option_t::OPTION_EXIT_MANUAL,
                         option_t::OPTION_QUIT
                     };

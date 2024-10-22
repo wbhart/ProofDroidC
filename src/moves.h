@@ -67,6 +67,9 @@ bool move_sci(context_t& tab_ctx, size_t start = 0);
 // Split lines ¬(P -> Q) into P and ¬Q
 bool move_ni(context_t& tab_ctx, size_t start = 0);
 
+// Split P <-> Q into P -> Q and Q -> P
+bool move_me(context_t& tab_ctx, size_t start);
+
 // Conditional premise move: P -> Q to conditional hypothesis P and target Q
 bool conditional_premise(context_t& tab_ctx, int index);
 
