@@ -498,7 +498,6 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
             // Compare symbols and recursively compare both children
             if (a->symbol != b->symbol)
                 return false;
-            // Assuming LOGICAL_BINARY nodes have exactly two children
             if (!equal_helper(a->children[0], b->children[0], var_map))
                 return false;
             if (!equal_helper(a->children[1], b->children[1], var_map))
@@ -506,43 +505,10 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
             break;
 
         case UNARY_OP:
-            // Compare symbols and recursively compare single child
-            if (a->symbol != b->symbol)
-                return false;
-            // Assuming UNARY_OP nodes have exactly one child
-            if (!equal_helper(a->children[0], b->children[0], var_map))
-                return false;
-            break;
-
         case BINARY_OP:
-            // Compare symbols and recursively compare both children
-            if (a->symbol != b->symbol)
-                return false;
-            // Assuming BINARY_OP nodes have exactly two children
-            if (!equal_helper(a->children[0], b->children[0], var_map))
-                return false;
-            if (!equal_helper(a->children[1], b->children[1], var_map))
-                return false;
-            break;
-
         case UNARY_PRED:
-            // Compare symbols and recursively compare single child
-            if (a->symbol != b->symbol)
-                return false;
-            // Assuming UNARY_PRED nodes have exactly one child
-            if (!equal_helper(a->children[0], b->children[0], var_map))
-                return false;
-            break;
-
         case BINARY_PRED:
-            // Compare symbols and recursively compare both children
-            if (a->symbol != b->symbol)
-                return false;
-            // Assuming BINARY_PRED nodes have exactly two children
-            if (!equal_helper(a->children[0], b->children[0], var_map))
-                return false;
-            if (!equal_helper(a->children[1], b->children[1], var_map))
-                return false;
+            return (a->symbol == b->symbol);
             break;
 
         case APPLICATION:
