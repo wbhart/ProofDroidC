@@ -1348,7 +1348,7 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
                 
                 // Split the hydra and select targets
-                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1, true);
                 tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
 

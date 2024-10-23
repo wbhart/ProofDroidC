@@ -93,7 +93,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
             if (restrictions_ok && assumptions_ok) {
                 Substitution subst;
 
-                std::optional<Substitution> result = unify(current_line.negation, previous_line.formula, subst);
+                std::optional<Substitution> result = unify(current_line.negation, previous_line.formula, subst, true);
                 if (result.has_value()) {
 #if DEBUG_STEP_2
                     std::cout << "    Unification Successful between Line " << j 
@@ -295,7 +295,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
 
             Substitution new_subst = current_subst; // Copy current substitution
 
-            std::optional<Substitution> unif_result = unify(target_negation, hypothesis_formula, new_subst);
+            std::optional<Substitution> unif_result = unify(target_negation, hypothesis_formula, new_subst, true);
             if (unif_result.has_value()) {
                 // Continue to the next target with the updated substitution and merged assumptions
                 recurse(depth + 1, unif_result.value(), updated_merged_assumptions);

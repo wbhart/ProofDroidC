@@ -50,6 +50,7 @@ std::string append_unicode_subscript(const std::string& base, int index);
 struct variable_data {
     VariableKind var_kind;
     bool bound;
+    bool shared;
     int arity;
     std::string name;
 };
@@ -62,7 +63,7 @@ public:
     std::vector<node*> children;
 
     node(node_type t, const std::string& name)
-        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, 0, name}), children() {}
+        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, false, 0, name}), children() {}
 
     node(node_type t)
         : type(t), symbol(SYMBOL_NONE), vdata(nullptr), children() {}
@@ -98,6 +99,10 @@ public:
 
     bool is_free_variable() const {
         return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && !vdata->bound);
+    }
+
+    bool is_shared_variable() const {
+        return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && vdata->shared);
     }
 
     bool is_negation() const {
@@ -271,6 +276,8 @@ node* negate_node(node *n, bool rewrite_disj = false);
 void bind_var(node* current, const std::string& var_name);
 
 void unbind_var(node* current, const std::string& var_name);
+
+void mark_shared(node* current, const std::set<std::string>& var_names);
 
 void vars_used(std::set<std::string>& variables, const node* root, bool include_params=true);
 

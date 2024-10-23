@@ -120,7 +120,7 @@ public:
     void restrictions_replace(int i, int j);
 
     // Splits target i into j1 and j2 in the current leaf hydra
-    void hydra_split(int i, int j1, int j2);
+    void hydra_split(int i, int j1, int j2, bool force_split=false);
 
     // Update all restrictions including i to include j1 and j2 as well
     void restrictions_split(int i, int j1, int j2);

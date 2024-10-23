@@ -1,5 +1,6 @@
 #include "symbol_enum.h"
 #include "node.h"
+#include "unify.h"
 #include "substitute.h"
 #include <iostream>
 #include <unordered_map>
@@ -22,19 +23,19 @@ bool occurs_check(node* var, node* node) {
 }
 
 // Function to unify a variable with a node
-std::optional<Substitution> unify_variable(node* var, node* term, Substitution& subst) {
+std::optional<Substitution> unify_variable(node* var, node* term, Substitution& subst, bool smgu) {
     std::string var_name = var->name();
 
     // If the variable is already bound in the substitution map, unify the mapped value with the term
     if (subst.find(var_name) != subst.end()) {
-        return unify(subst[var_name], term, subst);
+        return unify(subst[var_name], term, subst, smgu);
     }
 
     // If the term is already a variable mapped in the substitution, unify them
     if (term->is_variable()) {
         std::string term_name = term->name();
         if (subst.find(term_name) != subst.end()) {
-            return unify(var, subst[term_name], subst);
+            return unify(var, subst[term_name], subst, smgu);
         }
     }
 
@@ -55,15 +56,15 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
 }
 
 // Function to unify two nodes
-std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst) {
+std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst, bool smgu) {
     // If node1 is a variable, ensure it is a true variable before trying to unify
-    if (node1->is_free_variable()) {
-        return unify_variable(node1, node2, subst);
+    if (node1->is_free_variable() && (smgu || !node1->is_shared_variable())) {
+        return unify_variable(node1, node2, subst, smgu);
     }
 
     // If node2 is a variable, ensure it is a true variable before trying to unify
-    if (node2->is_free_variable()) {
-        return unify_variable(node2, node1, subst);
+    if (node2->is_free_variable() && (smgu || !node2->is_shared_variable())) {
+        return unify_variable(node2, node1, subst, smgu);
     }
 
     // If both nodes are PARAMETERS
@@ -113,7 +114,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
 
         // Unify the arguments of the applications
         for (size_t i = 1; i < node1->children.size(); ++i) {
-            auto result = unify(node1->children[i], node2->children[i], subst);
+            auto result = unify(node1->children[i], node2->children[i], subst, smgu);
             if (!result.has_value()) {
                 return std::nullopt;
             }
@@ -130,7 +131,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
 
         // Unify the elements of the tuples
         for (size_t i = 0; i < node1->children.size(); ++i) {
-            auto result = unify(node1->children[i], node2->children[i], subst);
+            auto result = unify(node1->children[i], node2->children[i], subst, smgu);
             if (!result.has_value()) {
                 return std::nullopt;
             }
@@ -152,7 +153,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
     if (node1->type == LOGICAL_UNARY && node2->type == LOGICAL_UNARY) {
         // Both must be SYMBOL_NOT to unify
         if (node1->symbol == node2->symbol) {
-            return unify(node1->children[0], node2->children[0], subst);
+            return unify(node1->children[0], node2->children[0], subst, smgu);
         } else {
             return std::nullopt; // Different logical unary operations
         }
@@ -163,11 +164,11 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
         // The symbols must match (IFF, IMPLIES, AND, OR)
         if (node1->symbol == node2->symbol) {
             // Unify both left and right children
-            auto left_result = unify(node1->children[0], node2->children[0], subst);
+            auto left_result = unify(node1->children[0], node2->children[0], subst, smgu);
             if (!left_result.has_value()) {
                 return std::nullopt;
             }
-            auto right_result = unify(node1->children[1], node2->children[1], subst);
+            auto right_result = unify(node1->children[1], node2->children[1], subst, smgu);
             if (!right_result.has_value()) {
                 return std::nullopt;
             }
@@ -189,7 +190,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
             node* bound_var1 = node1->children[0];
             node* bound_var2 = node2->children[0];
 
-            auto bound_result = unify_variable(bound_var1, bound_var2, local_subst);
+            auto bound_result = unify_variable(bound_var1, bound_var2, local_subst, smgu);
             if (!bound_result.has_value()) {
                 return std::nullopt; // Bound variables must match or unification failed
             }
@@ -197,7 +198,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst)
             // Apply the local substitution to the inner formulas and unify them
             node* inner_formula1 = node1->children[1];
             node* inner_formula2 = node2->children[1];
-            auto inner_result = unify(inner_formula1, inner_formula2, local_subst);
+            auto inner_result = unify(inner_formula1, inner_formula2, local_subst, smgu);
             if (!inner_result.has_value()) {
                 return std::nullopt; // Inner formulas cannot be unified
             }

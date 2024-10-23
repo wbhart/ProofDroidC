@@ -614,7 +614,7 @@ void context_t::restrictions_replace(int i, int j) {
 }
 
 // Splits target i into j1 and j2 in the current leaf hydra
-void context_t::hydra_split(int i, int j1, int j2) {
+void context_t::hydra_split(int i, int j1, int j2, bool force_split) {
     if (current_hydra.empty()) {
         std::cerr << "Error: No hydra available to split targets." << std::endl;
         return;
@@ -632,7 +632,11 @@ void context_t::hydra_split(int i, int j1, int j2) {
 
     // Check if there are shared variables
     std::set<std::string> shared = find_common_variables(tableau[j1].formula, tableau[j2].formula);
-    if (!shared.empty()) { // there are shared variables
+    if (!force_split && !shared.empty()) { // there are shared variables
+        // mark variables as shared
+        mark_shared(tableau[j1].formula, shared);
+        mark_shared(tableau[j2].formula, shared);
+        
         // Create new target_indices by replacing i with j1 and j2
         std::vector<int> new_targets = current_leaf->target_indices;
 
@@ -813,12 +817,11 @@ void context_t::restrictions_replace_list(const std::vector<int>& targets, int j
     }
 }
 
-// Helper Function: Partitions a hydra based on shared variables and creates new hydras
 std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
-    // Map from variable to list of target indices that use it
+    // 1. Map from variable to list of target indices that use it
     std::unordered_map<std::string, std::vector<int>> var_to_targets;
 
-    // Iterate over targets to populate var_to_targets
+    // 2. Iterate over targets to populate var_to_targets
     for (const int& target_idx : h.target_indices) {
         if (target_idx < 0 || static_cast<size_t>(target_idx) >= tableau.size()) {
             std::cerr << "Error: Target index " << target_idx << " is out of bounds in the tableau." << std::endl;
@@ -831,7 +834,7 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
             continue; // Skip if formula is null
         }
 
-        // Get variables used in the formula (assuming vars_used is defined elsewhere)
+        // Get variables used in the formula
         std::set<std::string> variables;
         vars_used(variables, tabline.formula, false); // include_params = false
 
@@ -840,13 +843,34 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
         }
     }
 
-    // Initialize Union-Find structure for partitioning
+    // 3. Identify shared variables (variables used in more than one target)
+    std::set<std::string> shared_vars;
+    for (const auto& [var, targets] : var_to_targets) {
+        if (targets.size() > 1) { // Variable is shared
+            shared_vars.insert(var);
+        }
+    }
+
+    // 4. Mark shared variables in all target formulas
+    for (const int& target_idx : h.target_indices) {
+        tabline_t& tabline = tableau[target_idx];
+
+        // Mark shared variables in the formula
+        mark_shared(tabline.formula, shared_vars);
+
+        // mark shared in negation if it exists
+        if (tabline.negation) {
+            mark_shared(tabline.negation, shared_vars);
+        }
+    }
+
+    // 5. Initialize Union-Find structure for partitioning
     std::unordered_map<int, int> parent;
     for (const int& target_idx : h.target_indices) {
         parent[target_idx] = target_idx;
     }
 
-    // Lambda function for finding the root parent
+    // 6. Lambda function for finding the root parent
     std::function<int(int)> find_set = [&](int x) -> int {
         if (parent[x] != x) {
             parent[x] = find_set(parent[x]); // Path compression
@@ -854,7 +878,7 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
         return parent[x];
     };
 
-    // Lambda function for uniting two sets
+    // 7. Lambda function for uniting two sets
     auto union_set = [&](int x, int y) -> void {
         int fx = find_set(x);
         int fy = find_set(y);
@@ -863,21 +887,23 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
         }
     };
 
-    // Union targets that share the same variable
+    // 8. Union targets that share the same variable
     for (const auto& [var, targets] : var_to_targets) {
+        if (targets.size() < 2) continue; // Not a shared variable
+
         for (size_t k = 1; k < targets.size(); ++k) {
             union_set(targets[0], targets[k]);
         }
     }
 
-    // Group targets by their root parent to form partitions
+    // 9. Group targets by their root parent to form partitions
     std::unordered_map<int, std::vector<int>> partitions;
     for (const int& target_idx : h.target_indices) {
         int root = find_set(target_idx);
         partitions[root].push_back(target_idx);
     }
 
-    // Create new hydras for each partition
+    // 10. Create new hydras for each partition
     std::vector<std::shared_ptr<hydra>> new_hydras;
     new_hydras.reserve(partitions.size()); // Optional: reserve space to optimize
 
@@ -889,13 +915,13 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
         // Create a new hydra for this partition
         std::shared_ptr<hydra> new_hydra_ptr = std::make_shared<hydra>(
             partition_targets, // Passed by value; hydra constructor copies
-            h.proved // Copy the 'proved' member from the original hydra
+            h.proved          // Copy the 'proved' member from the original hydra
         );
 
         new_hydras.push_back(new_hydra_ptr);
     }
 
-    // Attach all new hydras as children of the original hydra
+    // 11. Attach all new hydras as children of the original hydra
     for (const auto& hyd_ptr : new_hydras) {
         h.add_child(hyd_ptr);
     }

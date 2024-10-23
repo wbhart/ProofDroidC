@@ -5,7 +5,7 @@
 #include <iostream>
 
 variable_data* deep_copy(variable_data* vdata) {
-    return new variable_data{vdata->var_kind, vdata->bound, vdata->arity, vdata->name};
+    return new variable_data{vdata->var_kind, vdata->bound, vdata->shared, vdata->arity, vdata->name};
 }
 
 // Helper function to deep copy a node
@@ -239,6 +239,22 @@ void unbind_var(node* current, const std::string& var_name) {
     // Recursively traverse all child nodes
     for (auto& child : current->children) {
         unbind_var(child, var_name);
+    }
+}
+
+void mark_shared(node* current, const std::set<std::string>& var_names) {
+    // Check if the current node is a VARIABLE and its name is in the set
+    if (current->type == VARIABLE) {
+        const std::string& current_name = current->name();
+        if (var_names.find(current_name) != var_names.end()) {
+            current->vdata->shared = true; // Mark as shared
+            std::cout << "marking as shared: " << current->name() << std::endl;
+        }
+    }
+
+    // Recursively traverse all child nodes
+    for (auto& child : current->children) {
+        mark_shared(child, var_names);
     }
 }
 
