@@ -1319,6 +1319,18 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 children2.push_back(P_copy2);
                 node* P_implies_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children1);
                 node* Q_implies_P = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children2);
+
+                std::set<std::string> common_vars = find_common_variables(P_implies_Q, Q_implies_P);
+
+                // If there are common variables, rename them in the entire implication_copy
+                if (!common_vars.empty()) {
+                    // Create a rename list based on common variables
+                    std::vector<std::pair<std::string, std::string>> rename_list = vars_rename_list(tab_ctx, common_vars);
+
+                    // Rename variables in the entire implication_copy
+                     rename_vars(Q_implies_P, rename_list);
+                }
+
                 node* neg1 = negate_node(deep_copy(P_implies_Q));
                 node* neg2 = negate_node(deep_copy(Q_implies_P));
 
@@ -1348,7 +1360,7 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 tab_ctx.tableau.push_back(new_tabline_Q_implies_P);
                 
                 // Split the hydra and select targets
-                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1, true);
+                tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
                 tab_ctx.select_targets();
 

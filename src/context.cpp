@@ -614,7 +614,7 @@ void context_t::restrictions_replace(int i, int j) {
 }
 
 // Splits target i into j1 and j2 in the current leaf hydra
-void context_t::hydra_split(int i, int j1, int j2, bool force_split) {
+void context_t::hydra_split(int i, int j1, int j2) {
     if (current_hydra.empty()) {
         std::cerr << "Error: No hydra available to split targets." << std::endl;
         return;
@@ -632,7 +632,7 @@ void context_t::hydra_split(int i, int j1, int j2, bool force_split) {
 
     // Check if there are shared variables
     std::set<std::string> shared = find_common_variables(tableau[j1].formula, tableau[j2].formula);
-    if (!force_split && !shared.empty()) { // there are shared variables
+    if (!shared.empty()) { // there are shared variables
         // mark variables as shared
         mark_shared(tableau[j1].formula, shared);
         mark_shared(tableau[j2].formula, shared);
