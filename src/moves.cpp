@@ -869,6 +869,9 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        bool tar1 = false; // whether to create target 1 and 2
+                        bool tar2 = false;
+
                         // **Critical Fix: Set flags before modifying the vector**
                         // Mark the original target as inactive and dead
                         tabline.active = false;
@@ -880,34 +883,64 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         node* R_copy1 = deep_copy(R);
                         node* R_copy2 = deep_copy(R);
 
-                        // Create new implications P → R and Q → R
-                        node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
-                        node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
+                        if (!equal(P_copy, R_copy1)) {
+                            // Create new implication P → R
+                            node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
 
-                        // Create new tablines as targets
-                        tabline_t new_tabline_neg_P_imp(negate_node(deep_copy(P_imp_R)), P_imp_R); // Assuming constructor for target
-                        tabline_t new_tabline_neg_Q_imp(negate_node(deep_copy(Q_imp_R)), Q_imp_R);
+                            // Create new tablines as target
+                            tabline_t new_tabline_neg_P_imp(negate_node(deep_copy(P_imp_R)), P_imp_R);
+                            
+                            // Copy restrictions and assumptions
+                            new_tabline_neg_P_imp.assumptions = tabline.assumptions;
+                            new_tabline_neg_P_imp.restrictions = tabline.restrictions;
+                            
+                            // Set justification
+                            new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                            
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
 
-                        // Copy restrictions and assumptions
-                        new_tabline_neg_P_imp.assumptions = tabline.assumptions;
-                        new_tabline_neg_P_imp.restrictions = tabline.restrictions;
-                        new_tabline_neg_Q_imp.assumptions = tabline.assumptions;
-                        new_tabline_neg_Q_imp.restrictions = tabline.restrictions;
-                
-                        // Set justifications
-                        new_tabline_neg_P_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
-                        new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
+                            // target 1 created
+                            tar1 = true;
+                        }
+                        
+                        if (!equal(Q_copy, R_copy2)) {
+                            // Create new implication Q → R
+                            node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
 
-                        // Append new tablines to the tableau
-                        tab_ctx.tableau.push_back(new_tabline_neg_P_imp);
-                        tab_ctx.tableau.push_back(new_tabline_neg_Q_imp);
+                            // Create new tablines as target
+                            tabline_t new_tabline_neg_Q_imp(negate_node(deep_copy(Q_imp_R)), Q_imp_R);
 
-                        // Split the hydra and select targets
-                        tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
-                        tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
-                        tab_ctx.select_targets();
+                            // Copy restrictions and assumptions
+                            new_tabline_neg_Q_imp.assumptions = tabline.assumptions;
+                            new_tabline_neg_Q_imp.restrictions = tabline.restrictions;
+                    
+                            // Set justification
+                            new_tabline_neg_Q_imp.justification = { Reason::SplitDisjunctiveImplication, { static_cast<int>(i) } };
 
-                        moved = true;
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_neg_Q_imp);
+
+                            // target 2 created
+                            tar2 = true;
+                        }
+
+                        if (tar1 && tar2) // both targets created
+                        {
+                            // Split the hydra and select targets
+                            tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                            tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                            tab_ctx.select_targets();
+
+                            moved = true;
+                        } else if (tar1 || tar2) { // one target created
+                            // Replace the hydra and select targets
+                            tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                            tab_ctx.restrictions_replace(i, tab_ctx.tableau.size() - 1);
+                            tab_ctx.select_targets();
+
+                            moved = true;
+                        }
                     }
                 }
             }
@@ -1061,6 +1094,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        bool tar1 = false; // whether to create targets 1 and 2
+                        bool tar2 = false;
+
                         // **Critical Fix: Set flags before modifying the vector**
                         // Mark the original target as inactive and dead
                         tabline.active = false;
@@ -1072,38 +1108,70 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         node* Q_copy = deep_copy(Q);
                         node* R_copy = deep_copy(R);
 
-                        // Create new conjunctions P ∧ Q and P ∧ R
-                        node* P_and_Q = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy1, Q_copy });
-                        node* P_and_R = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy2, R_copy });
+                        if (!equal(P_copy1, Q_copy)) {
+                            // Create new conjunction P ∧ Q
+                            node* P_and_Q = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy1, Q_copy });
+                            
+                            // negate node
+                            node* neg_P_and_Q = negate_node(deep_copy(P_and_Q), true);
+                            
+                            // Create new tabline as targets
+                            tabline_t new_tabline_neg_P_and_Q(P_and_Q, neg_P_and_Q);
+                            
+                            // Copy restrictions and assumptions
+                            new_tabline_neg_P_and_Q.assumptions = tabline.assumptions;
+                            new_tabline_neg_P_and_Q.restrictions = tabline.restrictions;
+                            
+                            // Set justification
+                            new_tabline_neg_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                            
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_neg_P_and_Q);
 
-                        node* neg_P_and_Q = negate_node(deep_copy(P_and_Q), true);
-                        node* neg_P_and_R = negate_node(deep_copy(P_and_R), true);
+                            // target 1 created
+                            tar1 = true;
+                        }
+                        
+                        if (!equal(P_copy2, R_copy)) {
+                            // Create new conjunction P ∧ R
+                            node* P_and_R = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy2, R_copy });
 
-                        // Create new tablines as targets
-                        tabline_t new_tabline_neg_P_and_Q(P_and_Q, neg_P_and_Q);
-                        tabline_t new_tabline_neg_P_and_R(P_and_R, neg_P_and_R);
+                            // negate node
+                            node* neg_P_and_R = negate_node(deep_copy(P_and_R), true);
 
-                        // Copy restrictions and assumptions
-                        new_tabline_neg_P_and_Q.assumptions = tabline.assumptions;
-                        new_tabline_neg_P_and_Q.restrictions = tabline.restrictions;
-                        new_tabline_neg_P_and_R.assumptions = tabline.assumptions;
-                        new_tabline_neg_P_and_R.restrictions = tabline.restrictions;
-                
-                        // Set justifications
-                        new_tabline_neg_P_and_Q.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
-                        new_tabline_neg_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
+                            // Create new tabline as targets
+                            tabline_t new_tabline_neg_P_and_R(P_and_R, neg_P_and_R);
 
-                        // Append new tablines to the tableau
-                        tab_ctx.tableau.push_back(new_tabline_neg_P_and_Q);
-                        tab_ctx.tableau.push_back(new_tabline_neg_P_and_R);
+                            // Copy restrictions and assumptions
+                            new_tabline_neg_P_and_R.assumptions = tabline.assumptions;
+                            new_tabline_neg_P_and_R.restrictions = tabline.restrictions;
+                    
+                            // Set justification
+                            new_tabline_neg_P_and_R.justification = { Reason::SplitConjunctiveImplication, { static_cast<int>(i) } };
 
-                        // Split the hydra and select targets
-                        tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
-                        tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
-                        tab_ctx.select_targets();
+                            // Append new tabline to the tableau
+                            tab_ctx.tableau.push_back(new_tabline_neg_P_and_R);
 
-                        // Indicate that a move was made
-                        moved = true;
+                            // target 2 created
+                            tar2 = true;
+                        }
+
+                        if (tar1 && tar2) // both targets created
+                        {
+                            // Split the hydra and select targets
+                            tab_ctx.hydra_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                            tab_ctx.restrictions_split(i, tab_ctx.tableau.size() - 2, tab_ctx.tableau.size() - 1);
+                            tab_ctx.select_targets();
+
+                            moved = true;
+                        } else if (tar1 || tar2) { // one target created
+                            // Replace the hydra and select targets
+                            tab_ctx.hydra_replace(i, tab_ctx.tableau.size() - 1);
+                            tab_ctx.restrictions_replace(i, tab_ctx.tableau.size() - 1);
+                            tab_ctx.select_targets();
+
+                            moved = true;
+                        }
                     }
                 }
             }

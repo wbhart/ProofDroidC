@@ -1,9 +1,5 @@
 Critical:
 
-* Introduce shared variables which cannot be assigned to in unification unless in smgu
-  mode, e.g. set6 where target ends up with shared variable and mp can be applied to
-  separate targets with hypothesis, splitting up a hydra which shouldn't be split
-
 * Deal with removing tautologies in target cases of sdi and sci (and any other moves
   for which tautology is possible in created formulas)
 
