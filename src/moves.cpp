@@ -156,12 +156,16 @@ node* skolem_form(context_t& ctx, node* formula) {
         }
     }
 
-    // Apply all accumulated substitutions to the formula
-    node* skolemized_formula = substitute(formula, subst);
-    cleanup_subst(subst);
-    delete formula;
+    if (!subst.empty()) {
+        // Apply all accumulated substitutions to the formula
+        node* skolemized_formula = substitute(formula, subst);
+        cleanup_subst(subst);
+        delete formula;
 
-    return skolemized_formula;
+        return skolemized_formula;
+    } else {
+        return formula;
+    }
 }
 
 bool skolemize_all(context_t& tab_ctx, size_t start) {
