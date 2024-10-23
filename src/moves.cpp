@@ -1470,6 +1470,7 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     // Deep copy P and Q
     node* P_copy = deep_copy(P);
     node* Q_copy = deep_copy(Q);
+    P_copy = disjunction_to_implication(P_copy);
     Q_copy = disjunction_to_implication(Q_copy);
     node* neg_Q_copy = negate_node(deep_copy(Q)); // For the new target Q
 
