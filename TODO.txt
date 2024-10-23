@@ -1,8 +1,5 @@
 Critical:
 
-* Deal with removing tautologies in target cases of sdi and sci (and any other moves
-  for which tautology is possible in created formulas)
-
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
 
