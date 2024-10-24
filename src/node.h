@@ -200,9 +200,9 @@ public:
 
                     // Handle binary operators
                     if (childPrecInfo.fixity == Fixity::INFIX && children.size() == 3) {
-                        oss << children[1]->to_string(format) << " ";
+                        oss << parenthesize(children[1], format, "left") << " ";
                         oss << (format == REPR ? childPrecInfo.repr : childPrecInfo.unicode) << " "; // Print the operator
-                        oss << children[2]->to_string(format);
+                        oss << parenthesize(children[2], format, "right");
                     }
                     // Handle unary operators
                     else if (childPrecInfo.fixity == Fixity::FUNCTIONAL || children.size() == 2) {
@@ -242,7 +242,7 @@ private:
 
     // Helper function to parenthesize based on precedence and associativity
     std::string parenthesize(const node *child, OutputFormat format, const std::string& childPosition) const {
-        PrecedenceInfo parentPrecInfo = getPrecedenceInfo(symbol);
+        PrecedenceInfo parentPrecInfo = type == APPLICATION ? getPrecedenceInfo(children[0]->symbol) : getPrecedenceInfo(symbol);
         PrecedenceInfo childPrecInfo = child->type == APPLICATION ?
                 getPrecedenceInfo(child->children[0]->symbol) : getPrecedenceInfo(child->symbol);
 

@@ -175,8 +175,12 @@ SimpleTerm
   <- t:Application { $$ = t; }
    / t:UnaryOp { $$ = t; }
    / t:Variable { $$ = t; }
+   / t:Parenthesized { $$ = t; }
    / t:Tuple { $$ = t; }
    / t:EMPTYSET { $$ = t; }
+
+Parenthesized
+  <- OPEN _ t:Term _ CLOSE { $$ = t; }
 
 Application
   <- i:Variable _ OPEN _ args:TermList _ CLOSE {
