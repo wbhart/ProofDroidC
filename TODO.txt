@@ -1,5 +1,7 @@
 Critical:
 
+* Set28 is not proved yet
+
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet
 

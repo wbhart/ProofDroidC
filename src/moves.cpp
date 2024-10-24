@@ -499,6 +499,23 @@ bool disjunctive_idempotence(const node* formula) {
     return equal(left, right);
 }
 
+// Function to check for Implicative Idempotence: ¬P -> P
+bool implicative_idempotence(const node* formula) {
+    // Ensure the formula is a logical binary operation with OR symbol
+    if (!formula->is_implication())
+        return false;
+
+    // Since nodes have the correct number of children, no need to check size
+    const node* left = formula->children[0];
+    const node* right = formula->children[1];
+
+    // Check if both operands are structurally equal (up to variable renaming)
+    node* negation = negate_node(deep_copy(left));
+    bool res = equal(negation, right);
+    delete negation;
+    return res;
+}
+
 // Function to check for Conjunctive Idempotence: P ∧ P
 bool conjunctive_idempotence(const node* formula) {
     // Ensure the formula is a logical binary operation with AND symbol
@@ -527,7 +544,8 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
         // Check if the formula is a disjunctive idempotent
         if ((tabline.target && conjunctive_idempotence(tabline.formula))
-            || (!tabline.target && disjunctive_idempotence(tabline.formula))) {
+            || (!tabline.target && disjunctive_idempotence(tabline.formula))
+            || (!tabline.target && implicative_idempotence(tabline.formula))) {
             // Formula is of the form P ∨ P or P ∧ P
 
             // **Critical Fix: Set flags before modifying the vector**
@@ -537,7 +555,7 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
             // Store the original formula node and its children
             node* original_formula = tabline.formula;
-            node* P = original_formula->children[0];
+            node* P = original_formula->children[1];
 
             if (!tabline.target) {
                 // Original is a hypothesis, new tablines are hypotheses
