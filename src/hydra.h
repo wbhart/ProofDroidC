@@ -32,7 +32,8 @@ public:
 
     // Member Functions
     void add_target(int target);
-    bool add_assumption(const std::vector<int>& assumption); // Returns true if 'proved' is empty after adding
+    bool add_assumption(const std::vector<int>& new_assumption); // Return true if new_assumption already exists in hydra
+    bool assumption_exists(const std::vector<int>& new_assumption); // Returns true if 'proved' is empty after adding
     void add_child(const std::shared_ptr<hydra>& child);
     bool find_conflict(const std::vector<int>& existing, const std::vector<int>& incoming, int& conflicting_n) const;
     void print_targets() const;

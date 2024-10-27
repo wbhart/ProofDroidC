@@ -1,6 +1,8 @@
 Critical:
 
-* Set28 is not proved yet
+* Add split field to tabline to record the line (and negation) into which a
+  disjunction was previously split, so that if it gets split again, new lines are
+  not created for the same purpose in move_sd
 
 * When moving to next target, must select assumptions that haven't been proved for
   that target yet

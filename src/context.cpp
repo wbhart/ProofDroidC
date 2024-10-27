@@ -8,10 +8,12 @@
 #include <iostream>
 #include <stdexcept>
 
-void tabline_t::print_restrictions() {
+#define DEBUG_SELECT_HYPOTHESES 0
+
+void tabline_t::print_restrictions() const {
     std::cout << "[";
     for (size_t i = 0; i < restrictions.size(); i++) {
-        std::cout << restrictions[i];
+        std::cout << restrictions[i] + 1;
         if (i < restrictions.size() - 1) {
             std::cout << ", ";
         }
@@ -19,7 +21,7 @@ void tabline_t::print_restrictions() {
     std::cout << "]";
 }
 
-void tabline_t::print_assumptions() {
+void tabline_t::print_assumptions() const {
     std::cout << "[";
     for (size_t i = 0; i < assumptions.size(); i++) {
         std::cout << assumptions[i];
@@ -183,6 +185,13 @@ void print_reason(const context_t& context, int index) {
 
         case Reason::SplitConjunction: {
             std::cout << "SC[";
+            std::cout << associated_lines[0] + 1;
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::SplitDisjunction: {
+            std::cout << "SD[";
             std::cout << associated_lines[0] + 1;
             std::cout << "]";
             break;
@@ -521,7 +530,7 @@ void context_t::select_targets(const std::vector<int>& targets) {
 
             // Determine activation based on the specified conditions
             if (alive && (restrictions_empty || restrictions_contains_target)) {
-                tabline.active = true;
+                tabline.active = tabline.assumptions.empty();
             }
             else {
                 tabline.active = false;
@@ -546,6 +555,72 @@ void context_t::select_targets() {
 
     // Pass the extracted targets to the original select_targets function
     select_targets(targets);
+}
+
+void context_t::select_hypotheses(const std::vector<int>& targets, const std::vector<int>& assumptions) {
+    // Convert targets to an unordered_set for O(1) lookups
+    std::unordered_set<int> target_set(targets.begin(), targets.end());
+    std::unordered_set<int> assumption_set(assumptions.begin(), assumptions.end());
+
+#if DEBUG_SELECT_HYPOTHESES
+    std::cout << "Assumptions : ";
+    for (const int& res : assumptions) {
+        std::cout << res << ", ";
+    }
+    std::cout << std::endl;
+#endif
+
+    for (size_t i = 0; i < tableau.size(); ++i) {
+        tabline_t& tabline = tableau[i];
+
+        if (!tabline.target) {
+            // If the tabline is a hypothesis
+            bool restrictions_empty = tabline.restrictions.empty();
+            bool alive = !tabline.dead;
+            bool restrictions_contains_target = false;
+
+            // Check if any restriction is in the target_set
+            for (const int& res : tabline.restrictions) {
+                if (target_set.find(res) != target_set.end()) {
+                    restrictions_contains_target = true;
+                    break;
+                }
+            }
+
+            // Determine activation based on the specified conditions
+            if (alive && (restrictions_empty || restrictions_contains_target)) {
+                if (tabline.assumptions.empty()) {
+                    tabline.active = true;
+                } else {
+#if DEBUG_SELECT_HYPOTHESES
+                    std::cout << "Assumptions " << i << " : ";
+                    for (const int& res : tabline.assumptions) {
+                        std::cout << res << ", ";
+                    }
+                    std::cout << std::endl;
+#endif
+
+                    bool assumptions_found = true; // whether all assumptions in list found
+                    // check if all assumptions are in the given list
+                    for (const int& res : tabline.assumptions) {
+                        if (assumption_set.find(res) == assumption_set.end()) {
+                            assumptions_found = false;
+                            break;
+                        }
+                    }
+
+#if DEBUG_SELECT_HYPOTHESES
+                    std::cout << "Assumptions found: " << assumptions_found << std::endl;
+#endif
+                    // set tabline.active
+                    tabline.active = assumptions_found;
+                }
+            }
+            else {
+                tabline.active = false;
+            }
+        }
+    }
 }
 
 // Replaces target i with j in the current leaf hydra
@@ -939,7 +1014,16 @@ void print_tableau(const context_t& tab_ctx) {
         if (tabline.active && !tabline.target) {
             std::cout << " " << i + 1 << " "; // Line number
             print_reason(tab_ctx, static_cast<int>(i)); // Print reason
-            std::cout << ": " << tabline.formula->to_string(UNICODE) << std::endl;
+            std::cout << ": " << tabline.formula->to_string(UNICODE);
+            if (!tabline.assumptions.empty()) {
+                std::cout << "    ass:";
+                tabline.print_assumptions();
+            }
+            if (!tabline.restrictions.empty()) {
+                std::cout << "    res:";
+                tabline.print_restrictions();
+            }
+            std::cout << std::endl;
         }
     }
     

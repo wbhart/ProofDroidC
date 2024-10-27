@@ -28,6 +28,7 @@ enum class option_t {
     OPTION_CONJ_IDEM,
     OPTION_DISJ_IDEM,
     OPTION_SPLIT_CONJUNCTION,
+    OPTION_SPLIT_DISJUNCTION,
     OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
     OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
     OPTION_NEGATED_IMPLICATION,
@@ -56,6 +57,7 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence P ∧ P", "Apply Conjunctive Idempotence"},
     {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence P ∨ P", "Apply Disjunctive Idempotence"},
     {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions P ∧ Q", "Apply Split Conjunctions"},
+    {option_t::OPTION_SPLIT_DISJUNCTION, "sd", "split disjunctions P ∨ Q", "Apply Split Disjunctions: sd <disjunction_line>"},
     {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication P ∨ Q → R", "Apply Split Disjunctive Implication"},
     {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication P → Q ∧ R", "Apply Split Conjunctive Implication"},
     {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication ¬(P → Q)", "Apply Negated Implication"},
@@ -545,6 +547,52 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             continue;
         }
 
+        if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION) {
+            if (tokens.size() != 2) {
+                std::cerr << "Error: Need disjunction line. Usage: "
+                << "sd <disjunction_line>"
+                << std::endl << std::endl;
+                print_summary(semi_auto_active_options);
+                continue;
+            }
+
+            // Parse disjunction_line
+            int disjunction_line;
+            try {
+                disjunction_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+            } catch (...) {
+                std::cerr << "Error: Invalid disjunction line number." << std::endl << std::endl;
+                // Before next prompt, re-print the summary of options
+                print_summary(semi_auto_active_options);
+                continue;
+            }
+
+            // Apply move_mpt
+            bool move_applied = move_sd(tab_ctx, disjunction_line);
+
+            if (move_applied) {
+                // After applying the move, run cleanup_moves automatically
+                cleanup_moves(tab_ctx, tab_ctx.upto);
+
+                // Check if done
+                check_done(tab_ctx);
+            } else {
+                std::cerr << "Error: Split disjunction could not be applied." << std::endl;
+            }
+            
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+
+#if DEBUG_HYDRAS
+            tab_ctx.print_hydras();
+#endif
+
+            // Before next prompt, re-print the summary of options
+            print_summary(semi_auto_active_options);
+            continue;
+        }
+        
         // Handle 'p' and 't' commands
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS) {
@@ -792,7 +840,8 @@ int main(int argc, char** argv) {
                     std::vector<option_t> semi_auto_active_options = {
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_EXIT_SEMIAUTO, // Reusing OPTION_EXIT as 'x' for exiting modes
+                        option_t::OPTION_SPLIT_DISJUNCTION,
+                        option_t::OPTION_EXIT_SEMIAUTO,
                         option_t::OPTION_QUIT
                     };
 

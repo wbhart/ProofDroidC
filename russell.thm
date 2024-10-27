@@ -1,0 +1,2 @@
+\forall x (x \in y \iff \neg(x \in x))
+* (y \in y) \iff \neg(y \in y)

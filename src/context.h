@@ -25,6 +25,7 @@ enum class Reason {
     ConjunctiveIdempotence,
     DisjunctiveIdempotence,
     SplitConjunction,
+    SplitDisjunction,
     SplitDisjunctiveImplication,
     SplitConjunctiveImplication,
     NegatedImplication,
@@ -53,10 +54,10 @@ public:
         : target(true), active(true), dead(false), formula(form), negation(neg), unifications() {}
 
     // Print a list of restrictions
-    void print_restrictions();
+    void print_restrictions() const;
 
     // Print a list of restrictions
-    void print_assumptions();
+    void print_assumptions() const;
 
 };
 
@@ -112,6 +113,9 @@ public:
 
     // Selects targets given by the current target hydra
     void select_targets();
+
+    // Select hypotheses that can prove the given targets and which are compatible with the given assumptions
+    void select_hypotheses(const std::vector<int>& targets, const std::vector<int>& assumptions);
 
     // Replaces target i with j in the current leaf hydra
     void hydra_replace(int i, int j);

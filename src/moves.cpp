@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -1553,6 +1553,73 @@ bool move_cp(context_t& tab_ctx, size_t start) {
     }
 
     return moved;
+}
+
+bool move_sd(context_t& tab_ctx, size_t line) {
+    tabline_t& tabline = tab_ctx.tableau[line];
+
+    if (tabline.target) {
+        std::cerr << "Error: formula is not a hypothesis." << std::endl;
+        return false;
+    }
+
+    if (!tabline.formula->is_implication()) {
+        std::cerr << "Error: formula is not a disjunction." << std::endl;
+        return false;
+    }
+
+    // get disjunction node
+    node* disjunction = tabline.formula;
+
+    std::set<std::string> common_vars;
+    common_vars = find_common_variables(disjunction->children[0], disjunction->children[1]);
+    if (!common_vars.empty()) {
+        std::cerr << "Error: disjunction has shared variables." << std::endl;
+        return false;
+    }
+    
+    // make copies of P and Q
+    node* P_copy = negate_node(deep_copy(disjunction->children[0]));
+    node* P_neg = deep_copy(disjunction->children[0]);
+    node* Q_copy = deep_copy(disjunction->children[1]);
+
+    // make new tablines
+    tabline_t hyp1(P_copy);
+    tabline_t hyp2a(P_neg);
+    tabline_t hyp2b(Q_copy);
+
+    // start with hyp1 active
+    hyp1.active = true;
+    hyp2a.active = false;
+    hyp2b.active = false;
+
+    // assign justifications
+    hyp1.justification = { Reason::SplitDisjunction, { static_cast<int>(line) } };
+    hyp2a.justification = { Reason::SplitDisjunction, { static_cast<int>(line) } };
+    hyp2b.justification = { Reason::SplitDisjunction, { static_cast<int>(line) } };
+
+    // assign assumptions
+    hyp1.assumptions = tabline.assumptions;
+    hyp2a.assumptions = tabline.assumptions;
+    hyp2b.assumptions = tabline.assumptions;
+    hyp1.assumptions.push_back(static_cast<int>(line) + 1);
+    hyp2a.assumptions.push_back(-static_cast<int>(line) - 1);
+    hyp2b.assumptions.push_back(-static_cast<int>(line) - 1);
+
+    // assign restrictions
+    hyp1.restrictions = tabline.restrictions;
+    hyp2a.restrictions = tabline.restrictions;
+    hyp2b.restrictions = tabline.restrictions;
+    
+    // Append new hypothesises to the tableau
+    tab_ctx.tableau.push_back(hyp1);
+    tab_ctx.tableau.push_back(hyp2a);
+    tab_ctx.tableau.push_back(hyp2b);
+
+    // Deactivate the original formula
+    tabline.active = false;
+
+    return true;
 }
 
 bool cleanup_moves(context_t& tab_ctx, size_t start_line) {

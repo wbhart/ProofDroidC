@@ -58,6 +58,9 @@ bool move_ci(context_t& tab_ctx, size_t start = 0);
 // Split conjunctions P ∧ Q into P and Q
 bool move_sc(context_t& tab_ctx, size_t start = 0);
 
+// Split disjunctions P ∨ Q by splitting tableau
+bool move_sd(context_t& tab_ctx, size_t line);
+
 // Split lines (P ∨ Q) -> R into P -> R and Q -> R
 bool move_sdi(context_t& tab_ctx, size_t start = 0);
 
