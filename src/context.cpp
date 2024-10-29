@@ -145,6 +145,10 @@ void print_reason(const context_t& context, int index) {
             std::cout << "Hyp";
             break;
 
+        case Reason::Theorem:
+            std::cout << "Thm";
+            break;
+
         case Reason::ModusPonens: {
             std::cout << "MP[";
             for (size_t i = 0; i < associated_lines.size(); ++i) {
@@ -530,7 +534,7 @@ void context_t::select_targets(const std::vector<int>& targets) {
 
             // Determine activation based on the specified conditions
             if (alive && (restrictions_empty || restrictions_contains_target)) {
-                tabline.active = tabline.assumptions.empty();
+                tabline.active = true;
             }
             else {
                 tabline.active = false;
@@ -1006,24 +1010,43 @@ std::vector<std::shared_ptr<hydra>> context_t::partition_hydra(hydra& h) {
 
 // Function to print all formulas in the tableau with reasons
 void print_tableau(const context_t& tab_ctx) {
+    bool theorems_exist = false; // if any hypotheses are theorems
     std::cout << "Hypotheses:" << std::endl;
     
-    // First, print all active Hypotheses
+    // First, print all active Hypotheses that are not theorems
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
         if (tabline.active && !tabline.target) {
-            std::cout << " " << i + 1 << " "; // Line number
-            print_reason(tab_ctx, static_cast<int>(i)); // Print reason
-            std::cout << ": " << tabline.formula->to_string(UNICODE);
-            if (!tabline.assumptions.empty()) {
-                std::cout << "    ass:";
-                tabline.print_assumptions();
+            if (!tabline.is_theorem()) {
+                std::cout << " " << i + 1 << " "; // Line number
+                print_reason(tab_ctx, static_cast<int>(i)); // Print reason
+                std::cout << ": " << tabline.formula->to_string(UNICODE);
+                if (!tabline.assumptions.empty()) {
+                    std::cout << "    ass:";
+                    tabline.print_assumptions();
+                }
+                if (!tabline.restrictions.empty()) {
+                    std::cout << "    res:";
+                    tabline.print_restrictions();
+                }
+                std::cout << std::endl;
+            } else {
+                theorems_exist = true;
             }
-            if (!tabline.restrictions.empty()) {
-                std::cout << "    res:";
-                tabline.print_restrictions();
+        }
+    }
+    
+    if (theorems_exist) {
+        std::cout << std::endl << "Theorems:" << std::endl;
+        
+        // First, print all active Hypotheses that are not theorems
+        for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
+            const tabline_t& tabline = tab_ctx.tableau[i];
+            if (tabline.active && !tabline.target && tabline.is_theorem()) {
+                std::cout << " " << i + 1 << " "; // Line number
+                std::cout << ": " << tabline.formula->to_string(UNICODE);
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
         }
     }
     
@@ -1038,4 +1061,48 @@ void print_tableau(const context_t& tab_ctx) {
             std::cout << ": " << tabline.negation->to_string(UNICODE) << std::endl;
         }
     }
+}
+
+void context_t::get_constants() {
+    // Check if the digest has been computed
+    bool has_digest = !digest.empty();
+
+    if (has_digest) {
+        // Iterate through each theorem/definition loaded (each vector in digest)
+        for (const auto& digest_entry : digest) {
+            // Iterate through each pair in the digest_entry
+            for (const auto& [line_idx, _] : digest_entry) {
+                // Validate line index
+                if (line_idx < 0 || static_cast<size_t>(line_idx) >= tableau.size()) {
+                    std::cerr << "Warning: Line index " << line_idx << " in digest is out of bounds." << std::endl;
+                    continue; // Skip invalid indices
+                }
+
+                tabline_t& tabline = tableau[line_idx];
+                // No need to check for null, as per design
+
+                // Compute constants using node_get_constants
+                node_get_constants(tabline.constants, tabline.formula);
+            }
+        }
+    }
+    else {
+        // No digest available; process all tableau lines
+        for (size_t i = 0; i < tableau.size(); ++i) {
+            tabline_t& tabline = tableau[i];
+            // No need to check for null, as per design
+
+            // Compute constants using node_get_constants
+            node_get_constants(tabline.constants, tabline.formula);
+        }
+    }
+}
+
+std::optional<context_t*> context_t::find_module(const std::string& filename_stem) {
+    for (auto& [fname, ctx] : modules) {
+        if (fname == filename_stem) {
+            return &ctx;
+        }
+    }
+    return std::nullopt;
 }

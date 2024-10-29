@@ -564,3 +564,39 @@ bool equal(const node* a, const node* b) {
     std::unordered_map<std::string, std::string> var_map;
     return equal_helper(a, b, var_map);
 }
+
+// Traverse a formula and get all constants
+void node_get_constants(std::vector<std::string>& constants, const node* formula) {
+    // Define the node types that can contain constants
+    const std::vector<node_type> constant_node_types = {
+        UNARY_OP,
+        BINARY_OP,
+        UNARY_PRED,
+        BINARY_PRED,
+        CONSTANT
+    };
+
+    // Check if the current node is of a type that can contain a constant
+    if (std::find(constant_node_types.begin(), constant_node_types.end(), formula->type) != constant_node_types.end()) {
+        symbol_enum sym = formula->symbol;
+        if (sym >= SYMBOL_EQUALS) { // Assuming constants are ordered after SYMBOL_EQUALS
+            // Find the Unicode representation from precedenceTable
+            auto it = precedenceTable.find(sym);
+            if (it != precedenceTable.end()) {
+                const std::string& unicode_str = it->second.unicode;
+                // Add the constant if it's not already in the list
+                if (std::find(constants.begin(), constants.end(), unicode_str) == constants.end()) {
+                    constants.push_back(unicode_str);
+                }
+            }
+            else {
+                std::cerr << "Warning: Symbol not found in precedenceTable." << std::endl;
+            }
+        }
+    }
+
+    // Recursively traverse child nodes
+    for (const auto& child : formula->children) {
+        node_get_constants(constants, child);
+    }
+}

@@ -82,4 +82,7 @@ bool move_cp(context_t& tab_ctx, size_t start = 0);
 // Apply all cleanup moves
 bool cleanup_moves(context_t& tab_ctx, size_t start_line = 0);
 
+// Apply only skolemize and move_me for definitions
+bool cleanup_definition(context_t& tab_ctx, size_t start_line);
+
 #endif // MOVES_H

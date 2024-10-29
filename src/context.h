@@ -30,7 +30,8 @@ enum class Reason {
     SplitConjunctiveImplication,
     NegatedImplication,
     MaterialEquivalence,
-    ConditionalPremise
+    ConditionalPremise,
+    Theorem
 };
 
 // Represents a single line in the tableau
@@ -45,13 +46,14 @@ public:
     node* formula = nullptr;                       // Pointer to the associated formula
     node* negation = nullptr;                      // Pointer to the negation of the formula
     std::vector<std::pair<int, int>> unifications; // List of pairs (i, j) where i unifies with j
+    std::vector<std::string> constants;            // New field to store constants
 
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
-        : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications() {}
+        : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(), constants() {}
     
     tabline_t(node* form, node* neg) 
-        : target(true), active(true), dead(false), formula(form), negation(neg), unifications() {}
+        : target(true), active(true), dead(false), formula(form), negation(neg), unifications(), constants() {}
 
     // Print a list of restrictions
     void print_restrictions() const;
@@ -59,6 +61,10 @@ public:
     // Print a list of restrictions
     void print_assumptions() const;
 
+    // Return whether the tabline stores a loaded theorem
+    bool is_theorem() const {
+        return justification.first == Reason::Theorem;
+    }
 };
 
 class context_t {
@@ -104,7 +110,15 @@ public:
 
     // Path to current hydra (list of references to hydras along the way)
     std::vector<std::shared_ptr<hydra>> current_hydra;
-        
+
+    // Digest for library thms/defns ctx is storing a module
+    // Pair (i, j): i = line in this tableau, j = line in main
+    // tableau if theorem/definition line loaded there, else -1
+    std::vector<std::vector<std::pair<size_t, size_t>>> digest;
+    
+    // Vector of loaded modules: pair of filename stem and their context
+    std::vector<std::pair<std::string, context_t>> modules;
+
     // Lines already dealt with (used for incremental completion checking)
     int upto = 0;
 
@@ -137,6 +151,13 @@ public:
 
     // Print hydra graph
     void print_hydras();
+
+    // Populate the constants field of the tablines in the tableau
+    // If a digest is present, only lines listed in digest are dealt with
+    void get_constants();
+
+    // Function to find a module by filename stem
+    std::optional<context_t*> find_module(const std::string& filename_stem);
 
 private:
     // Maps variable base names to their latest index

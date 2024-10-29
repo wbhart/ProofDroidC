@@ -1763,3 +1763,48 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
     
     return moved;
 }
+
+bool cleanup_definition(context_t& tab_ctx, size_t start_line) {
+    bool moved = false, moved1;
+    size_t start = start_line;
+    size_t current_size = tab_ctx.tableau.size();
+            
+    while (start < current_size) {
+        // Apply moves in the specified order
+
+        // 1. skolemize_all
+        moved1 = false;
+        if (skolemize_all(tab_ctx, start)) {
+            moved = moved1 = true;
+        }
+
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "skolemize:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // 2. move_me
+        moved1 = false;
+        if (move_me(tab_ctx, start)) {
+            moved = moved1 = true;
+        }
+
+ #if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "material equivalence:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // Update start_line to previous current_size before moves were applied
+        start = current_size;
+        // Update current_size to the new size of the tableau
+        current_size = tab_ctx.tableau.size();
+    }
+    
+    return moved;
+}

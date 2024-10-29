@@ -293,4 +293,6 @@ node* contrapositive(node* implication);
 
 bool equal(const node* a, const node* b);
 
+void node_get_constants(std::vector<std::string>& constants, const node* formula);
+
 #endif // NODE_H

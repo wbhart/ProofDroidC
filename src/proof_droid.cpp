@@ -5,6 +5,7 @@
 #include "context.h"
 #include "moves.h"
 #include "completion.h"
+#include "library.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -12,6 +13,8 @@
 #include <algorithm>
 #include <sstream>
 #include <set>
+#include <map> // Needed for symbol lookup
+#include <optional> // For std::optional
 
 #define DEBUG_HYDRAS 0 // Whether to print hydras after every move in semiautomatic mode
 
@@ -19,7 +22,7 @@
 enum class option_t {
     OPTION_QUIT,
     OPTION_MANUAL,
-    OPTION_SEMI_AUTOMATIC, // Newly added option for Semi-Automatic Mode
+    OPTION_SEMI_AUTOMATIC,
     OPTION_SKOLEMIZE,
     OPTION_MODUS_PONENS,
     OPTION_MODUS_TOLLENS,
@@ -33,7 +36,9 @@ enum class option_t {
     OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
     OPTION_NEGATED_IMPLICATION,
     OPTION_CONDITIONAL_PREMISE,
-    OPTION_MATERIAL_EQUIVALENCE
+    OPTION_MATERIAL_EQUIVALENCE,
+    OPTION_LIBRARY_FILTER,
+    OPTION_LOAD_THEOREM
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -48,22 +53,53 @@ struct option_entry {
 const std::vector<option_entry> all_options = {
     {option_t::OPTION_QUIT, "q", "quit", "Quit the program"},
     {option_t::OPTION_MANUAL, "m", "manual mode", "Enter manual mode"},
-    {option_t::OPTION_SEMI_AUTOMATIC, "s", "semi-automatic mode", "Enter semi-automatic mode"}, // Newly added option
+    {option_t::OPTION_SEMI_AUTOMATIC, "s", "semi-automatic mode", "Enter semi-automatic mode"},
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization and Quantifier Elimination"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens P → Q, P", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens P → Q, ¬Q", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
-    {option_t::OPTION_EXIT_SEMIAUTO, "x", "exit semiautomatic mode", "Exit semiautomatic mode"},
+    {option_t::OPTION_EXIT_SEMIAUTO, "x", "exit semi-automatic mode", "Exit semi-automatic mode"},
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence P ∧ P", "Apply Conjunctive Idempotence"},
     {option_t::OPTION_DISJ_IDEM, "di", "disjunctive idempotence P ∨ P", "Apply Disjunctive Idempotence"},
     {option_t::OPTION_SPLIT_CONJUNCTION, "sc", "split conjunctions P ∧ Q", "Apply Split Conjunctions"},
-    {option_t::OPTION_SPLIT_DISJUNCTION, "sd", "split disjunctions P ∨ Q", "Apply Split Disjunctions: sd <disjunction_line>"},
+    {option_t::OPTION_SPLIT_DISJUNCTION, "sd", "split disjunction P ∨ Q", "Apply Split Disjunctions: sd <disjunction_line>"},
     {option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION, "sdi", "split disjunctive implication P ∨ Q → R", "Apply Split Disjunctive Implication"},
     {option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION, "sci", "split conjunctive implication P → Q ∧ R", "Apply Split Conjunctive Implication"},
     {option_t::OPTION_NEGATED_IMPLICATION, "ni", "negated implication ¬(P → Q)", "Apply Negated Implication"},
     {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise (target) P → Q", "Apply Conditional Premise: cp <index>"},
-    {option_t::OPTION_MATERIAL_EQUIVALENCE, "me", "material equivalence P ↔ Q", "Apply material equivalence"}
+    {option_t::OPTION_MATERIAL_EQUIVALENCE, "me", "material equivalence P ↔ Q", "Apply material equivalence"},
+    {option_t::OPTION_LIBRARY_FILTER, "f", "library filter", "Filter library lines containing all given symbols: f <module_name> <symbol1> <symbol2> ..."},
+    {option_t::OPTION_LOAD_THEOREM, "l", "load theorems", "Load theorems from a module: l <module_name> <line_no1> <line_no2> ..."}
 };
+
+// Function to convert a REPR-formatted string to its corresponding Unicode string.
+std::string get_unicode_from_repr(const std::string& repr) {
+    // Assuming precedenceTable is accessible here
+    extern const std::map<symbol_enum, PrecedenceInfo> precedenceTable;
+    for (const auto& [sym, info] : precedenceTable) {
+        if (info.repr == repr) {
+            return info.unicode;
+        }
+    }
+    // If not found, return an empty string and optionally print a warning
+    std::cerr << "Warning: REPR \"" << repr << "\" not found in precedenceTable." << std::endl;
+    return "";
+}
+
+// Function to find the option_t based on user input key, considering active options
+bool get_option_from_key(const std::string& input_key, const std::vector<option_t>& active_options, option_t& selected_option) {
+    for (const auto& opt : active_options) {
+        // Find the option_entry corresponding to opt
+        auto it = std::find_if(all_options.begin(), all_options.end(),
+            [&opt](const option_entry& entry) { return entry.option == opt; });
+
+        if (it != all_options.end() && it->key == input_key) {
+            selected_option = it->option;
+            return true;
+        }
+    }
+    return false;
+}
 
 // Function to print all active options in a concise summary
 void print_options(const std::vector<option_t>& active_options) {
@@ -88,32 +124,6 @@ void print_options(const std::vector<option_t>& active_options) {
     std::cout << std::endl;
 }
 
-// Function to find the option_t based on user input key, considering active options
-bool get_option_from_key(const std::string& input_key, const std::vector<option_t>& active_options, option_t& selected_option) {
-    for (const auto& opt : active_options) {
-        // Find the option_entry corresponding to opt
-        auto it = std::find_if(all_options.begin(), all_options.end(),
-            [&opt](const option_entry& entry) { return entry.option == opt; });
-
-        if (it != all_options.end() && it->key == input_key) {
-            selected_option = it->option;
-            return true;
-        }
-    }
-    return false;
-}
-
-// Function to parse a command into tokens
-std::vector<std::string> tokenize(const std::string& input) {
-    std::vector<std::string> tokens;
-    std::istringstream iss(input);
-    std::string token;
-    while (iss >> token) {
-        tokens.push_back(token);
-    }
-    return tokens;
-}
-
 // Function to print the detailed list of commands in manual mode
 void print_detailed_commands(const std::vector<option_t>& active_options) {
     std::cout << "Available Commands:" << std::endl;
@@ -129,7 +139,7 @@ void print_detailed_commands(const std::vector<option_t>& active_options) {
     std::cout << std::endl;
 }
 
-// Function to print the summary of available options in manual mode
+// Function to print the summary of available options in manual or semiautomatic mode
 void print_summary(const std::vector<option_t>& active_options) {
     std::cout << "Options:";
 
@@ -151,6 +161,27 @@ void print_summary(const std::vector<option_t>& active_options) {
     }
 
     std::cout << std::endl;
+}
+
+// Function to parse a command into tokens
+std::vector<std::string> tokenize(const std::string& input) {
+    std::vector<std::string> tokens;
+    std::istringstream iss(input);
+    std::string token;
+    while (iss >> token) {
+        tokens.push_back(token);
+    }
+    return tokens;
+}
+
+// Function to find a loaded module by filename stem
+std::optional<context_t*> find_module(const context_t& tab_ctx, const std::string& filename_stem) {
+    for (const auto& [fname, ctx] : tab_ctx.modules) {
+        if (fname == filename_stem) {
+            return const_cast<context_t*>(&ctx); // Casting away constness for simplicity
+        }
+    }
+    return std::nullopt;
 }
 
 // Function to handle manual mode
@@ -271,7 +302,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             continue;
         }
 
-        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'me' and 'cp', handle accordingly
+        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', 'me' handle accordingly
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS ||
             selected_option == option_t::OPTION_CONJ_IDEM ||
@@ -283,15 +314,15 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
             selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
             
-            // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', and 'cp', handle without additional arguments
+            // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', and 'me', handle without additional arguments
             if (selected_option == option_t::OPTION_CONJ_IDEM || 
                 selected_option == option_t::OPTION_DISJ_IDEM ||
                 selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
                 selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
-                selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
-                selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
+                selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
+                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
                 
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
                     bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
@@ -422,26 +453,202 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 // Apply move_mpt
                 bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
 
-                if (!move_applied) {
-                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
-                } else {
-                    // Check if done
-                    check_done(tab_ctx, false);
-                }
+                if (move_applied) {
+                    // After applying the move, run cleanup_moves automatically
+                    cleanup_moves(tab_ctx, tab_ctx.upto);
 
+                    // Check if done
+                    check_done(tab_ctx);
+                } else {
+                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+                }
+                
                 std::cout << std::endl;
                 print_tableau(tab_ctx);
                 std::cout << std::endl;
+
+#if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+#endif
 
                 // Before next prompt, re-print the summary of options
                 print_summary(manual_active_options);
                 continue;
             }
-
-            // For any other cases, re-print the summary of options
-            print_summary(manual_active_options);
         }
     }
+}
+
+// Function to handle the "library filter" option in semiautomatic mode
+void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        std::cerr << "Error: Insufficient arguments. Usage: f <library_file_name_stem> <symbol1> <symbol2> ..." << std::endl << std::endl;
+        return;
+    }
+
+    std::string filename_stem = tokens[1];
+    std::vector<std::string> repr_symbols(tokens.begin() + 2, tokens.end());
+
+    // Convert REPR symbols to Unicode strings
+    std::vector<std::string> unicode_symbols;
+    for (const auto& repr : repr_symbols) {
+        std::string unicode = get_unicode_from_repr(repr);
+        if (!unicode.empty()) {
+            unicode_symbols.push_back(unicode);
+        }
+        else {
+            std::cerr << "Error: Failed to convert REPR \"" << repr << "\" to Unicode." << std::endl;
+            // Optionally, decide to skip or continue
+        }
+    }
+
+    if (unicode_symbols.empty()) {
+        std::cerr << "Error: No valid symbols provided after conversion." << std::endl << std::endl;
+        return;
+    }
+
+    // Check if the module is already loaded
+    std::optional<context_t*> module_ctx_opt = tab_ctx.find_module(filename_stem);
+    context_t module_ctx;
+
+    if (module_ctx_opt.has_value()) {
+        module_ctx = *module_ctx_opt.value();
+        std::cout << std::endl;
+    }
+    else {
+        // Load the module
+        std::cout << "Loading module \"" << filename_stem << "\"..." << std::endl;
+        if (library_load(module_ctx, filename_stem)) {
+            std::cout << "Module \"" << filename_stem << "\" loaded successfully." << std::endl << std::endl;
+        }
+        else {
+            std::cerr << "Error: Failed to load module \"" << filename_stem << "\"." << std::endl << std::endl;
+            return;
+        }
+        module_ctx.get_constants(); // Populate constants
+
+        tab_ctx.modules.emplace_back(filename_stem, module_ctx);
+    }
+
+    // Iterate through the digest of the module
+    for (const auto& digest_entry : module_ctx.digest) {
+        // Each digest_entry is a vector of pairs (line_idx, -1)
+        for (const auto& [line_idx, _] : digest_entry) {
+            if (line_idx < 0 || static_cast<size_t>(line_idx) >= module_ctx.tableau.size()) {
+                std::cerr << "Warning: Line index " << line_idx << " in digest is out of bounds." << std::endl;
+                continue;
+            }
+
+            const tabline_t& tabline = module_ctx.tableau[line_idx];
+
+            // Check if the tabline's constants contain all the unicode symbols
+            bool contains_all = true;
+            for (const auto& symbol : unicode_symbols) {
+                if (std::find(tabline.constants.begin(), tabline.constants.end(), symbol) == tabline.constants.end()) {
+                    contains_all = false;
+                    break;
+                }
+            }
+
+            if (contains_all) {
+                // Convert the formula to a Unicode string
+                std::string formula_str = tabline.formula->to_string(UNICODE); // Assuming to_string is implemented
+
+                // Print the line number (1-based index) and the formula
+                std::cout << (line_idx + 1) << ": " << formula_str << std::endl;
+            }
+        }
+    }
+
+    std::cout << std::endl;
+}
+
+// handle the load theorems option
+void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& tokens) {
+    // Validate the number of arguments
+    if (tokens.size() < 3) {
+        std::cerr << "Error: Incorrect usage. Usage: l <module_name> <line_no1> <line_no2> ..." << std::endl << std::endl;
+        return;
+    }
+
+    std::string module_name = tokens[1];
+    std::vector<std::string> line_no_strs(tokens.begin() + 2, tokens.end());
+
+    // Find the module in tab_ctx.modules
+    std::optional<context_t*> module_ctx_opt = find_module(tab_ctx, module_name);
+    if (!module_ctx_opt.has_value()) {
+        std::cerr << "Error: Module \"" << module_name << "\" is not loaded." << std::endl << std::endl;
+        return;
+    }
+
+    context_t* module_ctx = module_ctx_opt.value();
+
+    for (const auto& line_no_str : line_no_strs) {
+        // Convert line_no to size_t
+        size_t line_no;
+        try {
+            line_no = std::stoul(line_no_str);
+            if (line_no == 0) {
+                throw std::invalid_argument("Line number cannot be zero.");
+            }
+            line_no -= 1; // Convert to 0-based index
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error: Invalid line number '" << line_no_str << "'. " << e.what() << std::endl;
+            continue; // Skip to the next line_no
+        }
+
+        // Validate the line number within the module's tableau
+        if (line_no >= module_ctx->tableau.size()) {
+            std::cerr << "Error: Line number " << (line_no + 1) << " is out of bounds in module \"" << module_name << "\"." << std::endl;
+            continue; // Skip to the next line_no
+        }
+
+        // Retrieve the digest entry for the specified line
+        bool found = false;
+        for (auto& digest_entry : module_ctx->digest) {
+            for (auto& [mod_line_idx, main_line_idx] : digest_entry) {
+                if (mod_line_idx == line_no) {
+                    if (main_line_idx != static_cast<size_t>(-1)) {
+                        std::cerr << "Error: Theorem from module \"" << module_name << "\", line " << (line_no + 1) << " has already been loaded." << std::endl;
+                        found = true; // Mark as found to prevent duplication
+                        break;
+                    }
+                    main_line_idx = tab_ctx.tableau.size(); // Will be the new line index in main tableau
+                    found = true;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+
+        if (!found) {
+            std::cerr << "Error: Theorem from module \"" << module_name << "\", line " << (line_no + 1) << " not found in digest." << std::endl;
+            continue; // Skip to the next line_no
+        }
+
+        // Copy the theorem's tabline from the module to the main tableau
+        const tabline_t& module_tabline = module_ctx->tableau[line_no];
+        tabline_t copied_tabline = module_tabline; // Assuming a copy constructor is available
+
+        // Set the reason to "Theorem"
+        copied_tabline.justification = { Reason::Theorem, {} };
+
+        // Append the copied tabline to the main tableau
+        tab_ctx.tableau.push_back(copied_tabline);
+
+        // Update the digest to mark this theorem as loaded
+        for (auto& digest_entry : module_ctx->digest) {
+            for (auto& [mod_line_idx, main_line_idx] : digest_entry) {
+                if (mod_line_idx == line_no) {
+                    main_line_idx = tab_ctx.tableau.size() - 1; // Set to the index of the newly added line
+                    break;
+                }
+            }
+        }
+    }
+
+    std::cout << "Theorem(s) loaded successfully" << std::endl;
 }
 
 // Function to handle semi-automatic mode
@@ -547,19 +754,52 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             continue;
         }
 
+        // Handle the new 'l' (load theorem) command
+        if (selected_option == option_t::OPTION_LOAD_THEOREM) {
+            handle_load_theorems(tab_ctx, tokens);
+            // After handling, re-print the tableau
+
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+            
+#if DEBUG_HYDRAS
+            tab_ctx.print_hydras();
+#endif
+
+            // Before next prompt, re-print the summary of options
+            print_summary(semi_auto_active_options);
+            continue;
+        }
+
+        // Handle the existing 'f' (library filter) command
+        if (selected_option == option_t::OPTION_LIBRARY_FILTER) {
+            handle_library_filter(tab_ctx, tokens);
+            // Don't re-print the tableau for this option
+
+#if DEBUG_HYDRAS
+            tab_ctx.print_hydras();
+#endif
+
+            // Before next prompt, re-print the summary of options
+            print_summary(semi_auto_active_options);
+            continue;
+        }
+
+        // Handle other commands like 'sd', 'p', 't', etc.
         if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION) {
             if (tokens.size() != 2) {
                 std::cerr << "Error: Need disjunction line. Usage: "
-                << "sd <disjunction_line>"
-                << std::endl << std::endl;
+                          << "sd <disjunction_line>"
+                          << std::endl << std::endl;
                 print_summary(semi_auto_active_options);
                 continue;
             }
 
             // Parse disjunction_line
-            int disjunction_line;
+            size_t disjunction_line;
             try {
-                disjunction_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                disjunction_line = std::stoul(tokens[1]) - 1; // Convert to 0-based index
             } catch (...) {
                 std::cerr << "Error: Invalid disjunction line number." << std::endl << std::endl;
                 // Before next prompt, re-print the summary of options
@@ -567,7 +807,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
                 continue;
             }
 
-            // Apply move_mpt
+            // Apply move_sd
             bool move_applied = move_sd(tab_ctx, disjunction_line);
 
             if (move_applied) {
@@ -827,7 +1067,7 @@ int main(int argc, char** argv) {
                     // After exiting manual mode, display the tableau and options again
                     print_tableau(tab_ctx);
 
-                    // Reset active_options to include 'm', 's', and 'q'
+                    // Reset active_options to include 'm', 'sa', and 'q'
                     active_options = {
                         option_t::OPTION_QUIT,
                         option_t::OPTION_MANUAL,
@@ -841,12 +1081,14 @@ int main(int argc, char** argv) {
                         option_t::OPTION_MODUS_PONENS,
                         option_t::OPTION_MODUS_TOLLENS,
                         option_t::OPTION_SPLIT_DISJUNCTION,
+                        option_t::OPTION_LIBRARY_FILTER,
+                        option_t::OPTION_LOAD_THEOREM,
                         option_t::OPTION_EXIT_SEMIAUTO,
                         option_t::OPTION_QUIT
                     };
 
                     parameterize_all(tab_ctx);
-    
+
                     // set up initial hydras
                     tab_ctx.initialize_hydras();
                     std::vector<int> targets = tab_ctx.get_hydra();

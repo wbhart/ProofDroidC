@@ -1,28 +1,19 @@
 Critical:
 
-* Add split field to tabline to record the line (and negation) into which a
-  disjunction was previously split, so that if it gets split again, new lines are
-  not created for the same purpose in move_sd
-
-* When moving to next target, must select assumptions that haven't been proved for
-  that target yet
-
-* When selecting targets, activate only those hyps whose assumptions are a subset
-  of an unproved set of assumptions for current leaf hydra
-
 * Currently only the leaf hydra can be proved. Allow all hydras on the current_hydra
   path to be checked for completion, and delete all descendants when proved and
   update the proved field of all descendants otherwise
 
 * Check for tautologies in check_done
 
-* Put assumptions/restrictions debugging code in print_tableau
-
 * Factor out dealing with restrictions/assumptions in moves by making functions that
   deal with tablines, e.g. copy_restrictions, combine_restrictions, etc.
 
 * Should targets have restrictions/assumptions? Yes, they could have been reasoned
   backwards to from other targets and hypotheses that have assumptions.
+
+* When moving to next target, must select assumptions that haven't been proved for
+  that target yet
 
 * Make checking moves (e.g. check_restrictions/assumptions) optional, so this doesn't
   duplicate work automation will be doing before executing the moves
@@ -33,8 +24,6 @@ Critical:
 * Add special implication-as-disjunction case to modus_ponens.
 
 * Deal with modus ponens case where single unit clause is a disjunction.
-
-* Add split_disjunction move (split tableau)
 
 Eventually:
 
