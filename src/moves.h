@@ -35,7 +35,7 @@ bool skolemize_all(context_t& tab_ctx, size_t start = 0);
 // - ctx_var: The context for variable indexing and renaming.
 // Returns:
 // - A new node representing the result of modus ponens, or nullptr if unification fails.
-node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
+node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent=false);
 
 // Applies modus tollens to the given implication and unit clauses.
 // Parameters:
@@ -44,10 +44,10 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 // - ctx_var: The context for variable indexing and renaming.
 // Returns:
 // - A new node representing the result of modus ponens, or nullptr if unification fails.
-node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses);
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent=false);
 
 // Performs modus ponens\tollens on specified lines
-bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens);
+bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens, bool silent=false);
 
 // Function to apply disjunctive idempotence: P ∨ P -> P
 bool move_di(context_t& tab_ctx, size_t start = 0);

@@ -216,7 +216,7 @@ void cleanup_conjuncts(std::vector<node*> conjuncts) {
     conjuncts.clear();
 }
 
-node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
+node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
     // 1. Verify that the first formula is an implication
     if (!(implication->is_implication())) {
         std::cerr << "Error: The first formula is not an implication." << std::endl;
@@ -262,8 +262,10 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
     // 7. Verify that the number of unit clauses matches the number of conjuncts
     if (unit_clauses.size() != conjuncts.size()) {
-        std::cerr << "Error: Number of unit clauses (" << unit_clauses.size()
+        if (!silent) {
+            std::cerr << "Error: Number of unit clauses (" << unit_clauses.size()
                   << ") does not match number of antecedent conjuncts (" << conjuncts.size() << ")." << std::endl;
+        }
         cleanup_conjuncts(conjuncts);
         delete implication_copy;
         return nullptr;
@@ -280,9 +282,11 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
         Substitution subst;
         std::optional<Substitution> maybe_subst = unify(conjunct, unit, subst);
         if (!maybe_subst.has_value()) {
-            std::cerr << "Error: Unification failed between conjunct " << (i + 1) << " and unit clause." << std::endl;
-            std::cerr << "Conjunct: " << conjunct->to_string(UNICODE) 
-                      << " | Unit Clause: " << unit->to_string(UNICODE) << std::endl;
+            if (!silent) {
+                std::cerr << "Error: Unification failed between conjunct " << (i + 1) << " and unit clause." << std::endl;
+                std::cerr << "Conjunct: " << conjunct->to_string(UNICODE) 
+                          << " | Unit Clause: " << unit->to_string(UNICODE) << std::endl;
+            }
             cleanup_conjuncts(conjuncts);
             delete implication_copy;
             cleanup_subst(combined_subst);
@@ -295,7 +299,9 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
             auto it = combined_subst.find(key);
             if (it != combined_subst.end()) {
                 if (it->second->to_string(REPR) != value->to_string(REPR)) {
-                    std::cerr << "Error: Conflicting substitutions for variable '" << key << "'." << std::endl;
+                    if (!silent) {
+                        std::cerr << "Error: Conflicting substitutions for variable '" << key << "'." << std::endl;
+                    }
                     cleanup_conjuncts(conjuncts);
                     delete implication_copy;
                     cleanup_subst(combined_subst);
@@ -318,7 +324,9 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     // 9. Substitute the consequent with the combined substitution
     node* substituted_consequent = substitute(consequent, combined_subst);
     if (!substituted_consequent) {
-        std::cerr << "Error: Substitution failed on the consequent." << std::endl;
+        if (!silent) {
+            std::cerr << "Error: Substitution failed on the consequent." << std::endl;
+        }
         // Clean up and exit
         delete implication_copy;
         cleanup_subst(combined_subst);
@@ -332,12 +340,12 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     return substituted_consequent;
 }
 
-node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses) {
+node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
     // 1. Negate the implication: A -> B becomes ¬B -> ¬A
     node* negated_implication = contrapositive(implication);
 
     // 2. Apply modus ponens with the negated implication and the provided unit clauses
-    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses);
+    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses, silent);
 
     // 3. Clean up the negated implication
     delete negated_implication;
@@ -346,7 +354,7 @@ node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<nod
     return result;
 }
 
-bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens) {
+bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens, bool silent) {
     // Step 1: Validate implication_line is within bounds
     if (implication_line < 0 || implication_line >= static_cast<int>(ctx.tableau.size())) {
         std::cerr << "Error: implication line " << implication_line + 1 << " is out of bounds.\n";
@@ -386,12 +394,16 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         }
 
         if (!check_assumptions(implication_tabline.assumptions, current_tabline.assumptions)) {
-            std::cerr << "Error: line " << line + 1 << " has incompatible assumptions.\n";
+            if (!silent) {
+                std::cerr << "Error: line " << line + 1 << " has incompatible assumptions.\n";
+            }
             return false;
         }
 
         if (!check_restrictions(implication_tabline.restrictions, current_tabline.restrictions)) {
-            std::cerr << "Error: line " << line + 1 << " has incompatible target restrictions.\n";
+            if (!silent) {
+                std::cerr << "Error: line " << line + 1 << " has incompatible target restrictions.\n";
+            }
             return false;
         }
     }
@@ -422,18 +434,20 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     if (forward ^ !ponens) {
         // Apply modus ponens
-        result = modus_ponens(ctx, implication, unit_clauses);
+        result = modus_ponens(ctx, implication, unit_clauses, silent);
     }
     else {
         // Apply modus tollens
-        result = modus_tollens(ctx, implication, unit_clauses);
+        result = modus_tollens(ctx, implication, unit_clauses, silent);
     }
 
     justification_reason = (ponens ? Reason::ModusPonens : Reason::ModusTollens);
 
     // Step 7: Check if the inference was successful
     if (result == nullptr) {
-        std::cerr << "Error: modus " << (ponens ? "ponens" : "tollens") << " failed to infer a result.\n";
+        if (!silent) {
+                std::cerr << "Error: modus " << (ponens ? "ponens" : "tollens") << " failed to infer a result.\n";
+        }
         return false;
     }
 

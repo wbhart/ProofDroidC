@@ -1087,7 +1087,6 @@ void context_t::get_constants() {
                 }
 
                 tabline_t& tabline = tableau[line_idx];
-                // No need to check for null, as per design
 
                 // Compute constants using node_get_constants
                 node_get_constants(tabline.constants, tabline.formula);
@@ -1113,4 +1112,39 @@ std::optional<context_t*> context_t::find_module(const std::string& filename_ste
         }
     }
     return std::nullopt;
+}
+
+void context_t::get_tableau_constants(
+    std::vector<std::string>& all_constants,
+    std::vector<std::string>& target_constants,
+    std::vector<size_t>& implication_indices,
+    std::vector<size_t>& unit_indices) const
+{
+    // Iterate through each line in the tableau
+    for (size_t i = 0; i < tableau.size(); ++i) {
+        const tabline_t& tabline = tableau[i];
+        
+        // Skip inactive lines
+        if (!tabline.active) {
+            continue;
+        }
+        
+        if (tabline.target) {
+            // Accumulate constants from active target lines
+            node_get_constants(target_constants, tabline.formula);
+        }
+        else if (!tabline.is_theorem() && !tabline.is_definition()) {
+            // Accumulate constants from active lines that are neither theorems nor definitions
+            node_get_constants(all_constants, tabline.formula);
+            
+            // Check if the formula is an implication
+            if (tabline.formula->is_implication()) {
+                implication_indices.push_back(i);
+            }
+            else {
+                unit_indices.push_back(i);
+            }
+        }
+        // Note: Targets cannot be theorems or definitions, so no further checks are needed
+    }
 }

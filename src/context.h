@@ -65,7 +65,8 @@ public:
     node* negation = nullptr;                      // Pointer to the negation of the formula
     std::vector<std::pair<int, int>> unifications; // List of pairs (i, j) where i unifies with j
     std::vector<std::string> constants;            // New field to store constants
-
+    std::vector<int> applied_units;                // Tracks applied target indices
+    
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
         : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(), constants() {}
@@ -182,6 +183,13 @@ public:
 
     // Function to find a module by filename stem
     std::optional<context_t*> find_module(const std::string& filename_stem);
+
+    // Return constants used in active (non-thm/defn) lines of tableau and constants used in active targets
+    // along with a list of all active implications and unit clauses
+    void get_tableau_constants(std::vector<std::string>& all_constants,
+                               std::vector<std::string>& target_constants,
+                               std::vector<size_t>& implication_indices,
+                               std::vector<size_t>& unit_indices) const;
 
 private:
     // Maps variable base names to their latest index

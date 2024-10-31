@@ -6,6 +6,7 @@
 #include "moves.h"
 #include "completion.h"
 #include "library.h"
+#include "automation.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -13,8 +14,8 @@
 #include <algorithm>
 #include <sstream>
 #include <set>
-#include <map> // Needed for symbol lookup
-#include <optional> // For std::optional
+#include <map>
+#include <optional>
 
 #define DEBUG_HYDRAS 0 // Whether to print hydras after every move in semiautomatic mode
 
@@ -23,6 +24,7 @@ enum class option_t {
     OPTION_QUIT,
     OPTION_MANUAL,
     OPTION_SEMI_AUTOMATIC,
+    OPTION_AUTOMATIC,
     OPTION_SKOLEMIZE,
     OPTION_MODUS_PONENS,
     OPTION_MODUS_TOLLENS,
@@ -54,6 +56,7 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_QUIT, "q", "quit", "Quit the program"},
     {option_t::OPTION_MANUAL, "m", "manual mode", "Enter manual mode"},
     {option_t::OPTION_SEMI_AUTOMATIC, "s", "semi-automatic mode", "Enter semi-automatic mode"},
+    {option_t::OPTION_AUTOMATIC, "a", "automate", "Automate"},
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization and Quantifier Elimination"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens P → Q, P", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens P → Q, ¬Q", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
@@ -1020,7 +1023,8 @@ int main(int argc, char** argv) {
     std::vector<option_t> active_options = {
         option_t::OPTION_QUIT,
         option_t::OPTION_MANUAL,
-        option_t::OPTION_SEMI_AUTOMATIC
+        option_t::OPTION_SEMI_AUTOMATIC,
+        option_t::OPTION_AUTOMATIC
     };
 
     // Display the initial tableau
@@ -1119,14 +1123,25 @@ int main(int argc, char** argv) {
                     };
                     break;
                 }
-                case option_t::OPTION_SKOLEMIZE: {
-                    // Apply skolemize_all to the tableau starting from 0
-                    bool skolemized = skolemize_all(tab_ctx, 0);
-                    if (skolemized) {
-                        // Check if done
-                        check_done(tab_ctx);
-                    }
+                case option_t::OPTION_AUTOMATIC: {
+                    parameterize_all(tab_ctx);
+
+                    // set up initial hydras
+                    tab_ctx.initialize_hydras();
+                    std::vector<int> targets = tab_ctx.get_hydra();
+                    tab_ctx.select_targets(targets);
+                    
+                    cleanup_moves(tab_ctx, 0); // Starting from line 0
+
+                    // Get constants for the tableau
+                    tab_ctx.get_constants();
+
+                    // Call the automate function
+                    automate(tab_ctx);
+
+                    // After automation, display the tableau and options again
                     print_tableau(tab_ctx);
+
                     break;
                 }
                 case option_t::OPTION_QUIT:
