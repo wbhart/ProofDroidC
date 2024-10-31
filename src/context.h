@@ -64,15 +64,16 @@ public:
     node* formula = nullptr;                       // Pointer to the associated formula
     node* negation = nullptr;                      // Pointer to the negation of the formula
     std::vector<std::pair<int, int>> unifications; // List of pairs (i, j) where i unifies with j
-    std::vector<std::string> constants;            // New field to store constants
+    std::vector<std::string> constants1;           // Constants for line or constants on left of implication line
+    std::vector<std::string> constants2;           // Constants right of implication line
     std::vector<int> applied_units;                // Tracks applied target indices
-    
+
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
-        : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(), constants() {}
+        : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(), constants1(), constants2() {}
     
     tabline_t(node* form, node* neg) 
-        : target(true), active(true), dead(false), formula(form), negation(neg), unifications(), constants() {}
+        : target(true), active(true), dead(false), formula(form), negation(neg), unifications(), constants1(), constants2() {}
 
     // Print a list of restrictions
     void print_restrictions() const;
@@ -190,6 +191,9 @@ public:
                                std::vector<std::string>& target_constants,
                                std::vector<size_t>& implication_indices,
                                std::vector<size_t>& unit_indices) const;
+
+    // kill all duplicate lines starting at the given start line
+    void kill_duplicates(size_t start_index);
 
 private:
     // Maps variable base names to their latest index

@@ -2,6 +2,21 @@
 
 #include "automation.h"
 
+#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
+
+template <typename T>
+void print_list(const std::vector<T>& list) {
+    std::cout << "[";
+    for (size_t i = 0; i < list.size(); ++i) {
+        std::cout << list[i];
+        if (i < list.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "]";
+}
+
 // Automation using a waterfall architecture
 // Returns true if theorem successfully proved, else false if the automation gets stuck
 bool automate(context_t& ctx) {
@@ -11,13 +26,27 @@ bool automate(context_t& ctx) {
     std::vector<size_t> impls;                  // Indices of active implication hypotheses
     std::vector<size_t> units;                  // Indices of active non-implication hypotheses
 
-    // Accumulate constants and indices using get_tableau_constants
-    ctx.get_tableau_constants(tabc, tarc, impls, units);
-
-    bool move_made; // whether a move was made at any step
+    bool move_made = false; // whether a move was made at any step
 
     // Waterfall Architecture Loop
     while (true) {
+#if DEBUG_TABLEAU
+        if (move_made) {
+            std::cout << std::endl;
+            print_tableau(ctx);
+            std::cout << std::endl << std:: endl;
+        }
+#endif
+
+        // Clear data for current tableau
+        tabc.clear();
+        tarc.clear();
+        impls.clear();
+        units.clear();
+        
+        // Accumulate constants and indices using get_tableau_constants
+        ctx.get_tableau_constants(tabc, tarc, impls, units);
+
         // Level 1 of the Waterfall
         // ------------------------
         // (Omitted as per current implementation)
@@ -33,72 +62,187 @@ bool automate(context_t& ctx) {
 
         move_made = false; // Flag to check if any move was made in this iteration
 
+#if DEBUG_LISTS
+        std::cout << "targets: ";
+        print_list(targets);
+        std::cout << std::endl;
+        
+        std::cout << "impls: ";
+        print_list(impls);
+        std::cout << std::endl;
+
+        std::cout << "units: ";
+        print_list(units);
+        std::cout << std::endl;
+
+        std::cout << "tableau consts: ";
+        print_list(tabc);
+        std::cout << std::endl;
+
+        std::cout << "target consts: ";
+        print_list(tarc);
+        std::cout << std::endl;
+#endif
+
         // Iterate over each target in the current leaf hydra
         for (const int target : targets) {
             const tabline_t& target_tabline = ctx.tableau[target];
-            const std::vector<std::string>& target_consts = target_tabline.constants;
+            const std::vector<std::string>& target_consts = target_tabline.constants1;
 
             // Iterate over each implication hypothesis
             for (const size_t impl_idx : impls) {
                 tabline_t& impl_tabline = ctx.tableau[impl_idx];
-                const std::vector<std::string>& impl_consts = impl_tabline.constants;
+                const std::vector<std::string>& impl_consts1 = impl_tabline.constants1;
+                const std::vector<std::string>& impl_consts2 = impl_tabline.constants2;
 
                 // Check if the implication has already been applied to this target
                 if (std::find(impl_tabline.applied_units.begin(), impl_tabline.applied_units.end(), target) != impl_tabline.applied_units.end()) {
                     continue; // Skip if already applied
                 }
 
+#if DEBUG_LISTS
+                std::cout << "target constants: ";
+                print_list(target_consts);
+                std::cout << std::endl;
+        
+                std::cout << "implication constants: ";
+                print_list(impl_consts);
+                std::cout << std::endl;
+#endif
+
                 // Check if all target constants are contained within implication constants
-                bool all_contained = true;
-                for (const auto& const_str : target_consts) {
-                    if (std::find(impl_consts.begin(), impl_consts.end(), const_str) == impl_consts.end()) {
-                        all_contained = false;
+                bool all_contained_left = true;
+                for (const auto& const_str : impl_consts1) {
+                    if (std::find(target_consts.begin(), target_consts.end(), const_str) == target_consts.end()) {
+                        all_contained_left = false;
                         break;
                     }
                 }
 
-                if (all_contained) {
-                    // Prepare the list of other lines (only the target in this case)
-                    std::vector<int> other_lines = { target };
+                bool all_contained_right = true;
+                for (const auto& const_str : impl_consts2) {
+                    if (std::find(target_consts.begin(), target_consts.end(), const_str) == target_consts.end()) {
+                        all_contained_right = false;
+                        break;
+                    }
+                }
 
+                // Prepare the list of other lines (only the target in this case)
+                std::vector<int> other_lines = { target };
+                bool move_success = false;
+
+                if (all_contained_right) {
                     // Attempt Modus Ponens
-                    bool move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                }
 
-                    if (move_success) {
-                        // Add the target to applied_units to prevent reapplication
-                        impl_tabline.applied_units.push_back(target);
+                if (!move_success && all_contained_left) {
+                    // Attempt Modus Tollens since Modus Ponens failed
+                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                }
 
-                        // Cleanup
-                        cleanup_moves(ctx, ctx.upto);
+                if (move_success) {
+                    // Add the target to applied_units to prevent reapplication
+                    impl_tabline.applied_units.push_back(target);
 
-                        // Check if the proof is done after applying the move
-                        bool done = check_done(ctx, true); // apply_cleanup=true
-                        if (done) {
-                            return true; // Proof completed successfully
-                        }
-                        move_made = true; // A move was made; continue the waterfall
-                        break; // Exit the implications loop to restart the waterfall
+                    // Cleanup
+                    cleanup_moves(ctx, ctx.upto);
+
+                    // Check if the proof is done after applying the move
+                    bool done = check_done(ctx, true); // apply_cleanup=true
+                    if (done) {
+                        return true; // Proof completed successfully
                     }
-                    else {
-                        // Attempt Modus Tollens since Modus Ponens failed
-                        move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
 
-                        if (move_success) {
-                            // Add the target to applied_units to prevent reapplication
-                            impl_tabline.applied_units.push_back(target);
+                    move_made = true; // A move was made; continue the waterfall
+                    break; // Exit the implications loop to restart the waterfall
+                }
+            }
 
-                            // Cleanup
-                            cleanup_moves(ctx, ctx.upto);
+            if (move_made) {
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
 
-                            // Check if the proof is done after applying the move
-                            bool done = check_done(ctx, true); // apply_cleanup=true
-                            if (done) {
-                                return true; // Proof completed successfully
-                            }
-                            move_made = true; // A move was made; continue the waterfall
-                            break; // Exit the implications loop to restart the waterfall
-                        }
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
+        // Level 3 of the Waterfall (non-library forwards reasoning)
+        // ----------------------------------------------------------
+
+        // Iterate over each unit in the units list
+        for (const size_t unit_idx : units) {
+            const tabline_t& unit_tabline = ctx.tableau[unit_idx];
+            const std::vector<std::string>& unit_consts = unit_tabline.constants1;
+
+            // Iterate over each implication hypothesis
+            for (const size_t impl_idx : impls) {
+                tabline_t& impl_tabline = ctx.tableau[impl_idx];
+                const std::vector<std::string>& impl_consts1 = impl_tabline.constants1;
+                const std::vector<std::string>& impl_consts2 = impl_tabline.constants2;
+
+#if DEBUG_LISTS
+                std::cout << "unit constants: ";
+                print_list(unit_consts);
+                std::cout << std::endl;
+        
+                std::cout << "implication constants: ";
+                print_list(impl_consts);
+                std::cout << std::endl;
+#endif
+
+                // Check if the implication has already been applied to this unit
+                if (std::find(impl_tabline.applied_units.begin(), impl_tabline.applied_units.end(), unit_idx) != impl_tabline.applied_units.end()) {
+                    continue; // Skip if already applied
+                }
+
+                // Check if all unit constants are contained within implication constants
+                bool all_contained_left = true;
+                for (const auto& const_str : impl_consts1) {
+                    if (std::find(unit_consts.begin(), unit_consts.end(), const_str) == unit_consts.end()) {
+                        all_contained_left = false;
+                        break;
                     }
+                }
+
+                bool all_contained_right = true;
+                for (const auto& const_str : impl_consts2) {
+                    if (std::find(unit_consts.begin(), unit_consts.end(), const_str) == unit_consts.end()) {
+                        all_contained_right = false;
+                        break;
+                    }
+                }
+
+                // Prepare the list of other lines (only the unit in this case)
+                std::vector<int> other_lines = { static_cast<int>(unit_idx) };
+                bool move_success = false;
+                
+                if (all_contained_left) {
+                    // Attempt Modus Ponens
+                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                }
+
+                if (!move_success && all_contained_right) {
+                    // Attempt Modus Tollens since Modus Ponens failed
+                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                }
+
+                if (move_success) {
+                    // Add the unit to applied_units to prevent reapplication
+                    impl_tabline.applied_units.push_back(unit_idx);
+
+                    // Cleanup
+                    cleanup_moves(ctx, ctx.upto);
+
+                    // Check if the proof is done after applying the move
+                    bool done = check_done(ctx, true); // apply_cleanup=true
+                    if (done) {
+                        return true; // Proof completed successfully
+                    }
+
+                    move_made = true; // A move was made; continue the waterfall
+                    break; // Exit the implications loop to restart the waterfall
                 }
             }
 
@@ -115,6 +259,8 @@ bool automate(context_t& ctx) {
         // ....
 
         if (!move_made) {
+            std::cout << "Unable to prove theorem" << std::endl;
+
             // No moves were made at any level; automation cannot proceed further
             return false;
         }

@@ -1640,6 +1640,8 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
     bool moved = false, moved1;
     size_t start = start_line;
     size_t current_size = tab_ctx.tableau.size();
+
+    tab_ctx.kill_duplicates(start);
             
     while (start < current_size) {
         // Apply moves in the specified order
@@ -1769,12 +1771,17 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
         }
 #endif
 
+        tab_ctx.kill_duplicates(start);
+    
         // Update start_line to previous current_size before moves were applied
         start = current_size;
         // Update current_size to the new size of the tableau
         current_size = tab_ctx.tableau.size();
     }
     
+    // Updates constants fields of all lines, starting at upto
+    tab_ctx.get_constants();
+
     return moved;
 }
 

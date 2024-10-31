@@ -1,5 +1,17 @@
 Critical:
 
+* Proved 1-5, 11, 14, 34
+
+* Set 6 not proved
+
+* Set 7-10, 12-13, 19-20, 22-25, 33-35, 37-45 loop
+
+* Set 15-18, 21, 26-27, 28-32, 36, 46, 47 segfault
+
+* Investigate why set2 causes x to unify with itself. Renaming issue?
+
+* Do we need to remove renamed vars from used_vars after a failed move?
+
 * Currently only the leaf hydra can be proved. Allow all hydras on the current_hydra
   path to be checked for completion, and delete all descendants when proved and
   update the proved field of all descendants otherwise

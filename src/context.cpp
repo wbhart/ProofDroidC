@@ -1089,18 +1089,28 @@ void context_t::get_constants() {
                 tabline_t& tabline = tableau[line_idx];
 
                 // Compute constants using node_get_constants
-                node_get_constants(tabline.constants, tabline.formula);
+                if (tabline.formula->is_implication()) {
+                    node_get_constants(tabline.constants1, tabline.formula->children[0]);
+                    node_get_constants(tabline.constants2, tabline.formula->children[1]);
+                } else {
+                    node_get_constants(tabline.constants1, tabline.formula);
+                }
             }
         }
     }
     else {
         // No digest available; process all tableau lines
-        for (size_t i = 0; i < tableau.size(); ++i) {
+        for (size_t i = upto; i < tableau.size(); ++i) {
             tabline_t& tabline = tableau[i];
             // No need to check for null, as per design
 
             // Compute constants using node_get_constants
-            node_get_constants(tabline.constants, tabline.formula);
+            if (!tabline.target && tabline.formula->is_implication()) {
+                node_get_constants(tabline.constants1, tabline.formula->children[0]);
+                node_get_constants(tabline.constants2, tabline.formula->children[1]);
+            } else {
+                node_get_constants(tabline.constants1, tabline.formula);
+            }
         }
     }
 }
@@ -1146,5 +1156,90 @@ void context_t::get_tableau_constants(
             }
         }
         // Note: Targets cannot be theorems or definitions, so no further checks are needed
+    }
+}
+
+void context_t::kill_duplicates(size_t start_index) {
+    for (size_t i = start_index; i < tableau.size(); ++i) {
+        tabline_t& current_line = tableau[i];
+
+        // Only consider active lines that are hypotheses (not targets)
+        if (!current_line.active || current_line.target) {
+            continue;
+        }
+
+        // Iterate over all prior active hypotheses
+        for (size_t j = 0; j < i; ++j) {
+            const tabline_t& prior_line = tableau[j];
+
+            // Only compare with active hypotheses
+            if (!prior_line.active || prior_line.target) {
+                continue;
+            }
+
+            // Check if formulas are equal
+            if (!equal(current_line.formula, prior_line.formula)) {
+                continue;
+            }
+
+            // Check assumptions
+            bool assumptions_ok = false;
+            if (current_line.assumptions.empty() && prior_line.assumptions.empty()) {
+                assumptions_ok = true;
+            }
+            else if (prior_line.assumptions.empty()) {
+                assumptions_ok = true;
+            }
+            else {
+                // Check if all assumptions of current_line are contained in prior_line
+                bool all_assumptions_contained = std::all_of(
+                    current_line.assumptions.begin(),
+                    current_line.assumptions.end(),
+                    [&](int a) {
+                        return std::find(prior_line.assumptions.begin(), prior_line.assumptions.end(), a) != prior_line.assumptions.end();
+                    }
+                );
+                if (all_assumptions_contained) {
+                    assumptions_ok = true;
+                }
+            }
+
+            if (!assumptions_ok) {
+                continue; // Assumptions do not satisfy the criteria
+            }
+
+            // Check restrictions
+            bool restrictions_ok = false;
+            if (current_line.restrictions.empty() && prior_line.restrictions.empty()) {
+                restrictions_ok = true;
+            }
+            else if (prior_line.restrictions.empty()) {
+                restrictions_ok = true;
+            }
+            else {
+                // Check if all restrictions of current_line are contained in prior_line
+                bool all_restrictions_contained = std::all_of(
+                    current_line.restrictions.begin(),
+                    current_line.restrictions.end(),
+                    [&](int r) {
+                        return std::find(prior_line.restrictions.begin(), prior_line.restrictions.end(), r) != prior_line.restrictions.end();
+                    }
+                );
+                if (all_restrictions_contained) {
+                    restrictions_ok = true;
+                }
+            }
+
+            if (!restrictions_ok) {
+                continue; // Restrictions do not satisfy the criteria
+            }
+
+            // All conditions met, mark the current line as inactive and dead
+            current_line.active = false;
+            current_line.dead = true;
+
+            // No need to check further prior lines for this current line
+            break;
+        }
     }
 }

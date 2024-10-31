@@ -10,7 +10,7 @@
 
 // Function to check if a variable occurs in a node (occurs check)
 bool occurs_check(node* var, node* node) {
-    if (var == node) {
+    if (node->type == VARIABLE && node->name() == var->name()) {
         return true;
     }
 
@@ -39,6 +39,11 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
         }
     }
 
+    // Variable unifies with itself
+    if (term->type == VARIABLE && term->name() == var->name()) {
+        return subst;
+    }
+    
     // If the variable occurs in the term (occurs check), fail to avoid infinite loops
     if (occurs_check(var, term)) {
         return std::nullopt;
@@ -47,7 +52,7 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
     // Add the substitution of the variable to the term only if the term is a valid type (variable or constant)
     if (term->type == VARIABLE || term->type == CONSTANT ||
         term->type == APPLICATION || term->type == TUPLE) {
-        subst[var_name] = term;
+            subst[var_name] = term;
     } else {
         return std::nullopt;
     }

@@ -548,7 +548,8 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
             // Check if the tabline's constants contain all the unicode symbols
             bool contains_all = true;
             for (const auto& symbol : unicode_symbols) {
-                if (std::find(tabline.constants.begin(), tabline.constants.end(), symbol) == tabline.constants.end()) {
+                if (std::find(tabline.constants1.begin(), tabline.constants1.end(), symbol) == tabline.constants1.end() &&
+                    std::find(tabline.constants2.begin(), tabline.constants2.end(), symbol) == tabline.constants2.end()) {
                     contains_all = false;
                     break;
                 }
@@ -556,7 +557,7 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
 
             if (contains_all) {
                 // Convert the formula to a Unicode string
-                std::string formula_str = tabline.formula->to_string(UNICODE); // Assuming to_string is implemented
+                std::string formula_str = tabline.formula->to_string(UNICODE);
 
                 // Print the line number (1-based index) and the formula
                 std::cout << (module_line_idx + 1) << ": " << formula_str << std::endl;
@@ -1138,6 +1139,8 @@ int main(int argc, char** argv) {
 
                     // Call the automate function
                     automate(tab_ctx);
+
+                    std::cout << std::endl;
 
                     // After automation, display the tableau and options again
                     print_tableau(tab_ctx);

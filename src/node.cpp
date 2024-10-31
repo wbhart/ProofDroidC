@@ -248,7 +248,6 @@ void mark_shared(node* current, const std::set<std::string>& var_names) {
         const std::string& current_name = current->name();
         if (var_names.find(current_name) != var_names.end()) {
             current->vdata->shared = true; // Mark as shared
-            std::cout << "marking as shared: " << current->name() << std::endl;
         }
     }
 
