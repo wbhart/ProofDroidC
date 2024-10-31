@@ -16,6 +16,23 @@
 #include <memory>
 #include <optional>
 
+// Define the LIBRARY enum to distinguish between Theorem and Definition
+enum class LIBRARY {
+    Theorem,
+    Definition
+};
+
+// Structure representing an entry in the digest
+struct digest_item {
+    size_t module_line_idx;        // Line index in the module
+    size_t main_tableau_line_idx;  // Line index in the main tableau (-1 if not loaded)
+    LIBRARY kind;                   // Kind of fact: Theorem or Definition
+
+    // Constructor for ease of initialization
+    digest_item(size_t mod_idx, size_t main_idx, LIBRARY k)
+        : module_line_idx(mod_idx), main_tableau_line_idx(main_idx), kind(k) {}
+};
+
 // Enumeration representing reasons for justifications in tableau lines
 enum class Reason {
     ModusPonens,
@@ -31,7 +48,8 @@ enum class Reason {
     NegatedImplication,
     MaterialEquivalence,
     ConditionalPremise,
-    Theorem
+    Theorem,
+    Definition
 };
 
 // Represents a single line in the tableau
@@ -64,6 +82,11 @@ public:
     // Return whether the tabline stores a loaded theorem
     bool is_theorem() const {
         return justification.first == Reason::Theorem;
+    }
+
+    // Return whether the tabline stores a loaded definition
+    bool is_definition() const {
+        return justification.first == Reason::Definition;
     }
 };
 
@@ -111,16 +134,17 @@ public:
     // Path to current hydra (list of references to hydras along the way)
     std::vector<std::shared_ptr<hydra>> current_hydra;
 
-    // Digest for library thms/defns ctx is storing a module
+    // Digest for library thms/defns when ctx is storing a module
+    // Digest item has library kind and pair of size_t's
     // Pair (i, j): i = line in this tableau, j = line in main
     // tableau if theorem/definition line loaded there, else -1
-    std::vector<std::vector<std::pair<size_t, size_t>>> digest;
+    std::vector<std::vector<digest_item>> digest;
     
     // Vector of loaded modules: pair of filename stem and their context
     std::vector<std::pair<std::string, context_t>> modules;
 
     // Lines already dealt with (used for incremental completion checking)
-    int upto = 0;
+    size_t upto = 0;
 
     // Selects and activates/deactivates targets and hypotheses based on the provided list
     void select_targets(const std::vector<int>& targets);

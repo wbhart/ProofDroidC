@@ -532,14 +532,15 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
 
     // Iterate through the digest of the module
     for (const auto& digest_entry : module_ctx.digest) {
-        // Each digest_entry is a vector of pairs (line_idx, -1)
-        for (const auto& [line_idx, _] : digest_entry) {
-            if (line_idx < 0 || static_cast<size_t>(line_idx) >= module_ctx.tableau.size()) {
-                std::cerr << "Warning: Line index " << line_idx << " in digest is out of bounds." << std::endl;
-                continue;
+        // Each digest_entry is a vector of digest_item
+        for (const auto& [module_line_idx, main_tableau_line_idx, kind] : digest_entry) {
+            // Validate line index
+            if (module_line_idx >= module_ctx.tableau.size()) {
+                std::cerr << "Warning: Line index " << module_line_idx << " in digest is out of bounds." << std::endl;
+                continue; // Skip invalid indices
             }
 
-            const tabline_t& tabline = module_ctx.tableau[line_idx];
+            const tabline_t& tabline = module_ctx.tableau[module_line_idx];
 
             // Check if the tabline's constants contain all the unicode symbols
             bool contains_all = true;
@@ -555,7 +556,7 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
                 std::string formula_str = tabline.formula->to_string(UNICODE); // Assuming to_string is implemented
 
                 // Print the line number (1-based index) and the formula
-                std::cout << (line_idx + 1) << ": " << formula_str << std::endl;
+                std::cout << (module_line_idx + 1) << ": " << formula_str << std::endl;
             }
         }
     }
@@ -606,15 +607,19 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
 
         // Retrieve the digest entry for the specified line
         bool found = false;
+        LIBRARY kind;
         for (auto& digest_entry : module_ctx->digest) {
-            for (auto& [mod_line_idx, main_line_idx] : digest_entry) {
+            for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) {
                 if (mod_line_idx == line_no) {
-                    if (main_line_idx != static_cast<size_t>(-1)) {
-                        std::cerr << "Error: Theorem from module \"" << module_name << "\", line " << (line_no + 1) << " has already been loaded." << std::endl;
+                    if (main_line_idx != -static_cast<size_t>(1)) {
+                        std::cerr << "Error: " << (entry_kind == LIBRARY::Theorem ? "Theorem" : "Definition")
+                                  << " from module \"" << module_name << "\", line " << (line_no + 1)
+                                  << " has already been loaded." << std::endl;
                         found = true; // Mark as found to prevent duplication
                         break;
                     }
                     main_line_idx = tab_ctx.tableau.size(); // Will be the new line index in main tableau
+                    kind = entry_kind;
                     found = true;
                     break;
                 }
@@ -623,23 +628,29 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
         }
 
         if (!found) {
-            std::cerr << "Error: Theorem from module \"" << module_name << "\", line " << (line_no + 1) << " not found in digest." << std::endl;
+            std::cerr << "Error: Fact from module \"" << module_name << "\", line " << (line_no + 1)
+                      << " not found in digest." << std::endl;
             continue; // Skip to the next line_no
         }
 
-        // Copy the theorem's tabline from the module to the main tableau
+        // Copy the fact's tabline from the module to the main tableau
         const tabline_t& module_tabline = module_ctx->tableau[line_no];
         tabline_t copied_tabline = module_tabline; // Assuming a copy constructor is available
 
-        // Set the reason to "Theorem"
-        copied_tabline.justification = { Reason::Theorem, {} };
+        // Set the reason based on the kind
+        if (kind == LIBRARY::Theorem) {
+            copied_tabline.justification = { Reason::Theorem, {} };
+        }
+        else if (kind == LIBRARY::Definition) {
+            copied_tabline.justification = { Reason::Definition, {} };
+        }
 
         // Append the copied tabline to the main tableau
         tab_ctx.tableau.push_back(copied_tabline);
 
-        // Update the digest to mark this theorem as loaded
+        // Update the digest to mark this fact as loaded
         for (auto& digest_entry : module_ctx->digest) {
-            for (auto& [mod_line_idx, main_line_idx] : digest_entry) {
+            for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) {
                 if (mod_line_idx == line_no) {
                     main_line_idx = tab_ctx.tableau.size() - 1; // Set to the index of the newly added line
                     break;

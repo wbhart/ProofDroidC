@@ -149,6 +149,10 @@ void print_reason(const context_t& context, int index) {
             std::cout << "Thm";
             break;
 
+        case Reason::Definition:
+            std::cout << "Defn";
+            break;
+
         case Reason::ModusPonens: {
             std::cout << "MP[";
             for (size_t i = 0; i < associated_lines.size(); ++i) {
@@ -1037,13 +1041,14 @@ void print_tableau(const context_t& tab_ctx) {
     }
     
     if (theorems_exist) {
-        std::cout << std::endl << "Theorems:" << std::endl;
+        std::cout << std::endl << "Library premises:" << std::endl;
         
         // First, print all active Hypotheses that are not theorems
         for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
             const tabline_t& tabline = tab_ctx.tableau[i];
-            if (tabline.active && !tabline.target && tabline.is_theorem()) {
+            if (tabline.active && !tabline.target && (tabline.is_theorem() || tabline.is_definition())) {
                 std::cout << " " << i + 1 << " "; // Line number
+                print_reason(tab_ctx, static_cast<int>(i)); // Print reason
                 std::cout << ": " << tabline.formula->to_string(UNICODE);
                 std::cout << std::endl;
             }
@@ -1068,12 +1073,15 @@ void context_t::get_constants() {
     bool has_digest = !digest.empty();
 
     if (has_digest) {
-        // Iterate through each theorem/definition loaded (each vector in digest)
+        // Iterate through each digest entry (each vector of digest_item)
         for (const auto& digest_entry : digest) {
-            // Iterate through each pair in the digest_entry
-            for (const auto& [line_idx, _] : digest_entry) {
+            // Iterate through each digest_item in the digest_entry
+            for (const auto& digest_item : digest_entry) {
+                size_t line_idx = digest_item.module_line_idx;
+                // size_t cannot be negative, so no need to check line_idx < 0
+
                 // Validate line index
-                if (line_idx < 0 || static_cast<size_t>(line_idx) >= tableau.size()) {
+                if (line_idx >= tableau.size()) {
                     std::cerr << "Warning: Line index " << line_idx << " in digest is out of bounds." << std::endl;
                     continue; // Skip invalid indices
                 }

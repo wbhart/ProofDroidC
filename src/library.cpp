@@ -93,11 +93,26 @@ bool library_load(context_t& context, const std::string& base_str) {
 
         context.upto = context.tableau.size();
 
-        // Step 9: Update Digest
-        std::vector<std::pair<size_t, size_t>> digest_entry;
-        for (int i = initial_upto; i < context.upto; ++i) {
+        // Step 9: Update Digest with LIBRARY Kind
+        std::vector<digest_item> digest_entry;
+        for (size_t i = initial_upto; i < context.upto; ++i) {
             if (context.tableau[i].active) { // Only consider active lines
-                digest_entry.emplace_back(i, -1);
+                // Determine the kind based on line_type
+                LIBRARY kind;
+                if (line_type == "theorem") {
+                    kind = LIBRARY::Theorem;
+                }
+                else if (line_type == "definition") {
+                    kind = LIBRARY::Definition;
+                }
+                else {
+                    // If unknown type, default or skip
+                    std::cerr << "Warning: Skipping line " << (i + 1) << " due to unknown type '" << line_type << "'." << std::endl;
+                    continue;
+                }
+
+                // Initialize main_tableau_line_idx to a special value (e.g., max size_t) indicating not loaded yet
+                digest_entry.emplace_back(i, -static_cast<size_t>(1), kind);
             }
         }
 
@@ -112,4 +127,3 @@ bool library_load(context_t& context, const std::string& base_str) {
 
     return true;
 }
-
