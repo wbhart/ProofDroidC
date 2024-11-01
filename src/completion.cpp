@@ -321,9 +321,9 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
     }
 
     // Step 6: Add the merged assumptions to the current leaf hydra
-    bool add_success = current_leaf_hydra->add_assumption(successful_merged_assumptions);
+    int add_success = current_leaf_hydra->add_assumption(successful_merged_assumptions);
 
-    if (add_success) {
+    if (add_success == 1) {
         // Keep removing proved targets and their parents
         bool remove_hydra = true;
         
@@ -427,7 +427,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
             return false; // Not fully proved yet
         }
     }
-    else {
+    else if (add_success == 0) {
         // current hydra is not fully proved yet
 
         // make copy of final assumption of current_leaf_hydra
@@ -447,5 +447,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
         } else {
             return false; // Not fully proved yet
         }
+    } else { // add_success == -1, i.e. condition already subsumed
+        return false;
     }
 }

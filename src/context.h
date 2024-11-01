@@ -5,6 +5,7 @@
 
 #include "node.h"
 #include "hydra.h"
+#include "debug.h"
 #include <unordered_map>
 #include <string>
 #include <iostream>

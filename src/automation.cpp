@@ -2,19 +2,18 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 0 // whether to print tableau
+#define DEBUG_TABLEAU 1 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 
-template <typename T>
-void print_list(const std::vector<T>& list) {
-    std::cout << "[";
-    for (size_t i = 0; i < list.size(); ++i) {
-        std::cout << list[i];
-        if (i < list.size() - 1) {
-            std::cout << ", ";
+// whether consts2 is a subset of consts1
+bool consts_subset(const std::vector<std::string>& consts1, const std::vector<std::string>& consts2) {
+    for (const auto& const_str : consts2) {
+        if (std::find(consts1.begin(), consts1.end(), const_str) == consts1.end()) {
+            return false;
         }
     }
-    std::cout << "]";
+
+    return true;
 }
 
 // Automation using a waterfall architecture
@@ -110,33 +109,22 @@ bool automate(context_t& ctx) {
                 std::cout << std::endl;
 #endif
 
-                // Check if all target constants are contained within implication constants
-                bool all_contained_left = true;
-                for (const auto& const_str : impl_consts1) {
-                    if (std::find(target_consts.begin(), target_consts.end(), const_str) == target_consts.end()) {
-                        all_contained_left = false;
-                        break;
-                    }
-                }
-
-                bool all_contained_right = true;
-                for (const auto& const_str : impl_consts2) {
-                    if (std::find(target_consts.begin(), target_consts.end(), const_str) == target_consts.end()) {
-                        all_contained_right = false;
-                        break;
-                    }
-                }
-
+                // Check if all implication constants are contained within target constants
+                bool all_contained_left = consts_subset(target_consts, impl_consts1);
+                bool all_contained_right = consts_subset(target_consts, impl_consts2);
+                bool consts_ltor = consts_subset(impl_consts1, impl_consts2) || !consts_subset(impl_consts2, impl_consts1);
+                bool consts_rtol = consts_subset(impl_consts2, impl_consts1) || !consts_subset(impl_consts1, impl_consts2);
+                
                 // Prepare the list of other lines (only the target in this case)
                 std::vector<int> other_lines = { target };
                 bool move_success = false;
 
-                if (all_contained_right && impl_tabline.rtol) {
+                if (all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
                 }
 
-                if (!move_success && all_contained_left && impl_tabline.ltor) {
+                if (!move_success && all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
                 }
@@ -198,32 +186,21 @@ bool automate(context_t& ctx) {
                 }
 
                 // Check if all unit constants are contained within implication constants
-                bool all_contained_left = true;
-                for (const auto& const_str : impl_consts1) {
-                    if (std::find(unit_consts.begin(), unit_consts.end(), const_str) == unit_consts.end()) {
-                        all_contained_left = false;
-                        break;
-                    }
-                }
-
-                bool all_contained_right = true;
-                for (const auto& const_str : impl_consts2) {
-                    if (std::find(unit_consts.begin(), unit_consts.end(), const_str) == unit_consts.end()) {
-                        all_contained_right = false;
-                        break;
-                    }
-                }
-
+                bool all_contained_left = consts_subset(unit_consts, impl_consts1);
+                bool all_contained_right = consts_subset(unit_consts, impl_consts2);
+                bool consts_ltor = consts_subset(impl_consts2, impl_consts1) || !consts_subset(impl_consts1, impl_consts2);
+                bool consts_rtol = consts_subset(impl_consts1, impl_consts2) || !consts_subset(impl_consts2, impl_consts1);
+                
                 // Prepare the list of other lines (only the unit in this case)
                 std::vector<int> other_lines = { static_cast<int>(unit_idx) };
                 bool move_success = false;
                 
-                if (all_contained_left && impl_tabline.ltor) {
+                if (all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
                 }
 
-                if (!move_success && all_contained_right && impl_tabline.rtol) {
+                if (!move_success && all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
                 }

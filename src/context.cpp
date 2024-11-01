@@ -11,25 +11,11 @@
 #define DEBUG_SELECT_HYPOTHESES 0
 
 void tabline_t::print_restrictions() const {
-    std::cout << "[";
-    for (size_t i = 0; i < restrictions.size(); i++) {
-        std::cout << restrictions[i] + 1;
-        if (i < restrictions.size() - 1) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << "]";
+    print_list(restrictions);
 }
 
 void tabline_t::print_assumptions() const {
-    std::cout << "[";
-    for (size_t i = 0; i < assumptions.size(); i++) {
-        std::cout << assumptions[i];
-        if (i < assumptions.size() - 1) {
-            std::cout << ", ";
-        }
-    }
-    std::cout << "]";
+    print_list(assumptions);
 }
 
 // Constructor: Initializes the context (empty var_indices)

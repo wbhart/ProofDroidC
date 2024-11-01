@@ -95,11 +95,11 @@ bool hydra::assumption_exists(const std::vector<int>& new_assumption) {
 }
 
 // Adds a proved assumption to the node with conflict handling
-bool hydra::add_assumption(const std::vector<int>& new_assumption) {
+int hydra::add_assumption(const std::vector<int>& new_assumption) {
     if (new_assumption.empty()) { // Proved without assumptions
         proved.clear();
         proved.push_back(new_assumption);
-        return true;
+        return 1;
     }
         
     // Create a sorted copy of the new assumption for consistent comparison
@@ -108,12 +108,18 @@ bool hydra::add_assumption(const std::vector<int>& new_assumption) {
 
     // Iterate through existing proved assumptions to find conflicts
     for (auto it = proved.begin(); it != proved.end(); ) {
+        // Check if we already have a more general condition
+        if (std::includes((sorted_new).begin(), sorted_new.end(), (*it).begin(), (*it).end())) {
+            // *it is a subset of sorted_new, so we return false immediately
+            return -1;
+        }
         int conflicting_n = 0;
         if (find_conflict(*it, sorted_new, conflicting_n)) {
             // Conflict detected where existing has -n and new has n
 
             // Modify the existing assumption: remove -n and add n
             std::vector<int> modified_assumption = *it;
+
             auto pos = std::find(modified_assumption.begin(), modified_assumption.end(), -conflicting_n);
             if (pos != modified_assumption.end()) {
                 modified_assumption.erase(pos);          // Remove -n
@@ -132,7 +138,7 @@ bool hydra::add_assumption(const std::vector<int>& new_assumption) {
 
     // No conflict found, add the new assumption
     proved.push_back(new_assumption);
-    return false; // Returns true if assumptions is empty, false otherwise
+    return 0; // Returns true if assumptions is empty, false otherwise
 }
 
 // Adds a child hydra node

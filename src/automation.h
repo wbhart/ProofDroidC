@@ -5,6 +5,7 @@
 #include "context.h"
 #include "hydra.h"
 #include "moves.h"
+#include "debug.h"
 #include <vector>
 #include <string>
 #include <memory>

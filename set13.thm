@@ -5,6 +5,5 @@
 \forall X \forall Y \forall x (X \subseteq Y \wedge x \in X \implies x \in Y)
 \forall x \neg(x \in \emptyset)
 \forall X ((\forall x \neg(x \in X)) \implies X = \emptyset)
-\forall X (\emptyset \subseteq X)
 \forall X \forall Y (X \subset Y \iff X \subseteq Y \wedge X \neq Y)
 * \emptyset \subset S \implies \exists x (x \in S)

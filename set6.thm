@@ -1,6 +1,6 @@
-\forall X \forall Y (X = Y \iff (\forall x (x \in X \iff x \in Y)))
 \forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
 \forall X \forall Y (X = Y \iff X \subseteq Y \wedge Y \subseteq X)
+\forall X \forall Y (X = Y \iff (\forall x (x \in X \iff x \in Y)))
 \forall X \forall Y \forall Z (X \subseteq Y \wedge Y \subseteq Z \implies X \subseteq Z)
 \forall X \forall Y (X \subset Y \iff X \subseteq Y \wedge X \neq Y)
 * S \subset T \iff (\forall x (x \in S \implies x \in T)) \wedge (\exists y (y \in T \wedge \neg(y \in S)))
