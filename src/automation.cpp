@@ -4,6 +4,7 @@
 
 #define DEBUG_TABLEAU 1 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
+#define DEBUG_MOVES 1 // whether to print moves that are executed
 
 // whether consts2 is a subset of consts1
 bool consts_subset(const std::vector<std::string>& consts1, const std::vector<std::string>& consts2) {
@@ -36,6 +37,8 @@ bool automate(context_t& ctx) {
             std::cout << std::endl << std:: endl;
         }
 #endif
+
+        move_made = false;
 
         // Clear data for current tableau
         tabc.clear();
@@ -122,11 +125,23 @@ bool automate(context_t& ctx) {
                 if (all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level 2: mp " << impl_idx + 1 << " " << target + 1 << std::endl;
+                    }
+#endif
                 }
 
                 if (!move_success && all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level 2: mt " << impl_idx + 1 << " " << target + 1 << std::endl;
+                    }
+#endif
                 }
 
                 if (move_success) {
@@ -155,12 +170,12 @@ bool automate(context_t& ctx) {
         if (move_made) { 
             continue; // Move made at this level, restart waterfall at level 1
         }
-
+        
         // Level 3 of the Waterfall (non-library forwards reasoning)
         // ----------------------------------------------------------
 
         // Iterate over each unit in the units list
-        for (const size_t unit_idx : units) {
+        for (const int unit_idx : units) {
             const tabline_t& unit_tabline = ctx.tableau[unit_idx];
             const std::vector<std::string>& unit_consts = unit_tabline.constants1;
 
@@ -192,17 +207,29 @@ bool automate(context_t& ctx) {
                 bool consts_rtol = consts_subset(impl_consts1, impl_consts2) || !consts_subset(impl_consts2, impl_consts1);
                 
                 // Prepare the list of other lines (only the unit in this case)
-                std::vector<int> other_lines = { static_cast<int>(unit_idx) };
+                std::vector<int> other_lines = { unit_idx };
                 bool move_success = false;
                 
                 if (all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level 3: mp " << impl_idx + 1 << " " << unit_idx + 1 << std::endl;
+                    }
+#endif
                 }
 
                 if (!move_success && all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level 3: mt " << impl_idx + 1 << " " << unit_idx + 1 << std::endl;
+                    }
+#endif
                 }
 
                 if (move_success) {
@@ -220,6 +247,224 @@ bool automate(context_t& ctx) {
 
                     move_made = true; // A move was made; continue the waterfall
                     break; // Exit the implications loop to restart the waterfall
+                }
+            }
+
+            if (move_made) {
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
+        // Level 9 of the Waterfall (Library forwards reasoning)
+        // ----------------------------------------------------------
+
+        // Iterate over each unit in the units list
+        for (const int unit_idx : units) {
+            tabline_t& unit_tabline = ctx.tableau[unit_idx];
+            const std::vector<std::string>& unit_consts = unit_tabline.constants1;
+
+            for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
+                for (auto& digest_entry : mod_ctx.digest) { // for each digest record
+                    for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) { // for each theorem in record
+                        tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
+
+                        if (entry_kind == LIBRARY::Theorem) {
+                            if (mod_tabline.formula->is_implication()) { // library result is implication
+                                std::cout << "is theorem" << std::endl;
+                                // Check if this theorem has been applied already
+                                std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                if (find(unit_tabline.lib_applied.begin(), unit_tabline.lib_applied.end(),
+                                                                           mod_pair) == unit_tabline.lib_applied.end()) {
+                                    
+                                    std::cout << "found" << std::endl;
+                                    
+                                    const std::vector<std::string>& mod_consts1 = mod_tabline.constants1;
+                                    const std::vector<std::string>& mod_consts2 = mod_tabline.constants2;
+                                    bool all_contained_left = consts_subset(unit_consts, mod_consts1);
+                                    bool all_contained_right = consts_subset(unit_consts, mod_consts2);
+                                    bool tab_contained_left = consts_subset(tabc, mod_consts1);
+                                    std::cout << "tabc ";
+                                    print_list(tabc);
+                                    std::cout << std::endl;
+                                    std::cout << "modc1 ";
+                                    print_list(mod_consts1);
+                                    std::cout << std::endl;
+                                    
+                                    bool tab_contained_right = consts_subset(tabc, mod_consts2);
+                                    bool consts_ltor = consts_subset(mod_consts2, mod_consts1) || !consts_subset(mod_consts1, mod_consts2);
+                                    bool consts_rtol = consts_subset(mod_consts1, mod_consts2) || !consts_subset(mod_consts2, mod_consts1);
+                                    bool failed_left = false;
+                                    bool failed_right = false;
+
+                                    node* unit_formula = unit_tabline.formula;
+                                        
+                                    if (!all_contained_left || !consts_ltor){
+                                        failed_left = true;
+                                    }
+
+                                    std::cout << "failed_left = " << failed_left << std::endl;
+                                    std::cout << "tab_contained_left = " << tab_contained_left << std::endl;
+
+                                    if (!failed_left && tab_contained_left) {
+                                        std::cout << "contained_left" << std::endl;
+                                            
+                                        node* mod_formula = deep_copy(mod_tabline.formula->children[0]);
+                                        
+                                        // Find common variables
+                                        std::set<std::string> common_vars = find_common_variables(unit_formula, mod_formula);
+                                        
+                                        // Rename variables to prevent capture
+                                        if (!common_vars.empty()) {
+                                            std::vector<std::pair<std::string, std::string>> rename_list = vars_rename_list(mod_ctx, common_vars);
+                                        
+                                            // Rename variables in the entire implication_copy
+                                            rename_vars(mod_formula, rename_list);
+                                        }
+
+                                        std::cout << "mod_formula: " << mod_formula->to_string(UNICODE) << std::endl;
+                                        std::cout << "unit_formula: " << unit_formula->to_string(UNICODE) << std::endl;
+                                        
+                                        // Attempt unification
+                                        Substitution subst;
+                                        std::optional<Substitution> maybe_subst = unify(mod_formula, unit_formula, subst);
+
+                                        // Check if unification succeeded
+                                        if (maybe_subst.has_value()) {
+                                            std::cout << "unify succeeded" << std::endl;
+                                            
+                                            if (main_line_idx == -static_cast<size_t>(1)) {
+                                                // Copy the theorems tabline from the module to the main tableau
+                                                tabline_t copied_tabline = mod_tabline;
+
+                                                // Set the reason based on the kind
+                                                copied_tabline.justification = { Reason::Theorem, {} };
+
+                                                // Append the copied tabline to the main tableau
+                                                ctx.tableau.push_back(copied_tabline);
+
+                                                // Update the digest to mark this fact as loaded
+                                                main_line_idx = ctx.tableau.size() - 1; // Set to the index of the newly added line
+                                            }
+
+                                            std::cout << "attempt mp" << std::endl;
+                                            
+                                            // Attempt to apply modus_ponens
+                                            std::vector<int> other_lines = {unit_idx};
+                                            bool move_applied = move_mpt(ctx, main_line_idx, other_lines, true);
+
+                                            if (move_applied) {
+                                                move_made = true;
+
+                                                std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                                unit_tabline.lib_applied.push_back(mod_pair);
+                                                
+                                                // After applying the move, run cleanup_moves automatically
+                                                cleanup_moves(ctx, ctx.upto);
+
+                                                // Check if done
+                                                if (check_done(ctx)) {
+                                                    return true;
+                                                }
+                                            } else {
+                                                failed_left = true;
+                                            }
+                                        } else {
+                                            failed_left = true;
+                                        }
+        
+                                        delete mod_formula;
+                                    }
+
+                                    if (!all_contained_right || !consts_rtol){
+                                        failed_right = true;
+                                    }
+
+                                    if (failed_left && !failed_right && tab_contained_right) {
+                                        node* mod_formula = negate_node(deep_copy(mod_tabline.formula->children[1]));
+                                        
+                                        // Find common variables
+                                        std::set<std::string> common_vars = find_common_variables(unit_formula, mod_formula);
+                                        
+                                        // Rename variables to prevent capture
+                                        if (!common_vars.empty()) {
+                                            std::vector<std::pair<std::string, std::string>> rename_list = vars_rename_list(mod_ctx, common_vars);
+                                        
+                                            // Rename variables in the entire implication_copy
+                                            rename_vars(mod_formula, rename_list);
+                                        }
+
+                                        // Attempt unification
+                                        Substitution subst;
+                                        std::optional<Substitution> maybe_subst = unify(mod_formula, unit_formula, subst);
+
+                                        // Check if unification succeeded
+                                        if (maybe_subst.has_value()) {
+                                            if (main_line_idx == -static_cast<size_t>(1)) {
+                                                // Copy the theorems tabline from the module to the main tableau
+                                                tabline_t copied_tabline = mod_tabline;
+
+                                                // Set the reason based on the kind
+                                                copied_tabline.justification = { Reason::Theorem, {} };
+
+                                                // Append the copied tabline to the main tableau
+                                                ctx.tableau.push_back(copied_tabline);
+
+                                                // Update the digest to mark this fact as loaded
+                                                main_line_idx = ctx.tableau.size() - 1; // Set to the index of the newly added line
+                                            }
+                                            
+                                            // Attempt to apply modus_tollens
+                                            std::vector<int> other_lines = {unit_idx};
+                                            bool move_applied = move_mpt(ctx, main_line_idx, other_lines, false);
+
+                                            if (move_applied) {
+                                                move_made = true;
+
+                                                std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                                unit_tabline.lib_applied.push_back(mod_pair);
+                                                
+                                                // After applying the move, run cleanup_moves automatically
+                                                cleanup_moves(ctx, ctx.upto);
+
+                                                // Check if done
+                                                if (check_done(ctx)) {
+                                                    return true;
+                                                }
+                                            } else {
+                                                failed_right = true;
+                                            }
+                                        } else {
+                                            failed_right = true;
+                                        }
+
+                                        delete mod_formula;
+                                    }
+
+                                    // Mark theorem as applied
+                                    if (failed_left && failed_right) {
+                                        std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                        unit_tabline.lib_applied.push_back(mod_pair);
+                                    }
+                                }
+                            }
+                        }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
+                        }
+                    }
+
+                    if (move_made) {
+                        break; // A move was made; restart the waterfall from the beginning
+                    }
+                }
+
+                if (move_made) {
+                    break; // A move was made; restart the waterfall from the beginning
                 }
             }
 

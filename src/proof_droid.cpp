@@ -482,6 +482,36 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
     }
 }
 
+// Function to check if a module is loaded and if not to load it
+// Returns true is module_ctx was loaded correctly
+bool load_module(context_t& module_ctx, context_t& tab_ctx, const std::string filename_stem)
+{
+    // Check if the module is already loaded
+    std::optional<context_t*> module_ctx_opt = tab_ctx.find_module(filename_stem);
+
+    if (module_ctx_opt.has_value()) {
+        module_ctx = *module_ctx_opt.value();
+        std::cout << std::endl;
+    }
+    else {
+        // Load the module
+        std::cout << "Loading module \"" << filename_stem << "\"..." << std::endl;
+        if (library_load(module_ctx, filename_stem)) {
+            std::cout << "Module \"" << filename_stem << "\" loaded successfully." << std::endl << std::endl;
+        }
+        else {
+            std::cerr << "Error: Failed to load module \"" << filename_stem << "\"." << std::endl << std::endl;
+            return true;
+        }
+        module_ctx.get_constants(); // Populate constants
+        module_ctx.get_ltor(); // Compute whether implications are left-to-right and/or right-to-left applicable
+
+        tab_ctx.modules.emplace_back(filename_stem, module_ctx);
+    }
+
+    return false;
+}
+
 // Function to handle the "library filter" option in semiautomatic mode
 void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& tokens) {
     if (tokens.size() < 3) {
@@ -510,28 +540,10 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
         return;
     }
 
-    // Check if the module is already loaded
-    std::optional<context_t*> module_ctx_opt = tab_ctx.find_module(filename_stem);
     context_t module_ctx;
-
-    if (module_ctx_opt.has_value()) {
-        module_ctx = *module_ctx_opt.value();
-        std::cout << std::endl;
-    }
-    else {
-        // Load the module
-        std::cout << "Loading module \"" << filename_stem << "\"..." << std::endl;
-        if (library_load(module_ctx, filename_stem)) {
-            std::cout << "Module \"" << filename_stem << "\" loaded successfully." << std::endl << std::endl;
-        }
-        else {
-            std::cerr << "Error: Failed to load module \"" << filename_stem << "\"." << std::endl << std::endl;
-            return;
-        }
-        module_ctx.get_constants(); // Populate constants
-        module_ctx.get_ltor(); // Compute whether implications are left-to-right and/or right-to-left applicable
-
-        tab_ctx.modules.emplace_back(filename_stem, module_ctx);
+    
+    if (!load_module(module_ctx, tab_ctx, filename_stem)) {
+        return;
     }
 
     // Iterate through the digest of the module
@@ -1126,6 +1138,10 @@ int main(int argc, char** argv) {
                     break;
                 }
                 case option_t::OPTION_AUTOMATIC: {
+                    context_t module_ctx;
+                    // For now, hard code single module load
+                    load_module(module_ctx, tab_ctx, "set");
+
                     parameterize_all(tab_ctx);
 
                     // set up initial hydras

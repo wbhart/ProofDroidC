@@ -192,7 +192,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
     }
 
     // Access the current leaf hydra (last entry in current_hydra)
-        // Access the current leaf hydra as a shared_ptr
+    // Access the current leaf hydra as a shared_ptr
     std::shared_ptr<hydra> current_leaf_hydra = ctx.current_hydra.back();
 
     // Extract target indices from the current leaf hydra

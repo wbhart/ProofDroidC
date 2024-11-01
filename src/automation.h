@@ -10,6 +10,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <optional>
 
 // Automation using a waterfall
 bool automate(context_t& ctx);

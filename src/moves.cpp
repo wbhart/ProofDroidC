@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {

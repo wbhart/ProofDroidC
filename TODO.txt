@@ -4,7 +4,17 @@ Critical:
 
 * Set 6, 8-10, 16, 26-30, 33 not proved
 
+* Set 1 leaks
+
+* We don't need to compute tarc and tabc for level 2 and 3
+
+* In print_tableau, only print restrictions that correspond to active targets
+
 * Investigate why set2 causes x to unify with itself. Renaming issue?
+
+* Don't just hard code ("set") module loading in automatic move
+
+* For library forwards and backwards reasoning, filter theorems for tabc/tarc first
 
 * Do we need to remove renamed vars from used_vars after a failed move?
 
