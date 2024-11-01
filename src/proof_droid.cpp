@@ -529,6 +529,7 @@ void handle_library_filter(context_t& tab_ctx, const std::vector<std::string>& t
             return;
         }
         module_ctx.get_constants(); // Populate constants
+        module_ctx.get_ltor(); // Compute whether implications are left-to-right and/or right-to-left applicable
 
         tab_ctx.modules.emplace_back(filename_stem, module_ctx);
     }

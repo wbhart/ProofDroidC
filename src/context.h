@@ -58,6 +58,8 @@ public:
     bool target = false;                           // Indicates if this line is a target
     bool active = true;                            // Indicates if this line is active
     bool dead = false;                             // Whether target proved or hypothesis no longer useful
+    bool ltor = false;                             // For implications, whether it can be applied left-to-right
+    bool rtol = false;                             // or right-to-left, without introducing new metavars
     std::vector<int> assumptions;                  // Indices of assumptions
     std::vector<int> restrictions;                 // Indices of restrictions
     std::pair<Reason, std::vector<int>> justification; // How this was proved and from which lines
@@ -195,6 +197,8 @@ public:
     // kill all duplicate lines starting at the given start line
     void kill_duplicates(size_t start_index);
 
+    // Determine whether lines representing implications can be applied left-to-right or right-to-left
+    void get_ltor();
 private:
     // Maps variable base names to their latest index
     std::unordered_map<std::string, int> var_indices;

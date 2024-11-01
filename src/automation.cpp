@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_TABLEAU 0 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 
 template <typename T>
@@ -131,12 +131,12 @@ bool automate(context_t& ctx) {
                 std::vector<int> other_lines = { target };
                 bool move_success = false;
 
-                if (all_contained_right) {
+                if (all_contained_right && impl_tabline.rtol) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
                 }
 
-                if (!move_success && all_contained_left) {
+                if (!move_success && all_contained_left && impl_tabline.ltor) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
                 }
@@ -218,12 +218,12 @@ bool automate(context_t& ctx) {
                 std::vector<int> other_lines = { static_cast<int>(unit_idx) };
                 bool move_success = false;
                 
-                if (all_contained_left) {
+                if (all_contained_left && impl_tabline.ltor) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
                 }
 
-                if (!move_success && all_contained_right) {
+                if (!move_success && all_contained_right && impl_tabline.rtol) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
                 }

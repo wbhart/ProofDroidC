@@ -257,15 +257,15 @@ void mark_shared(node* current, const std::set<std::string>& var_names) {
     }
 }
 
-void vars_used(std::set<std::string>& variables, const node* root, bool include_params) {
+void vars_used(std::set<std::string>& variables, const node* root, bool include_params, bool include_bound) {
     // If the current node is a VARIABLE, add its name to the set
-    if (root->is_variable()) {
+    if (root->is_variable() && (include_params || !(root->vdata->var_kind == PARAMETER)) && (include_bound || !root->vdata->bound)) {
         variables.insert(root->name());
     }
 
     // Recursively traverse all child nodes
     for (const auto& child : root->children) {
-        vars_used(variables, child);
+        vars_used(variables, child, include_params, include_bound);
     }
 }
 
@@ -597,5 +597,41 @@ void node_get_constants(std::vector<std::string>& constants, const node* formula
     // Recursively traverse child nodes
     for (const auto& child : formula->children) {
         node_get_constants(constants, child);
+    }
+}
+
+// Return true if all variables on right side of implication are found on the left side
+void left_to_right(bool& ltor, bool& rtol, const node* implication) {
+    // Extract left (premise) and right (conclusion) sub-nodes
+    const node* premise = implication->children[0];
+    const node* conclusion = implication->children[1];
+    
+    // Retrieve variables used in premise and conclusion
+    std::set<std::string> premise_vars;
+    vars_used(premise_vars, premise, false, false);
+
+    std::set<std::string> conclusion_vars;
+    vars_used(conclusion_vars, conclusion, false, false);
+
+    ltor = true;
+    
+    // Check if all variables in conclusion are present in premise
+    for (const auto& var : conclusion_vars) {
+        if (premise_vars.find(var) == premise_vars.end()) {
+            // Variable in conclusion not found in premise
+            ltor = false;
+            break;
+        }
+    }
+
+    rtol = true;
+    
+    // Check if all variables in conclusion are present in premise
+    for (const auto& var : premise_vars) {
+        if (conclusion_vars.find(var) == conclusion_vars.end()) {
+            // Variable in conclusion not found in premise
+            rtol = false;
+            break;
+        }
     }
 }

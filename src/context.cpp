@@ -1115,6 +1115,41 @@ void context_t::get_constants() {
     }
 }
 
+void context_t::get_ltor() {
+    // Check if the digest has been computed
+    bool has_digest = !digest.empty();
+
+    if (has_digest) {
+        // Iterate through each digest entry (each vector of digest_item)
+        for (const auto& digest_entry : digest) {
+            // Iterate through each digest_item in the digest_entry
+            for (const auto& digest_item : digest_entry) {
+                size_t line_idx = digest_item.module_line_idx;
+                // size_t cannot be negative, so no need to check line_idx < 0
+
+                tabline_t& tabline = tableau[line_idx];
+
+                // Compute constants using node_get_constants
+                if (tabline.formula->is_implication() || tabline.formula->is_disjunction()) {
+                    left_to_right(tabline.ltor, tabline.rtol, tabline.formula);
+                }
+            }
+        }
+    }
+    else {
+        // No digest available; process all tableau lines
+        for (size_t i = upto; i < tableau.size(); ++i) {
+            tabline_t& tabline = tableau[i];
+            // No need to check for null, as per design
+
+            // Compute constants using node_get_constants
+            if (!tabline.target && (tabline.formula->is_implication())) {
+                left_to_right(tabline.ltor, tabline.rtol, tabline.formula);
+            }
+        }
+    }
+}
+
 std::optional<context_t*> context_t::find_module(const std::string& filename_stem) {
     for (auto& [fname, ctx] : modules) {
         if (fname == filename_stem) {

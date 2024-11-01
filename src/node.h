@@ -279,7 +279,7 @@ void unbind_var(node* current, const std::string& var_name);
 
 void mark_shared(node* current, const std::set<std::string>& var_names);
 
-void vars_used(std::set<std::string>& variables, const node* root, bool include_params=true);
+void vars_used(std::set<std::string>& variables, const node* root, bool include_params=true, bool include_bound=true);
 
 std::set<std::string> find_common_variables(const node* formula1, const node* formula2);
 
@@ -294,5 +294,7 @@ node* contrapositive(node* implication);
 bool equal(const node* a, const node* b);
 
 void node_get_constants(std::vector<std::string>& constants, const node* formula);
+
+void left_to_right(bool& ltor, bool& rtol, const node* implication);
 
 #endif // NODE_H

@@ -1527,7 +1527,10 @@ bool conditional_premise(context_t& tab_ctx, int index) {
                 
     // Add restriction to the new hypothesis
     new_hypothesis.restrictions.push_back(static_cast<int>(tab_ctx.tableau.size() + 1));
-    
+
+    // Deactivate the original formula (must be done before invalidating tableau with push_backs)
+    tabline.active = false;
+
     // Append new hypothesis and target to the tableau
     tab_ctx.tableau.push_back(new_hypothesis);
     tab_ctx.tableau.push_back(new_target);
@@ -1536,9 +1539,6 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.restrictions_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
-
-    // Deactivate the original formula
-    tabline.active = false;
 
     return true;
 }
@@ -1642,7 +1642,8 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
     size_t current_size = tab_ctx.tableau.size();
 
     tab_ctx.kill_duplicates(start);
-            
+    tab_ctx.get_ltor();
+
     while (start < current_size) {
         // Apply moves in the specified order
 
@@ -1772,6 +1773,7 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
 #endif
 
         tab_ctx.kill_duplicates(start);
+        tab_ctx.get_ltor();
     
         // Update start_line to previous current_size before moves were applied
         start = current_size;
