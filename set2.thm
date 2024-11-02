@@ -1,4 +1,3 @@
 S \subseteq T
 x \in S
-\forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
 * x \in T

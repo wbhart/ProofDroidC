@@ -1,4 +1,3 @@
 S \subseteq T
 T \subseteq U
-\forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
 * S \subseteq U

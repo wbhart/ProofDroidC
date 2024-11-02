@@ -1,2 +1,1 @@
-\forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
 * \forall S (S \subseteq S)

@@ -1,8 +1,12 @@
 Critical:
 
-* Proved 1-5, 7, 11-15, 17-25, 31-32, 34-47
+* Set 3 requires library backwards reasoning
 
-* Set 6, 8-10, 16, 26-30, 33 not proved
+* Proved 1-14, 19, 22-25, 34, 41-47
+
+* Set 15-18, 20-21, 26-27, 29-33, 35-40 loops
+
+* Set 28 not proved
 
 * Set 1 leaks
 

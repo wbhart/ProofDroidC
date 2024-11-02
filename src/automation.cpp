@@ -128,7 +128,7 @@ bool automate(context_t& ctx) {
 
 #if DEBUG_MOVES
                     if (move_success) {
-                        std::cout << "Level 2: mp " << impl_idx + 1 << " " << target + 1 << std::endl;
+                        std::cout << "Level 2: mp " << impl_idx + 1 << " " << target + 1 << std::endl << std::endl;
                     }
 #endif
                 }
@@ -139,7 +139,7 @@ bool automate(context_t& ctx) {
 
 #if DEBUG_MOVES
                     if (move_success) {
-                        std::cout << "Level 2: mt " << impl_idx + 1 << " " << target + 1 << std::endl;
+                        std::cout << "Level 2: mt " << impl_idx + 1 << " " << target + 1 << std::endl << std::endl;
                     }
 #endif
                 }
@@ -216,7 +216,7 @@ bool automate(context_t& ctx) {
 
 #if DEBUG_MOVES
                     if (move_success) {
-                        std::cout << "Level 3: mp " << impl_idx + 1 << " " << unit_idx + 1 << std::endl;
+                        std::cout << "Level 3: mp " << impl_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
                     }
 #endif
                 }
@@ -227,7 +227,7 @@ bool automate(context_t& ctx) {
 
 #if DEBUG_MOVES
                     if (move_success) {
-                        std::cout << "Level 3: mt " << impl_idx + 1 << " " << unit_idx + 1 << std::endl;
+                        std::cout << "Level 3: mt " << impl_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
                     }
 #endif
                 }
