@@ -1499,6 +1499,10 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     node* P = implication->children[0];
     node* Q = implication->children[1];
 
+    // Get shared variables
+    std::set<std::string> shared_vars = find_common_variables(P, Q);
+    bool shared = !shared_vars.empty();
+
     // Deep copy P and Q
     node* P_copy = deep_copy(P);
     node* Q_copy = deep_copy(Q);
@@ -1536,7 +1540,7 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     tab_ctx.tableau.push_back(new_target);
             
     // Replace hydra
-    tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1);
+    tab_ctx.hydra_replace(index, tab_ctx.tableau.size() - 1, shared);
     tab_ctx.restrictions_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
 

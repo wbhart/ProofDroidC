@@ -289,6 +289,20 @@ std::set<std::string> find_common_variables(const node* formula1, const node* fo
     return common_vars;
 }
 
+bool node::has_shared_vars() const {
+    if (is_shared_variable()) {
+        return true;
+    }
+
+    for (node* n : children) {
+        if (n->has_shared_vars()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 std::string remove_subscript(const std::string& var_name) {
     size_t pos = var_name.rfind('_');
     if (pos == std::string::npos) {

@@ -1,3 +1,1 @@
-\forall X \forall Y (X = Y \iff (\forall x (x \in X \iff x \in Y)))
-\forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
 * S = T \iff (S \subseteq T \wedge T \subseteq S)

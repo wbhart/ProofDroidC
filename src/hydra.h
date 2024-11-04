@@ -18,6 +18,7 @@ public:
     std::vector<int> target_indices;                       // List of target indices
     std::vector<std::vector<int>> proved;                  // Renamed from assumptions
     std::vector<std::shared_ptr<hydra>> children;          // List of child hydra nodes
+    bool shared = false;                                   // Shared variables in targets, hydra cannot be split
 
     // Constructors
     hydra(); // Default constructor

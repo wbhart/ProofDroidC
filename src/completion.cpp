@@ -34,7 +34,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
         tabline_t& current_line = ctx.tableau[j];
 
         // Ensure the current line is not dead
-        if (current_line.dead) {
+        if (current_line.dead || current_line.is_theorem() || current_line.is_definition()) {
             continue; // Skip dead lines
         }
 
@@ -59,7 +59,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
             tabline_t& previous_line = ctx.tableau[i];
 
             // Skip dead previous lines
-            if (previous_line.dead) {
+            if (previous_line.dead || previous_line.is_theorem() || previous_line.is_definition()) {
                 continue;
             }
 
@@ -103,14 +103,20 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
                     // Determine where to append the unification pair (i, j)
                     if (is_current_target) {
                         // Current line is a target: append to current_line.unifications
-                        current_line.unifications.emplace_back(i, j);
+                        if (previous_line.restrictions.empty() ||
+                             find(previous_line.restrictions.begin(), previous_line.restrictions.end(),
+                                 j) != previous_line.restrictions.end())
+                            current_line.unifications.emplace_back(i, j);
 #if DEBUG_STEP_2
                         std::cout << "      Appended (" << i << ", " << j << ") to Current Target's Unifications.\n";
 #endif
                     }
                     else if (previous_line.target) {
                         // Previous line is a target: append to previous_line.unifications
-                        previous_line.unifications.emplace_back(i, j);
+                        if (current_line.restrictions.empty() ||
+                             find(current_line.restrictions.begin(), current_line.restrictions.end(),
+                                 i) != current_line.restrictions.end())
+                            previous_line.unifications.emplace_back(i, j);
 #if DEBUG_STEP_2
                         std::cout << "      Appended (" << i << ", " << j << ") to Previous Target's Unifications.\n";
 #endif

@@ -164,7 +164,7 @@ public:
     void select_hypotheses(const std::vector<int>& targets, const std::vector<int>& assumptions);
 
     // Replaces target i with j in the current leaf hydra
-    void hydra_replace(int i, int j);
+    void hydra_replace(int i, int j, bool shared=false);
 
     // Update all restrictions including i to include j as well
     void restrictions_replace(int i, int j);

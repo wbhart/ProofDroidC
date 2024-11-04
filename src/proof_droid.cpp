@@ -509,7 +509,7 @@ bool load_module(context_t& module_ctx, context_t& tab_ctx, const std::string fi
         tab_ctx.modules.emplace_back(filename_stem, module_ctx);
     }
 
-    return false;
+    return true;
 }
 
 // Function to handle the "library filter" option in semiautomatic mode

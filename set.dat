@@ -14,6 +14,9 @@ theorem
 \forall X \forall Y \forall x (X \subseteq Y \wedge x \in X \implies x \in Y)
 
 theorem
+\forall X \forall Y (X \subset Y \iff X \subseteq Y \wedge X \neq Y)
+
+theorem
 \forall x \neg(x \in \emptyset)
 
 theorem
@@ -35,7 +38,7 @@ theorem
 \forall X \forall Y \forall x (x \in X \cup Y \iff x \in X \vee x \in Y)
 
 theorem
-\forall X \forall Y (X \cap Y \subset X)
+\forall X \forall Y (X \cap Y \subseteq X)
 
 theorem
-\forall X \forall Y (X \cap Y \subset Y)
+\forall X \forall Y (X \cap Y \subseteq Y)

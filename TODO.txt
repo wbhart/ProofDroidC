@@ -1,12 +1,14 @@
 Critical:
 
-* Set 3 requires library backwards reasoning
+* Set 11-12, 14 require empty set
 
-* Proved 1-14, 19, 22-25, 34, 41-47
+* Set 15 requires !consts_rtol
 
-* Set 15-18, 20-21, 26-27, 29-33, 35-40 loops
+* Set 17, 18 don't prove
 
-* Set 28 not proved
+* Set 19 target loop
+
+* Proved 1-10, 13, 16
 
 * Set 1 leaks
 
@@ -22,10 +24,6 @@ Critical:
 
 * Do we need to remove renamed vars from used_vars after a failed move?
 
-* Currently only the leaf hydra can be proved. Allow all hydras on the current_hydra
-  path to be checked for completion, and delete all descendants when proved and
-  update the proved field of all descendants otherwise
-
 * Check for tautologies in check_done
 
 * Factor out dealing with restrictions/assumptions in moves by making functions that
@@ -33,9 +31,6 @@ Critical:
 
 * Should targets have restrictions/assumptions? Yes, they could have been reasoned
   backwards to from other targets and hypotheses that have assumptions.
-
-* When moving to next target, must select assumptions that haven't been proved for
-  that target yet
 
 * Make checking moves (e.g. check_restrictions/assumptions) optional, so this doesn't
   duplicate work automation will be doing before executing the moves

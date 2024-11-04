@@ -105,6 +105,8 @@ public:
         return (type == VARIABLE && vdata->var_kind == INDIVIDUAL && vdata->shared);
     }
 
+    bool has_shared_vars() const;
+
     bool is_negation() const {
         return (type == LOGICAL_UNARY && symbol == SYMBOL_NOT);
     }
