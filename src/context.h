@@ -50,7 +50,8 @@ enum class Reason {
     MaterialEquivalence,
     ConditionalPremise,
     Theorem,
-    Definition
+    Definition,
+    Special
 };
 
 // Represents a single line in the tableau
@@ -90,6 +91,11 @@ public:
     // Return whether the tabline stores a loaded theorem
     bool is_theorem() const {
         return justification.first == Reason::Theorem;
+    }
+
+    // Return whether the tabline stores a loaded theorem
+    bool is_special() const {
+        return justification.first == Reason::Special;
     }
 
     // Return whether the tabline stores a loaded definition

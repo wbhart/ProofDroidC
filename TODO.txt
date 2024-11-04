@@ -1,14 +1,12 @@
 Critical:
 
-* Set 11-12, 14 require empty set
-
 * Set 15 requires !consts_rtol
 
 * Set 17, 18 don't prove
 
 * Set 19 target loop
 
-* Proved 1-10, 13, 16
+* Proved 1-14, 16
 
 * Set 1 leaks
 

@@ -132,6 +132,7 @@ void print_reason(const context_t& context, int index) {
             break;
 
         case Reason::Theorem:
+        case Reason::Special:
             std::cout << "Thm";
             break;
 
@@ -956,7 +957,7 @@ void print_tableau(const context_t& tab_ctx) {
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
         if (tabline.active && !tabline.target) {
-            if (!tabline.is_theorem()) {
+            if (!tabline.is_theorem() && !tabline.is_special() && !tabline.is_definition()) {
                 std::cout << " " << i + 1 << " "; // Line number
                 print_reason(tab_ctx, static_cast<int>(i)); // Print reason
                 std::cout << ": " << tabline.formula->to_string(UNICODE);
@@ -981,7 +982,7 @@ void print_tableau(const context_t& tab_ctx) {
         // First, print all active Hypotheses that are not theorems
         for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
             const tabline_t& tabline = tab_ctx.tableau[i];
-            if (tabline.active && !tabline.target && (tabline.is_theorem() || tabline.is_definition())) {
+            if (tabline.active && !tabline.target && (tabline.is_theorem() || tabline.is_definition() || tabline.is_special())) {
                 std::cout << " " << i + 1 << " "; // Line number
                 print_reason(tab_ctx, static_cast<int>(i)); // Print reason
                 std::cout << ": " << tabline.formula->to_string(UNICODE);

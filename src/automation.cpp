@@ -79,7 +79,11 @@ void load_theorem(context_t& ctx, tabline_t& mod_tabline, size_t& main_line_idx)
         tabline_t copied_tabline = mod_tabline;
 
         // Set the justification based on the kind
-        copied_tabline.justification = { Reason::Theorem, {} };
+        if (mod_tabline.formula->is_implication()) {
+            copied_tabline.justification = { Reason::Theorem, {} };
+        } else {
+            copied_tabline.justification = { Reason::Special, {} };
+        }
 
         // Append the copied tabline to the main tableau
         ctx.tableau.push_back(copied_tabline);
@@ -134,9 +138,53 @@ bool automate(context_t& ctx) {
         // Accumulate constants and indices using get_tableau_constants
         ctx.get_tableau_constants(tabc, tarc, impls, units);
 
+        move_made = false; // Flag to check if any move was made in this iteration
+
         // Level 1 of the Waterfall
         // ------------------------
-        // (Omitted as per current implementation)
+
+        for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
+            for (auto& digest_entry : mod_ctx.digest) { // for each digest record
+                for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) { // for each theorem in record
+                    tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
+
+                    if (entry_kind == LIBRARY::Theorem) {
+                        if (!mod_tabline.formula->is_implication()) { // library result is implication
+                            if (main_line_idx != -static_cast<size_t>(1)) {
+                                continue; // Skip if already loaded
+                            }
+
+                            const std::vector<std::string>& mod_consts = mod_tabline.constants1;
+                            bool tab_contained = consts_subset(tabc, mod_consts);
+                            
+                            if (tab_contained) {
+                                load_theorem(ctx, mod_tabline, main_line_idx);
+
+#if DEBUG_MOVES
+                                std::cout << "Level 1: load " << main_line_idx + 1 << std::endl;
+#endif
+
+                                move_made = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (move_made) {
+            // After applying the move, run cleanup_moves automatically
+            cleanup_moves(ctx, ctx.upto);
+
+            // Check if done
+            if (check_done(ctx)) {
+                return true;
+            }
+
+            continue; // A move was made; restart the waterfall from the beginning
+        }
+
 
         // Level 2 of the Waterfall (non-library backwards reasoning)
         // ----------------------------------------------------------
@@ -146,8 +194,6 @@ bool automate(context_t& ctx) {
 
         // Extract target indices from the current leaf hydra
         std::vector<int> targets = current_leaf->target_indices;
-
-        move_made = false; // Flag to check if any move was made in this iteration
 
 #if DEBUG_LISTS
         std::cout << "targets: ";
