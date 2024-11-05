@@ -165,7 +165,6 @@ bool automate(context_t& ctx) {
 #endif
 
                                 move_made = true;
-                                break;
                             }
                         }
                     }
@@ -303,7 +302,7 @@ bool automate(context_t& ctx) {
         
         // Level 3 of the Waterfall (non-library forwards reasoning)
         // ----------------------------------------------------------
-
+        
         // Iterate over each unit in the units list
         for (const int unit_idx : units) {
             // Iterate over each implication hypothesis
@@ -332,8 +331,8 @@ bool automate(context_t& ctx) {
                 // Check if all unit constants are contained within implication constants
                 bool all_contained_left = consts_subset(unit_consts, impl_consts1);
                 bool all_contained_right = consts_subset(unit_consts, impl_consts2);
-                bool consts_ltor = consts_subset(impl_consts2, impl_consts1) || !consts_subset(impl_consts1, impl_consts2);
-                bool consts_rtol = consts_subset(impl_consts1, impl_consts2) || !consts_subset(impl_consts2, impl_consts1);
+                bool consts_ltor = consts_subset(impl_consts1, impl_consts2) || !consts_subset(impl_consts2, impl_consts1);
+                bool consts_rtol = consts_subset(impl_consts2, impl_consts1) || !consts_subset(impl_consts1, impl_consts2);
                 
                 // Prepare the list of other lines (only the unit in this case)
                 std::vector<int> other_lines = { unit_idx };
@@ -388,6 +387,298 @@ bool automate(context_t& ctx) {
             continue; // Move made at this level, restart waterfall at level 1
         }
 
+        // Level 6 of the Waterfall (safe target expansion)
+        // ----------------------------------------------------------
+
+        std::shared_ptr<hydra> current_leaf_hydra = ctx.current_hydra.back();
+
+        // Iterate over each current target
+        for (const int tar_idx : current_leaf_hydra->target_indices) {
+            for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
+                for (auto& digest_entry : mod_ctx.digest) { // for each digest record
+                    size_t entry = -static_cast<size_t>(1);
+                    for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) { // for each theorem in record
+                        // Index of entry in record
+                        entry++;
+                        
+                        tabline_t& tar_tabline = ctx.tableau[tar_idx];
+                        const std::vector<std::string>& tar_consts = tar_tabline.constants1;
+                        tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
+
+                        if (entry_kind == LIBRARY::Definition) {
+                            if (mod_tabline.formula->is_implication()) { // library result is implication
+                                // Check if this theorem has been applied already
+                                std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                if (std::find(tar_tabline.lib_applied.begin(), tar_tabline.lib_applied.end(), mod_pair) != tar_tabline.lib_applied.end()) {
+                                    continue; // Skip if already applied
+                                }
+
+                                const std::vector<std::string>& mod_consts1 = mod_tabline.constants1;
+                                const std::vector<std::string>& mod_consts2 = mod_tabline.constants2;
+                                bool all_contained_left = consts_subset(tar_consts, mod_consts1);
+                                bool all_contained_right = consts_subset(tar_consts, mod_consts2);
+                                bool tar_contained_left = consts_subset(tarc, mod_consts1);
+                                bool tar_contained_right = consts_subset(tarc, mod_consts2);
+                                bool failed_left = false;
+                                bool failed_right = false;
+
+                                // Check if all left constants are contained and conditions for Modus Ponens are met
+                                if (entry != 1 || !all_contained_right){
+                                    failed_left = true;
+                                }
+
+                                if (!failed_left && (tar_contained_right || units.empty())) {
+                                    // Perform trial unification for Modus Ponens
+                                    bool trial_mp_success = trial_modus_ponens(ctx, mod_tabline, tar_tabline, false);
+
+                                    if (trial_mp_success) {
+                                        // Load the theorem into the main tableau
+                                        load_theorem(ctx, mod_tabline, main_line_idx);
+
+                                        // Attempt to apply Modus Ponens
+                                        std::vector<int> other_lines = {tar_idx};
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
+
+                                        if (move_success) {
+#if DEBUG_MOVES
+                                            std::cout << "Level 6: mp " << main_line_idx + 1 << " " << tar_idx + 1 << std::endl << std::endl;
+#endif
+
+                                            move_made = true;
+
+                                            tar_tabline.lib_applied.push_back(mod_pair);
+                                            
+                                            // After applying the move, run cleanup_moves automatically
+                                            cleanup_moves(ctx, ctx.upto);
+
+                                            // Check if done
+                                            if (check_done(ctx)) {
+                                                return true;
+                                            }
+                                        } else {
+                                            failed_left = true;
+                                        }
+                                    } else {
+                                        failed_left = true;
+                                    }
+                                }
+
+                                // Check if all right constants are contained and conditions for Modus Tollens are met
+                                if (entry != 0 || !all_contained_left){
+                                    failed_right = true;
+                                }
+
+                                if (failed_left && !failed_right && (tar_contained_left || units.empty())) {
+                                    // Perform trial unification for Modus Tollens
+                                    bool trial_mt_success = trial_modus_tollens(ctx, mod_tabline, tar_tabline, false);
+
+                                    if (trial_mt_success) {
+                                        // Load the theorem into the main tableau
+                                        load_theorem(ctx, mod_tabline, main_line_idx);
+
+                                        // Attempt to apply Modus Tollens
+                                        std::vector<int> other_lines = {tar_idx};
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+
+                                        if (move_success) {
+#if DEBUG_MOVES
+                                            std::cout << "Level 6: mt " << main_line_idx + 1 << " " << tar_idx + 1 << std::endl << std::endl;
+#endif
+
+                                            move_made = true;
+
+                                            tar_tabline.lib_applied.push_back(mod_pair);
+                                            
+                                            // After applying the move, run cleanup_moves automatically
+                                            cleanup_moves(ctx, ctx.upto);
+
+                                            // Check if done
+                                            if (check_done(ctx)) {
+                                                return true;
+                                            }
+                                        } else {
+                                            failed_right = true;
+                                        }
+                                    } else {
+                                        failed_right = true;
+                                    }
+                                }
+
+                                // Mark theorem as applied if both trials failed
+                                if (failed_left && failed_right) {
+                                    tar_tabline.lib_applied.push_back(mod_pair);
+                                }
+                            }
+                        }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
+                        }
+                    }
+
+                    if (move_made) {
+                        break; // A move was made; restart the waterfall from the beginning
+                    }
+                }
+
+                if (move_made) {
+                    break; // A move was made; restart the waterfall from the beginning
+                }
+            }
+
+            if (move_made) { 
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
+        // Level 7 of the Waterfall (safe hypothesis expansion)
+        // ----------------------------------------------------------
+
+        // Iterate over each unit in the units list
+        for (const int unit_idx : units) {
+            for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
+                for (auto& digest_entry : mod_ctx.digest) { // for each digest record
+                    size_t entry = -static_cast<size_t>(1);
+                    for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) { // for each theorem in record
+                        // Index of entry within record
+                        entry++;
+                        
+                        tabline_t& unit_tabline = ctx.tableau[unit_idx];
+                        const std::vector<std::string>& unit_consts = unit_tabline.constants1;
+                        tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
+
+                        if (entry_kind == LIBRARY::Definition) {
+                            if (mod_tabline.formula->is_implication()) { // library result is implication
+                                // Check if this theorem has been applied already
+                                std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                                if (std::find(unit_tabline.lib_applied.begin(), unit_tabline.lib_applied.end(), mod_pair) != unit_tabline.lib_applied.end()) {
+                                    continue; // Skip if already applied
+                                }
+
+                                const std::vector<std::string>& mod_consts1 = mod_tabline.constants1;
+                                const std::vector<std::string>& mod_consts2 = mod_tabline.constants2;
+                                bool all_contained_left = consts_subset(unit_consts, mod_consts1);
+                                bool all_contained_right = consts_subset(unit_consts, mod_consts2);
+                                bool tab_contained_left = consts_subset(tabc, mod_consts1);
+                                bool tab_contained_right = consts_subset(tabc, mod_consts2);
+                                bool failed_left = false;
+                                bool failed_right = false;
+
+                                // Check if all left constants are contained and conditions for Modus Ponens are met
+                                if (entry != 0 || !all_contained_left){
+                                    failed_left = true;
+                                }
+
+                                if (!failed_left && tab_contained_left) {
+                                    // Perform trial unification for Modus Ponens
+                                    bool trial_mp_success = trial_modus_ponens(ctx, mod_tabline, unit_tabline, true);
+
+                                    if (trial_mp_success) {
+                                        // Load the theorem into the main tableau
+                                        load_theorem(ctx, mod_tabline, main_line_idx);
+
+                                        // Attempt to apply Modus Ponens
+                                        std::vector<int> other_lines = {unit_idx};
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
+
+                                        if (move_success) {
+#if DEBUG_MOVES
+                                            std::cout << "Level 7: mp " << main_line_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
+#endif
+                                            move_made = true;
+
+                                            unit_tabline.lib_applied.push_back(mod_pair);
+                                            
+                                            // After applying the move, run cleanup_moves automatically
+                                            cleanup_moves(ctx, ctx.upto);
+
+                                            // Check if done
+                                            if (check_done(ctx)) {
+                                                return true;
+                                            }
+                                        } else {
+                                            failed_left = true;
+                                        }
+                                    } else {
+                                        failed_left = true;
+                                    }
+                                }
+
+                                // Check if all right constants are contained and conditions for Modus Tollens are met
+                                if (entry != 1 || !all_contained_right){
+                                    failed_right = true;
+                                }
+
+                                if (failed_left && !failed_right && tab_contained_right) {
+                                    // Perform trial unification for Modus Tollens
+                                    bool trial_mt_success = trial_modus_tollens(ctx, mod_tabline, unit_tabline, true);
+
+                                    if (trial_mt_success) {
+                                        // Load the theorem into the main tableau
+                                        load_theorem(ctx, mod_tabline, main_line_idx);
+
+                                        // Attempt to apply Modus Tollens
+                                        std::vector<int> other_lines = {unit_idx};
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+
+                                        if (move_success) {
+#if DEBUG_MOVES
+                                            std::cout << "Level 7: mt " << main_line_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
+#endif
+                                            move_made = true;
+
+                                            unit_tabline.lib_applied.push_back(mod_pair);
+                                            
+                                            // After applying the move, run cleanup_moves automatically
+                                            cleanup_moves(ctx, ctx.upto);
+
+                                            // Check if done
+                                            if (check_done(ctx)) {
+                                                return true;
+                                            }
+                                        } else {
+                                            failed_right = true;
+                                        }
+                                    } else {
+                                        failed_right = true;
+                                    }
+                                }
+
+                                // Mark theorem as applied if both trials failed
+                                if (failed_left && failed_right) {
+                                    unit_tabline.lib_applied.push_back(mod_pair);
+                                }
+                            }
+                        }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
+                        }
+                    }
+
+                    if (move_made) {
+                        break; // A move was made; restart the waterfall from the beginning
+                    }
+                }
+
+                if (move_made) {
+                    break; // A move was made; restart the waterfall from the beginning
+                }
+            }
+
+            if (move_made) { 
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
         // Level 9 of the Waterfall (Library forwards reasoning)
         // ----------------------------------------------------------
 
@@ -415,8 +706,8 @@ bool automate(context_t& ctx) {
                                 bool all_contained_right = consts_subset(unit_consts, mod_consts2);
                                 bool tab_contained_left = consts_subset(tabc, mod_consts1);
                                 bool tab_contained_right = consts_subset(tabc, mod_consts2);
-                                bool consts_ltor = consts_subset(mod_consts2, mod_consts1) || !consts_subset(mod_consts1, mod_consts2);
-                                bool consts_rtol = consts_subset(mod_consts1, mod_consts2) || !consts_subset(mod_consts2, mod_consts1);
+                                bool consts_ltor = consts_subset(mod_consts1, mod_consts2) || !consts_subset(mod_consts2, mod_consts1);
+                                bool consts_rtol = consts_subset(mod_consts2, mod_consts1) || !consts_subset(mod_consts1, mod_consts2);
                                 bool failed_left = false;
                                 bool failed_right = false;
 
@@ -506,6 +797,10 @@ bool automate(context_t& ctx) {
                                 }
                             }
                         }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
+                        }
                     }
 
                     if (move_made) {
@@ -530,7 +825,7 @@ bool automate(context_t& ctx) {
         // Level 10 of the Waterfall (Library backwards reasoning)
         // ----------------------------------------------------------
 
-        std::shared_ptr<hydra> current_leaf_hydra = ctx.current_hydra.back();
+        current_leaf_hydra = ctx.current_hydra.back();
 
         // Iterate over each current target
         for (const int tar_idx : current_leaf_hydra->target_indices) {
@@ -556,8 +851,8 @@ bool automate(context_t& ctx) {
                                 bool all_contained_right = consts_subset(tar_consts, mod_consts2);
                                 bool tar_contained_left = consts_subset(tarc, mod_consts1);
                                 bool tar_contained_right = consts_subset(tarc, mod_consts2);
-                                bool consts_ltor = consts_subset(mod_consts2, mod_consts1) || !consts_subset(mod_consts1, mod_consts2);
-                                bool consts_rtol = consts_subset(mod_consts1, mod_consts2) || !consts_subset(mod_consts2, mod_consts1);
+                                bool consts_ltor = consts_subset(mod_consts1, mod_consts2) || !consts_subset(mod_consts2, mod_consts1);
+                                bool consts_rtol = consts_subset(mod_consts2, mod_consts1) || !consts_subset(mod_consts1, mod_consts2);
                                 bool failed_left = false;
                                 bool failed_right = false;
 
@@ -648,6 +943,10 @@ bool automate(context_t& ctx) {
                                     tar_tabline.lib_applied.push_back(mod_pair);
                                 }
                             }
+                        }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
                         }
                     }
 

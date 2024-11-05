@@ -175,7 +175,7 @@ bool skolemize_all(context_t& tab_ctx, size_t start) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
        // Only process active formulas
-        if (tabline.active) {
+        if (tabline.active && !tabline.is_theorem() && !tabline.is_definition()) {
             // Apply skolem_form to the formula
             node* skolemized = skolem_form(tab_ctx, tabline.formula);
 
@@ -551,7 +551,7 @@ bool move_di(context_t& tab_ctx, size_t start) {
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }
@@ -625,7 +625,7 @@ bool move_ci(context_t& tab_ctx, size_t start) {
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }
@@ -702,6 +702,12 @@ bool move_sc(context_t& tab_ctx, size_t start) {
 
     while (i < tab_ctx.tableau.size()) {
         tabline_t& tabline = tab_ctx.tableau[i];
+
+        // Skip theorems and definitions
+        if (tabline.is_theorem() || tabline.is_definition()) {
+            i++;
+            continue;
+        }
 
         // Check if the formula is active and a conjunction or disjunction
         if (tabline.active && ((!tabline.target && tabline.formula->is_conjunction()) ||
@@ -781,7 +787,7 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         // Skip inactive formulas
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }
@@ -992,7 +998,7 @@ bool move_sci(context_t& tab_ctx, size_t start) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         // Skip inactive formulas
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }
@@ -1223,7 +1229,7 @@ bool move_ni(context_t& tab_ctx, size_t start) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         // Skip inactive formulas
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }
@@ -1352,7 +1358,7 @@ bool move_me(context_t& tab_ctx, size_t start) {
         tabline_t& tabline = tab_ctx.tableau[i];
 
         // Skip inactive formulas
-        if (!tabline.active) {
+        if (!tabline.active || tabline.is_theorem() || tabline.is_definition()) {
             i++;
             continue;
         }

@@ -1,14 +1,14 @@
 Critical:
 
-* Set 15 requires !consts_rtol
+* Set 16 requires disjunction split or violation of ltor
 
-* Set 17, 18 don't prove
+* Set 28-30, 41-42, 45-47 don't prove
 
-* Set 19 target loop
-
-* Proved 1-14, 16
+* Proved 1-15, 17-27, 31-40, 43-44
 
 * Set 1 leaks
+
+* Should consts_ltor/rtol apply when there are no shared vars in impl (non-library forwards reasoning)
 
 * We don't need to compute tarc and tabc for level 2 and 3
 

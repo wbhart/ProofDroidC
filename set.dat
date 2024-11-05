@@ -1,11 +1,11 @@
+definition
+\forall X \forall Y (X = Y \iff X \subseteq Y \wedge Y \subseteq X)
+
 theorem
 \forall X \forall Y (X = Y \iff (\forall x (x \in X \iff x \in Y)))
 
-theorem
+definition
 \forall X \forall Y (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))
-
-theorem
-\forall X \forall Y (X = Y \iff X \subseteq Y \wedge Y \subseteq X)
 
 theorem
 \forall X \forall Y \forall Z (X \subseteq Y \wedge Y \subseteq Z \implies X \subseteq Z)
@@ -13,7 +13,7 @@ theorem
 theorem
 \forall X \forall Y \forall x (X \subseteq Y \wedge x \in X \implies x \in Y)
 
-theorem
+definition
 \forall X \forall Y (X \subset Y \iff X \subseteq Y \wedge X \neq Y)
 
 theorem
@@ -31,10 +31,10 @@ theorem
 theorem
 \forall X (\emptyset \subset X \implies \exists x (x \in X))
 
-theorem
+definition
 \forall X \forall Y \forall x (x \in X \cap Y \iff x \in X \wedge x \in Y)
 
-theorem
+definition
 \forall X \forall Y \forall x (x \in X \cup Y \iff x \in X \vee x \in Y)
 
 theorem
