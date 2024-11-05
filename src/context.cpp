@@ -1258,7 +1258,6 @@ void context_t::kill_duplicates(size_t start_index) {
                         );
 
                     current_hydra.pop_back();
-                    std::cout << "deleted" << std::endl;
                     select_targets();
                     break;
                 }
