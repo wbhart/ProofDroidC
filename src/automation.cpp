@@ -394,6 +394,11 @@ bool automate(context_t& ctx) {
             tabline_t& impl_tabline = ctx.tableau[impl_idx];
             node* impl = impl_tabline.formula;
             
+            // Check if already split
+            if (impl_tabline.split) {
+                continue;
+            }
+
             // Get common metavariables
             std::set<std::string> common_vars = find_common_variables(impl->children[0], impl->children[1]);
 

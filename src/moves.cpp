@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 0
+#define DEBUG_CLEANUP 1
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -487,6 +487,8 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
                                                   ctx.tableau[line].restrictions);
     }
 
+    implication_tabline.split = true; // Ensure this line is not split, as it has been used
+    
     // Step 11: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
 
@@ -1612,11 +1614,6 @@ bool move_sd(context_t& tab_ctx, size_t line) {
     tabline_t hyp2a(P_neg);
     tabline_t hyp2b(Q_copy);
 
-    // start with hyp1 active
-    hyp1.active = true;
-    hyp2a.active = false;
-    hyp2b.active = false;
-
     // assign justifications
     hyp1.justification = { Reason::SplitDisjunction, { static_cast<int>(line) } };
     hyp2a.justification = { Reason::SplitDisjunction, { static_cast<int>(line) } };
@@ -1635,13 +1632,14 @@ bool move_sd(context_t& tab_ctx, size_t line) {
     hyp2a.restrictions = tabline.restrictions;
     hyp2b.restrictions = tabline.restrictions;
     
+    // Deactivate the original formula
+    tabline.active = false;
+    tabline.split = true;
+
     // Append new hypothesises to the tableau
     tab_ctx.tableau.push_back(hyp1);
     tab_ctx.tableau.push_back(hyp2a);
     tab_ctx.tableau.push_back(hyp2b);
-
-    // Deactivate the original formula
-    tabline.active = false;
 
     return true;
 }

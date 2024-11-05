@@ -1,8 +1,8 @@
 Critical:
 
-* Set 28-30, 41-42, 45, 47 don't prove
+* Set 28-30, 41-42, 45 don't prove
 
-* Proved 1-27, 31-40, 43-44, 46
+* Proved 1-8, 9-27, 31-40, 43-44, 46-47
 
 * Set 1 leaks
 

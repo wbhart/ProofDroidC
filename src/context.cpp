@@ -595,10 +595,10 @@ void context_t::select_hypotheses(const std::vector<int>& targets, const std::ve
                     std::cout << std::endl;
 #endif
 
-                    bool assumptions_found = true; // whether all assumptions in list found
+                    bool assumptions_found = true; // whether all assumptions in list compatible
                     // check if all assumptions are in the given list
-                    for (const int& res : tabline.assumptions) {
-                        if (assumption_set.find(res) == assumption_set.end()) {
+                    for (const int& res : assumption_set) {
+                        if (find(tabline.assumptions.begin(), tabline.assumptions.end(), -res) != tabline.assumptions.end()) {
                             assumptions_found = false;
                             break;
                         }
@@ -1162,12 +1162,12 @@ void context_t::kill_duplicates(size_t start_index) {
                 assumptions_ok = true;
             }
             else {
-                // Check if all assumptions of current_line are contained in prior_line
+                // Check if all assumptions of prior_line are contained in current_line
                 bool all_assumptions_contained = std::all_of(
-                    current_line.assumptions.begin(),
-                    current_line.assumptions.end(),
+                    prior_line.assumptions.begin(),
+                    prior_line.assumptions.end(),
                     [&](int a) {
-                        return std::find(prior_line.assumptions.begin(), prior_line.assumptions.end(), a) != prior_line.assumptions.end();
+                        return std::find(current_line.assumptions.begin(), current_line.assumptions.end(), a) != current_line.assumptions.end();
                     }
                 );
                 if (all_assumptions_contained) {

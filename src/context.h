@@ -72,15 +72,16 @@ public:
     std::vector<std::string> constants2;           // Constants right of implication line
     std::vector<int> applied_units;                // Tracks applied target indices
     std::vector<std::pair<std::string, size_t>> lib_applied; // library (name, index) pairs already applied to this unit
+    bool split;                                    // If a disjunction, whether it has already been split
 
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
         : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(),
-                                                            constants1(), constants2(), applied_units(), lib_applied() {}
+                                            constants1(), constants2(), applied_units(), lib_applied(), split(false) {}
     
     tabline_t(node* form, node* neg) 
         : target(true), active(true), dead(false), formula(form), negation(neg), unifications(),
-                                                            constants1(), constants2(), applied_units(), lib_applied() {}
+                                            constants1(), constants2(), applied_units(), lib_applied(), split(false) {}
 
     // Print a list of restrictions
     void print_restrictions() const;
