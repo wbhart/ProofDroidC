@@ -356,7 +356,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
 
                     // Print the success message
                     if (!targets_proved.empty()) {
-                        std::cout << "Target(s) " << targets_proved << " proved.\n";
+                        std::cout << "Target" << (targets_proved.size() == 1 ? " " : "s ") << targets_proved << " proved.\n";
                     }
 
                     // Add hydra to deletion list
@@ -395,14 +395,31 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
 
             // Check if the current_node is in the deletion list
             if (std::find(hydras_to_remove.begin(), hydras_to_remove.end(), current_node) != hydras_to_remove.end()) {
+                std::vector<int> targets_proved;
                 // Found a hydra to remove
                 // Traverse back the current_path to find the last node with more than one child
                 int remove_index = 0;
-                for (int i = static_cast<int>(current_path.size()) - 1; i >= 0; --i) {
+                for (int i = static_cast<int>(current_path.size()) - 2; i >= 0; --i) {
                     if (current_path[i]->children.size() > 1) {
                         remove_index = i + 1; // The next hydra in the path to remove
                         break;
+                    } else {
+                        for (size_t j = 0; j < current_path[i]->target_indices.size(); ++j) {
+                            targets_proved.push_back(current_path[i]->target_indices[j]); // Assuming line numbers start at 1
+                        }
                     }
+                }
+
+                // Print the success message
+                if (!targets_proved.empty()) {
+                    std::cout << "Target" << (targets_proved.size() == 1 ? " " : "s ");
+                    for (size_t j = 0; j < targets_proved.size(); j++) {
+                       std::cout << targets_proved[j] + 1;
+                       if (j != targets_proved.size() - 1) {
+                           std::cout << ", ";
+                       }
+                    }
+                    std::cout << " proved.\n";
                 }
 
                 std::shared_ptr<hydra> hydra_to_remove = current_path[remove_index];
@@ -461,7 +478,7 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
         std::vector<int> new_targets = ctx.get_hydra();
 
         if (new_targets.empty()) {
-            std::cout << "All targets proved!\n";
+            std::cout << std::endl << "All targets proved!\n";
             return true;
         }
 

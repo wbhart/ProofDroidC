@@ -2,6 +2,8 @@ Critical:
 
 * Set 1 leaks
 
+* Print all intermediate nodes that are proved
+
 * Make delete_duplicates deal with ass/res in target duplicate case
 
 * Should consts_ltor/rtol apply when there are no shared vars in impl (non-library forwards reasoning)
