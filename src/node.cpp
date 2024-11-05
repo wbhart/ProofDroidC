@@ -259,7 +259,8 @@ void mark_shared(node* current, const std::set<std::string>& var_names) {
 
 void vars_used(std::set<std::string>& variables, const node* root, bool include_params, bool include_bound) {
     // If the current node is a VARIABLE, add its name to the set
-    if (root->is_variable() && (include_params || !(root->vdata->var_kind == PARAMETER)) && (include_bound || !root->vdata->bound)) {
+    if (root->is_variable() && (include_params || (root->vdata->var_kind != PARAMETER && root->vdata->var_kind != FUNCTION)) &&
+                               (include_bound || !root->vdata->bound)) {
         variables.insert(root->name());
     }
 

@@ -17,7 +17,7 @@ void hydra::print_targets() const {
     std::cout << "{";
     for (size_t i = 0; i < target_indices.size(); ++i) {
         if (i != 0) std::cout << ", ";
-        std::cout << target_indices[i];
+        std::cout << target_indices[i] + 1;
     }
     std::cout << "}";
 }

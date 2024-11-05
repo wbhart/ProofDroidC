@@ -2,9 +2,10 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_TABLEAU 0 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
-#define DEBUG_MOVES 1 // whether to print moves that are executed
+#define DEBUG_MOVES 0 // whether to print moves that are executed
+#define DEBUG_HYDRAS 0 // whether to print hydra graph
 
 // whether consts2 is a subset of consts1
 bool consts_subset(const std::vector<std::string>& consts1, const std::vector<std::string>& consts2) {
@@ -124,6 +125,12 @@ bool automate(context_t& ctx) {
             std::cout << std::endl;
             print_tableau(ctx);
             std::cout << std::endl << std:: endl;
+        }
+#endif
+
+#if DEBUG_HYDRAS
+        if (move_made) {
+            ctx.print_hydras();
         }
 #endif
 
@@ -1007,6 +1014,162 @@ bool automate(context_t& ctx) {
             }
 
             if (move_made) { 
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
+        // Level Extra of the Waterfall (unsafe non-library forwards reasoning)
+        // ----------------------------------------------------------
+        
+        // Iterate over each unit in the units list
+        for (const int unit_idx : units) {
+            // Iterate over each implication hypothesis
+            for (const size_t impl_idx : impls) {
+                const tabline_t& unit_tabline = ctx.tableau[unit_idx];
+                const std::vector<std::string>& unit_consts = unit_tabline.constants1;
+                tabline_t& impl_tabline = ctx.tableau[impl_idx];
+                const std::vector<std::string>& impl_consts1 = impl_tabline.constants1;
+                const std::vector<std::string>& impl_consts2 = impl_tabline.constants2;
+
+                // Check if the implication has already been applied to this unit
+                if (std::find(impl_tabline.applied_units.begin(), impl_tabline.applied_units.end(), unit_idx) != impl_tabline.applied_units.end()) {
+                    continue; // Skip if already applied
+                }
+
+                // Check if all unit constants are contained within implication constants
+                bool all_contained_left = consts_subset(unit_consts, impl_consts1);
+                bool all_contained_right = consts_subset(unit_consts, impl_consts2);
+                
+                // Prepare the list of other lines (only the unit in this case)
+                std::vector<int> other_lines = { unit_idx };
+                bool move_success = false;
+                
+                if (all_contained_left && impl_tabline.ltor) {
+                    // Attempt Modus Ponens
+                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level Extra: mp " << impl_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
+                    }
+#endif
+                }
+
+                if (!move_success && all_contained_right && impl_tabline.rtol) {
+                    // Attempt Modus Tollens since Modus Ponens failed
+                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level Extra: mt " << impl_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
+                    }
+#endif
+                }
+
+                if (move_success) {
+                    // Add the unit to applied_units to prevent reapplication
+                    impl_tabline.applied_units.push_back(unit_idx);
+
+                    // Cleanup
+                    cleanup_moves(ctx, ctx.upto);
+
+                    // Check if the proof is done after applying the move
+                    bool done = check_done(ctx, true); // apply_cleanup=true
+                    if (done) {
+                        return true; // Proof completed successfully
+                    }
+
+                    move_made = true; // A move was made; continue the waterfall
+                    break; // Exit the implications loop to restart the waterfall
+                }
+            }
+
+            if (move_made) {
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+        
+        // Level Extra 2 of the Waterfall (unsafe non-library backwards reasoning)
+        // ----------------------------------------------------------
+
+        // Access the current leaf hydra (last hydra in the current_hydra path)
+        current_leaf = ctx.current_hydra.back();
+
+        // Extract target indices from the current leaf hydra
+        targets = current_leaf->target_indices;
+
+        // Iterate over each target in the current leaf hydra
+        for (const int target : targets) {
+            // Iterate over each implication hypothesis
+            for (const size_t impl_idx : impls) {
+                const tabline_t& target_tabline = ctx.tableau[target];
+                const std::vector<std::string>& target_consts = target_tabline.constants1;
+                tabline_t& impl_tabline = ctx.tableau[impl_idx];
+                const std::vector<std::string>& impl_consts1 = impl_tabline.constants1;
+                const std::vector<std::string>& impl_consts2 = impl_tabline.constants2;
+
+                // Check if the implication has already been applied to this target
+                if (std::find(impl_tabline.applied_units.begin(), impl_tabline.applied_units.end(), target) != impl_tabline.applied_units.end()) {
+                    continue; // Skip if already applied
+                }
+
+                // Check if all implication constants are contained within target constants
+                bool all_contained_left = consts_subset(target_consts, impl_consts1);
+                bool all_contained_right = consts_subset(target_consts, impl_consts2);
+                
+                // Prepare the list of other lines (only the target in this case)
+                std::vector<int> other_lines = { target };
+                bool move_success = false;
+
+                if (all_contained_right && impl_tabline.rtol) {
+                    // Attempt Modus Ponens
+                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level Extra 2: mp " << impl_idx + 1 << " " << target + 1 << std::endl << std::endl;
+                    }
+#endif
+                }
+
+                if (!move_success && all_contained_left  && impl_tabline.ltor) {
+                    // Attempt Modus Tollens since Modus Ponens failed
+                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+
+#if DEBUG_MOVES
+                    if (move_success) {
+                        std::cout << "Level Extra 2: mt " << impl_idx + 1 << " " << target + 1 << std::endl << std::endl;
+                    }
+#endif
+                }
+
+                if (move_success) {
+                    // Add the target to applied_units to prevent reapplication
+                    impl_tabline.applied_units.push_back(target);
+
+                    // Cleanup
+                    cleanup_moves(ctx, ctx.upto);
+
+                    // Check if the proof is done after applying the move
+                    bool done = check_done(ctx, true); // apply_cleanup=true
+                    if (done) {
+                        return true; // Proof completed successfully
+                    }
+
+                    move_made = true; // A move was made; continue the waterfall
+                    break; // Exit the implications loop to restart the waterfall
+                }
+            }
+
+            if (move_made) {
                 break; // A move was made; restart the waterfall from the beginning
             }
         }

@@ -1,10 +1,8 @@
 Critical:
 
-* Set 28-30, 41-42, 45 don't prove
-
-* Proved 1-8, 9-27, 31-40, 43-44, 46-47
-
 * Set 1 leaks
+
+* Make delete_duplicates deal with ass/res in target duplicate case
 
 * Should consts_ltor/rtol apply when there are no shared vars in impl (non-library forwards reasoning)
 

@@ -6,7 +6,7 @@
 #include <vector>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -487,8 +487,10 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
                                                   ctx.tableau[line].restrictions);
     }
 
-    implication_tabline.split = true; // Ensure this line is not split, as it has been used
-    
+    if (forward) {
+        implication_tabline.split = true; // Ensure this line is not split, as it has been used
+    }
+
     // Step 11: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
 

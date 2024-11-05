@@ -1213,4 +1213,56 @@ void context_t::kill_duplicates(size_t start_index) {
             break;
         }
     }
+
+    if (!current_hydra.empty()) {
+        // Access the current leaf hydra (last hydra in the current_hydra path)
+        std::shared_ptr<hydra> current_leaf = current_hydra.back();
+
+        // Extract target indices from the current leaf hydra
+        std::vector<int> leaf_targets = current_leaf->target_indices;
+
+        for (std::shared_ptr<hydra> past_hydra : current_hydra) {
+            if (past_hydra != current_leaf) {
+                std::vector<int> hydra_targets = past_hydra->target_indices;
+
+                bool hydra_found = true;
+
+                // Check each leaf target exists in hydra
+                for (size_t leaf_tar_idx : leaf_targets) {
+                    tabline_t& leaf_tabline = tableau[leaf_tar_idx];
+
+                    bool leaf_tar_found = false;
+                
+                    for (size_t hydra_tar_idx : hydra_targets) {
+                        tabline_t& hydra_tabline = tableau[hydra_tar_idx];
+
+                        if (equal(leaf_tabline.formula, hydra_tabline.formula)) {
+                            leaf_tar_found = true;
+                            break;
+                        }
+                    }
+
+                    if (!leaf_tar_found) {
+                        hydra_found = false;
+                        break;
+                    }
+                }
+
+                if (hydra_found) {
+                    std::shared_ptr<hydra> parent_hydra = current_hydra[current_hydra.size() - 2];
+
+                    // Remove hydra_to_remove from parent_hydra's children
+                    parent_hydra->children.erase(
+                        std::remove(parent_hydra->children.begin(), parent_hydra->children.end(), current_leaf),
+                            parent_hydra->children.end()
+                        );
+
+                    current_hydra.pop_back();
+                    std::cout << "deleted" << std::endl;
+                    select_targets();
+                    break;
+                }
+            }
+        }
+    }
 }
