@@ -1,10 +1,8 @@
 Critical:
 
-* Set 16 requires disjunction split or violation of ltor
+* Set 28-30, 41-42, 45, 47 don't prove
 
-* Set 28-30, 41-42, 45-47 don't prove
-
-* Proved 1-15, 17-27, 31-40, 43-44
+* Proved 1-27, 31-40, 43-44, 46
 
 * Set 1 leaks
 

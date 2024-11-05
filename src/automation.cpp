@@ -387,6 +387,47 @@ bool automate(context_t& ctx) {
             continue; // Move made at this level, restart waterfall at level 1
         }
 
+        // Level 4 of the Waterfall (tableau/disjunction splitting)
+        // ----------------------------------------------------------
+
+        for (const size_t impl_idx : impls) {
+            tabline_t& impl_tabline = ctx.tableau[impl_idx];
+            node* impl = impl_tabline.formula;
+            
+            // Get common metavariables
+            std::set<std::string> common_vars = find_common_variables(impl->children[0], impl->children[1]);
+
+            // If there are shared metavars, skip this case
+            if (!common_vars.empty()) {
+                continue;
+            }
+
+            bool move_success = move_sd(ctx, impl_idx);
+
+            if (move_success) {
+#if DEBUG_MOVES
+                std::cout << "Level 4: split " << impl_idx + 1 << std::endl << std::endl;
+#endif
+                // Cleanup
+                cleanup_moves(ctx, ctx.upto);
+
+                // Check if the proof is done after applying the move
+                bool done = check_done(ctx, true); // apply_cleanup=true
+                if (done) {
+                    return true; // Proof completed successfully
+                }
+                    
+                move_made = true;
+
+                break;
+            }
+
+        }
+
+        if (move_made) {
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
         // Level 6 of the Waterfall (safe target expansion)
         // ----------------------------------------------------------
 
