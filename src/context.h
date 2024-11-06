@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <fstream>
+#include <iomanip>
 
 // Define the LIBRARY enum to distinguish between Theorem and Definition
 enum class LIBRARY {
@@ -111,6 +113,15 @@ public:
 
     // Whether free variables have already been made into parameters
     bool parameterized = false;
+
+    // Statistics about how many of each move have been performed
+    int reasoning = 0;
+    int cleanup = 0;
+    int split = 0;
+    int backtrack = 0;
+
+    // Print how many of each move were executed
+    void print_statistics(const std::string filename="none", bool log=false);
 
     // Retrieves and increments the next available index for a variable
     int get_next_index(const std::string& var_name);

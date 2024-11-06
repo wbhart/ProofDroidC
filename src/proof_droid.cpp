@@ -1192,6 +1192,13 @@ int main(int argc, char** argv) {
                         // After automation, display the tableau again
                         print_tableau(tab_ctx);
 
+                        if (success) {
+                            std::cout << std::endl;
+
+                            tab_ctx.print_statistics();
+                            std::cout << std::endl;
+                        }
+                        
                         // Do NOT print additional messages or exit
                         break;
                     }
@@ -1261,6 +1268,11 @@ int main(int argc, char** argv) {
         // After automation, display the tableau again
         print_tableau(tab_ctx);
         std::cout << std::endl;
+
+        if (success) {                        
+            tab_ctx.print_statistics(filename, true);
+            std::cout << std::endl;
+        }
 
         // Perform cleanup
         parser_destroy(ctx);

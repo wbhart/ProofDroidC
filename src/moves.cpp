@@ -125,6 +125,11 @@ node* skolem_form(context_t& ctx, node* formula) {
     Substitution subst; // Initialize empty substitution map
     std::vector<std::string> universals; // List of universally quantified variables
 
+    if (formula->type == QUANTIFIER) {
+        // Increment count of cleanup moves
+        ctx.cleanup++;
+    }
+
     // Process quantifiers until the outermost node is no longer a quantifier
     while (formula->type == QUANTIFIER) {
         if (formula->symbol == SYMBOL_FORALL) {
@@ -500,6 +505,9 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         ctx.select_targets();
     }
 
+    // Increment count of reasoning moves
+    ctx.reasoning++;
+    
     return true;
 }
 
@@ -566,6 +574,9 @@ bool move_di(context_t& tab_ctx, size_t start) {
             || (!tabline.target && implicative_idempotence(tabline.formula))) {
             // Formula is of the form P ∨ P or P ∧ P
 
+            // Increment count of cleanup moves
+            tab_ctx.cleanup++;
+        
             // **Critical Fix: Set flags before modifying the vector**
             // Mark the original conjunction/disjunction as inactive and dead
             tabline.active = false;
@@ -639,6 +650,9 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             || (!tabline.target && conjunctive_idempotence(tabline.formula))) {
             // Formula is of the form P ∧ P or P ∨ P
 
+            // Increment count of cleanup moves
+            tab_ctx.cleanup++;
+            
             // **Critical Fix: Set flags before modifying the vector**
             // Mark the original conjunction/disjunction as inactive and dead
             tabline.active = false;
@@ -717,6 +731,9 @@ bool move_sc(context_t& tab_ctx, size_t start) {
         if (tabline.active && ((!tabline.target && tabline.formula->is_conjunction()) ||
             (tabline.target && tabline.formula->is_disjunction()))) {
             
+            // Increment count of cleanup moves
+            tab_ctx.cleanup++;
+        
             // Mark the original conjunction as inactive and dead BEFORE modifying the vector
             tabline.active = false;
             tabline.dead = true;
@@ -823,6 +840,9 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        // Increment count of cleanup moves
+                        tab_ctx.cleanup++;
+
                         // **Critical Fix: Set flags before modifying the vector**
                         // Mark the original implication as inactive and dead
                         tabline.active = false;
@@ -911,6 +931,9 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        // Increment count of cleanup moves
+                        tab_ctx.cleanup++;
+
                         bool tar1 = false; // whether to create target 1 and 2
                         bool tar2 = false;
 
@@ -1041,6 +1064,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        // Increment count of cleanup moves
+                        tab_ctx.cleanup++;
+
                         // **Critical Fix: Set flags before modifying the vector**
                         // Mark the original implication as inactive and dead
                         tabline.active = false;
@@ -1136,6 +1162,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        // Increment count of cleanup moves
+                        tab_ctx.cleanup++;
+
                         bool tar1 = false; // whether to create targets 1 and 2
                         bool tar2 = false;
 
@@ -1261,6 +1290,9 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                     }
 
                     if (valid) {
+                        // Increment count of cleanup moves
+                        tab_ctx.cleanup++;
+
                         // **Critical Fix: Set flags before modifying the vector**
                         // Mark the original negated implication as inactive and dead
                         tabline.active = false;
@@ -1304,6 +1336,9 @@ bool move_ni(context_t& tab_ctx, size_t start) {
         else {
             // **Target Case:** Look for formulas of the form P → Q
             if (tabline.formula->is_implication()) {
+                // Increment count of cleanup moves
+                tab_ctx.cleanup++;
+        
                 node* P = tabline.formula->children[0];
                 node* Q = tabline.formula->children[1];
 
@@ -1370,6 +1405,9 @@ bool move_me(context_t& tab_ctx, size_t start) {
         if (!tabline.target) {
             // **Target Case:** Look for formulas of the form P ↔ Q
             if (tabline.formula->is_equivalence()) {
+                // Increment count of cleanup moves
+                tab_ctx.cleanup++;
+
                 node* P = tabline.formula->children[0];
                 node* Q = tabline.formula->children[1];
 
@@ -1414,6 +1452,9 @@ bool move_me(context_t& tab_ctx, size_t start) {
         else {
             // **Target Case:** Look for formulas of the form P ↔ Q
             if (tabline.negation->is_equivalence()) {
+                // Increment count of cleanup moves
+                tab_ctx.cleanup++;
+        
                 node* P = tabline.negation->children[0];
                 node* Q = tabline.negation->children[1];
 
@@ -1566,6 +1607,9 @@ bool move_cp(context_t& tab_ctx, size_t start) {
         if (tabline.active && tabline.target) {
             // Ensure the negation field exists and is an implication
             if (tabline.negation && tabline.negation->is_implication()) {
+                // Increment count of cleanup moves
+                tab_ctx.cleanup++;
+
                 // **Critical Fix: Set flags before modifying the vector**
                 // Mark the original target as inactive and dead
                 tabline.active = false;
@@ -1606,6 +1650,9 @@ bool move_sd(context_t& tab_ctx, size_t line) {
         return false;
     }
     
+    // Increment count of cleanup moves
+    tab_ctx.split++;
+
     // make copies of P and Q
     node* P_copy = negate_node(deep_copy(disjunction->children[0]));
     node* P_neg = deep_copy(disjunction->children[0]);

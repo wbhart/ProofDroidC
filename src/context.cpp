@@ -1273,3 +1273,31 @@ void context_t::reanimate() {
         tabline.active = true;
     }
 }
+
+void context_t::print_statistics(const std::string filename, bool log) {
+    std::cout << "Cleanup moves: " << cleanup << ", Reasoning moves: " << reasoning << ", Disjunction splits: " << split << ", Backtracks: " << backtrack;
+
+    if (log) {
+        // Open proofs.log in append mode
+        std::ofstream log_file("proofs.log", std::ios::app);
+        
+        // Check if the file opened successfully
+        if (!log_file.is_open()) {
+            std::cerr << "Error: Could not open proofs.log for appending." << std::endl;
+            return;
+        }
+        
+        // Set the formatting:
+        // - Filename: left-aligned within 20 characters
+        // - Integers: right-aligned within 10 characters each
+        log_file << std::left << std::setw(20) << filename
+                << std::right << std::setw(10) << cleanup
+                << std::right << std::setw(10) << reasoning
+                << std::right << std::setw(10) << split
+                << std::right << std::setw(10) << backtrack
+                << std::endl;
+        
+        // Close the file
+        log_file.close();        
+    }
+}

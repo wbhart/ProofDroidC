@@ -21,6 +21,9 @@ if ! [ -x "./proof_droid" ]; then
     exit 1
 fi
 
+# Initialize proofs.log with the header line using printf
+printf "%-20s %12s %10s %7s %11s\n=================================================================\n" "Theorem" "Cleanup" "Reasoning" "Split" "Backtrack" > proofs.log
+
 # Loop through set1.thm to set47.thm
 for i in {1..47}; do
     filename="set${i}.thm"
