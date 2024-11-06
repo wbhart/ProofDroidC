@@ -187,301 +187,6 @@ std::optional<context_t*> find_module(const context_t& tab_ctx, const std::strin
     return std::nullopt;
 }
 
-// Function to handle manual mode
-void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_options) {
-    std::cout << "\nWelcome to manual mode." << std::endl;
-
-    // Print detailed list of commands based on active options
-    print_detailed_commands(manual_active_options);
-
-    // Print the current tableau
-    print_tableau(tab_ctx);
-    std::cout << std::endl;
-
-    // Print the summary of available options before the first prompt
-    print_summary(manual_active_options);
-
-    std::string input_line;
-    while (true) {
-        std::cout << "> ";
-        if (!getline(std::cin, input_line)) {
-            std::cout << std::endl;
-            break; // Exit on EOF
-        }
-
-        if (input_line.empty()) {
-            // Before each prompt, re-print the summary of options
-            print_summary(manual_active_options);
-            continue; // Prompt again
-        }
-
-        // Tokenize the input
-        std::vector<std::string> tokens = tokenize(input_line);
-        if (tokens.empty()) {
-            // Before each prompt, re-print the summary of options
-            print_summary(manual_active_options);
-            continue;
-        }
-
-        std::string command = tokens[0];
-
-        // Handle 'x' and 'q' commands first
-        if (command == "x") {
-            std::cout << "Exiting manual mode.\n" << std::endl;
-            break;
-        }
-
-        if (command == "q") {
-            exit(0);
-        }
-
-        // Check if the command is among the active options
-        option_t selected_option;
-        bool found = get_option_from_key(command, manual_active_options, selected_option);
-
-        if (!found) {
-            std::cerr << std::endl << "Unknown command. Available commands: ";
-            // Dynamically construct the list of available commands
-            bool first = true;
-            for (const auto& opt : manual_active_options) {
-                // Skip 'x' and 'q' as they are handled separately
-                if (opt == option_t::OPTION_EXIT_MANUAL || opt == option_t::OPTION_QUIT) {
-                    continue;
-                }
-
-                auto it = std::find_if(all_options.begin(), all_options.end(),
-                    [&opt](const option_entry& entry) { return entry.option == opt; });
-
-                if (it != all_options.end()) {
-                    if (!first) {
-                        std::cout << ", ";
-                    } else {
-                        first = false;
-                    }
-                    std::cout << it->key;
-                }
-            }
-
-            // Always include 'x' and 'q' in the error message
-            auto it_exit = std::find_if(all_options.begin(), all_options.end(),
-                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_MANUAL; });
-            if (it_exit != all_options.end()) {
-                if (!manual_active_options.empty()) {
-                    std::cout << ", ";
-                }
-                std::cout << it_exit->key;
-            }
-
-            auto it_quit = std::find_if(all_options.begin(), all_options.end(),
-                [](const option_entry& entry) { return entry.option == option_t::OPTION_QUIT; });
-            if (it_quit != all_options.end()) {
-                if (!manual_active_options.empty() || it_exit != all_options.end()) {
-                    std::cout << ", ";
-                }
-                std::cout << it_quit->key;
-            }
-
-            std::cout << "." << std::endl << std::endl;
-
-            // Before next prompt, re-print the summary of options
-            print_summary(manual_active_options);
-            continue;
-        }
-
-        if (selected_option == option_t::OPTION_SKOLEMIZE) {
-            // Apply skolemize_all to the tableau starting from 0
-            bool skolemized = skolemize_all(tab_ctx, 0);
-            if (skolemized) {
-                // Check if done
-                check_done(tab_ctx);
-            }
-
-            std::cout << std::endl;
-            print_tableau(tab_ctx);
-            std::cout << std::endl;
-
-            // Before next prompt, re-print the summary of options
-            print_summary(manual_active_options);
-            continue;
-        }
-
-        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', 'me' handle accordingly
-        if (selected_option == option_t::OPTION_MODUS_PONENS || 
-            selected_option == option_t::OPTION_MODUS_TOLLENS ||
-            selected_option == option_t::OPTION_CONJ_IDEM ||
-            selected_option == option_t::OPTION_DISJ_IDEM ||
-            selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
-            selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
-            selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
-            selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
-            selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
-            selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
-            
-            // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', and 'me', handle without additional arguments
-            if (selected_option == option_t::OPTION_CONJ_IDEM || 
-                selected_option == option_t::OPTION_DISJ_IDEM ||
-                selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
-                selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
-                selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
-                selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
-                selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
-                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
-                
-                if (selected_option == option_t::OPTION_CONJ_IDEM) {
-                    bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
-                    bool applied = move_di(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
-                    bool applied = move_sc(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
-                    bool applied = move_sci(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
-                    bool applied = move_sdi(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
-                    bool applied = move_ni(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
-                    bool applied = move_me(tab_ctx, 0); // Assuming start from 0
-                    if (applied) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
-                    // Handle the new 'cp' move for Conditional Premise
-                    if (tokens.size() < 2) { // Expecting 'cp <index>'
-                        std::cerr << "Error: Insufficient arguments. Usage: cp <index>" << std::endl << std::endl;
-                        // Before next prompt, re-print the summary of options
-                        print_summary(manual_active_options);
-                        continue;
-                    }
-
-                    // Parse the index
-                    int target_index;
-                    try {
-                        target_index = std::stoi(tokens[1]) - 1; // Convert to 0-based index
-                    } catch (...) {
-                        std::cerr << "Error: Invalid index." << std::endl << std::endl;
-                        // Before next prompt, re-print the summary of options
-                        print_summary(manual_active_options);
-                        continue;
-                    }
-
-                    // Apply conditional_premise
-                    bool cp_moved = conditional_premise(tab_ctx, target_index);
-                    if (cp_moved) {
-                        // Check if done
-                        check_done(tab_ctx, false);
-                    }
-                }
-
-                std::cout << std::endl;
-                print_tableau(tab_ctx);
-                std::cout << std::endl;
-
-                // Before next prompt, re-print the summary of options
-                print_summary(manual_active_options);
-                continue;
-            }
-
-            // For modus ponens and modus tollens, handle as before
-            if (selected_option == option_t::OPTION_MODUS_PONENS || 
-                selected_option == option_t::OPTION_MODUS_TOLLENS) {
-                
-                if (tokens.size() < 3) { // Need at least implication_line and one other_line
-                    std::cerr << "Error: Insufficient arguments. Usage: " 
-                              << command 
-                              << " <implication_line> <line1> <line2> ..." 
-                              << std::endl << std::endl;
-                    // Before next prompt, re-print the summary of options
-                    print_summary(manual_active_options);
-                    continue;
-                }
-
-                // Parse implication_line
-                int implication_line;
-                try {
-                    implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
-                } catch (...) {
-                    std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
-                    // Before next prompt, re-print the summary of options
-                    print_summary(manual_active_options);
-                    continue;
-                }
-
-                // Parse other_lines
-                std::vector<int> other_lines;
-                bool parse_error = false;
-                for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
-                    try {
-                        int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
-                        other_lines.push_back(line_num);
-                    } catch (...) {
-                        std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
-                        parse_error = true;
-                        break;
-                    }
-                }
-                if (parse_error) {
-                    // Before next prompt, re-print the summary of options
-                    print_summary(manual_active_options);
-                    continue;
-                }
-
-                // Determine if applying modus ponens or modus tollens
-                bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
-
-                // Apply move_mpt
-                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
-
-                if (move_applied) {
-                    // After applying the move, run cleanup_moves automatically
-                    cleanup_moves(tab_ctx, tab_ctx.upto);
-
-                    // Check if done
-                    check_done(tab_ctx);
-                } else {
-                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
-                }
-                
-                std::cout << std::endl;
-                print_tableau(tab_ctx);
-                std::cout << std::endl;
-
-#if DEBUG_HYDRAS
-                tab_ctx.print_hydras();
-#endif
-
-                // Before next prompt, re-print the summary of options
-                print_summary(manual_active_options);
-                continue;
-            }
-        }
-    }
-}
-
 // Function to check if a module is loaded and if not to load it
 // Returns true is module_ctx was loaded correctly
 bool load_module(context_t& module_ctx, context_t& tab_ctx, const std::string filename_stem)
@@ -677,6 +382,383 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
     }
 
     std::cout << "Theorem(s) loaded successfully" << std::endl;
+}
+
+// Function to handle manual mode
+void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_options) {
+    std::cout << "\nWelcome to manual mode." << std::endl;
+
+    // Print detailed list of commands based on active options
+    print_detailed_commands(manual_active_options);
+
+    // Print the current tableau
+    print_tableau(tab_ctx);
+    std::cout << std::endl;
+
+    // Print the summary of available options before the first prompt
+    print_summary(manual_active_options);
+
+    std::string input_line;
+    while (true) {
+        std::cout << "> ";
+        if (!getline(std::cin, input_line)) {
+            std::cout << std::endl;
+            break; // Exit on EOF
+        }
+
+        if (input_line.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_summary(manual_active_options);
+            continue; // Prompt again
+        }
+
+        // Tokenize the input
+        std::vector<std::string> tokens = tokenize(input_line);
+        if (tokens.empty()) {
+            // Before each prompt, re-print the summary of options
+            print_summary(manual_active_options);
+            continue;
+        }
+
+        std::string command = tokens[0];
+
+        // Handle 'x' and 'q' commands first
+        if (command == "x") {
+            std::cout << "Exiting manual mode.\n" << std::endl;
+            break;
+        }
+
+        if (command == "q") {
+            exit(0);
+        }
+
+        // Check if the command is among the active options
+        option_t selected_option;
+        bool found = get_option_from_key(command, manual_active_options, selected_option);
+
+        if (!found) {
+            std::cerr << std::endl << "Unknown command. Available commands: ";
+            // Dynamically construct the list of available commands
+            bool first = true;
+            for (const auto& opt : manual_active_options) {
+                // Skip 'x' and 'q' as they are handled separately
+                if (opt == option_t::OPTION_EXIT_MANUAL || opt == option_t::OPTION_QUIT) {
+                    continue;
+                }
+
+                auto it = std::find_if(all_options.begin(), all_options.end(),
+                    [&opt](const option_entry& entry) { return entry.option == opt; });
+
+                if (it != all_options.end()) {
+                    if (!first) {
+                        std::cout << ", ";
+                    } else {
+                        first = false;
+                    }
+                    std::cout << it->key;
+                }
+            }
+
+            // Always include 'x' and 'q' in the error message
+            auto it_exit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_EXIT_MANUAL; });
+            if (it_exit != all_options.end()) {
+                if (!manual_active_options.empty()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_exit->key;
+            }
+
+            auto it_quit = std::find_if(all_options.begin(), all_options.end(),
+                [](const option_entry& entry) { return entry.option == option_t::OPTION_QUIT; });
+            if (it_quit != all_options.end()) {
+                if (!manual_active_options.empty() || it_exit != all_options.end()) {
+                    std::cout << ", ";
+                }
+                std::cout << it_quit->key;
+            }
+
+            std::cout << "." << std::endl << std::endl;
+
+            // Before next prompt, re-print the summary of options
+            print_summary(manual_active_options);
+            continue;
+        }
+
+        if (selected_option == option_t::OPTION_SKOLEMIZE) {
+            // Apply skolemize_all to the tableau starting from 0
+            bool skolemized = skolemize_all(tab_ctx, 0);
+            if (skolemized) {
+                // Check if done
+                check_done(tab_ctx);
+            }
+
+            std::cout << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+
+            // Before next prompt, re-print the summary of options
+            print_summary(manual_active_options);
+            continue;
+        }
+
+        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', 'me', 'sd' handle accordingly
+        if (selected_option == option_t::OPTION_MODUS_PONENS || 
+            selected_option == option_t::OPTION_MODUS_TOLLENS ||
+            selected_option == option_t::OPTION_CONJ_IDEM ||
+            selected_option == option_t::OPTION_DISJ_IDEM ||
+            selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
+            selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
+            selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
+            selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
+            selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
+            selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
+            selected_option == option_t::OPTION_SPLIT_DISJUNCTION ||
+            selected_option == option_t::OPTION_LIBRARY_FILTER ||
+            selected_option == option_t::OPTION_LOAD_THEOREM) {
+            
+            // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', and 'me', handle without additional arguments
+            if (selected_option == option_t::OPTION_CONJ_IDEM || 
+                selected_option == option_t::OPTION_DISJ_IDEM ||
+                selected_option == option_t::OPTION_SPLIT_CONJUNCTION ||
+                selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION ||
+                selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
+                selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
+                selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
+                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+                
+                if (selected_option == option_t::OPTION_CONJ_IDEM) {
+                    bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_DISJ_IDEM) {
+                    bool applied = move_di(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTION) {
+                    bool applied = move_sc(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION) {
+                    bool applied = move_sci(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION) {
+                    bool applied = move_sdi(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_NEGATED_IMPLICATION) {
+                    bool applied = move_ni(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE) {
+                    bool applied = move_me(tab_ctx, 0); // Assuming start from 0
+                    if (applied) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+                    // Handle the new 'cp' move for Conditional Premise
+                    if (tokens.size() < 2) { // Expecting 'cp <index>'
+                        std::cerr << "Error: Insufficient arguments. Usage: cp <index>" << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Parse the index
+                    int target_index;
+                    try {
+                        target_index = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                    } catch (...) {
+                        std::cerr << "Error: Invalid index." << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Apply conditional_premise
+                    bool cp_moved = conditional_premise(tab_ctx, target_index);
+                    if (cp_moved) {
+                        // Check if done
+                        check_done(tab_ctx, false);
+                    }
+                }
+
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+                // Before next prompt, re-print the summary of options
+                print_summary(manual_active_options);
+                continue;
+            }
+
+            // Handle the new 'l' (load theorem) command
+            if (selected_option == option_t::OPTION_LOAD_THEOREM) {
+                handle_load_theorems(tab_ctx, tokens);
+                // After handling, re-print the tableau
+
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+                
+    #if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+    #endif
+
+                // Before next prompt, re-print the summary of options
+                print_summary(manual_active_options);
+                continue;
+            }
+
+            // Handle the existing 'f' (library filter) command
+            if (selected_option == option_t::OPTION_LIBRARY_FILTER) {
+                handle_library_filter(tab_ctx, tokens);
+                // Don't re-print the tableau for this option
+
+    #if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+    #endif
+
+                // Before next prompt, re-print the summary of options
+                print_summary(manual_active_options);
+                continue;
+            }
+
+            // Handle other commands like 'sd', 'p', 't', etc.
+            if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION) {
+                if (tokens.size() != 2) {
+                    std::cerr << "Error: Need disjunction line. Usage: "
+                            << "sd <disjunction_line>"
+                            << std::endl << std::endl;
+                    print_summary(manual_active_options);
+                    continue;
+                }
+
+                // Parse disjunction_line
+                size_t disjunction_line;
+                try {
+                    disjunction_line = std::stoul(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid disjunction line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(manual_active_options);
+                    continue;
+                }
+
+                // Apply move_sd
+                bool move_applied = move_sd(tab_ctx, disjunction_line);
+
+                if (move_applied) {
+                    // After applying the move, run cleanup_moves automatically
+                    cleanup_moves(tab_ctx, tab_ctx.upto);
+
+                    // Check if done
+                    check_done(tab_ctx);
+                } else {
+                    std::cerr << "Error: Split disjunction could not be applied." << std::endl;
+                }
+                
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+    #if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+    #endif
+
+                // Before next prompt, re-print the summary of options
+                print_summary(manual_active_options);
+                continue;
+            }
+
+            // For modus ponens and modus tollens, handle as before
+            if (selected_option == option_t::OPTION_MODUS_PONENS || 
+                selected_option == option_t::OPTION_MODUS_TOLLENS) {
+                
+                if (tokens.size() < 3) { // Need at least implication_line and one other_line
+                    std::cerr << "Error: Insufficient arguments. Usage: " 
+                              << command 
+                              << " <implication_line> <line1> <line2> ..." 
+                              << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(manual_active_options);
+                    continue;
+                }
+
+                // Parse implication_line
+                int implication_line;
+                try {
+                    implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(manual_active_options);
+                    continue;
+                }
+
+                // Parse other_lines
+                std::vector<int> other_lines;
+                bool parse_error = false;
+                for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
+                    try {
+                        int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
+                        other_lines.push_back(line_num);
+                    } catch (...) {
+                        std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
+                        parse_error = true;
+                        break;
+                    }
+                }
+                if (parse_error) {
+                    // Before next prompt, re-print the summary of options
+                    print_summary(manual_active_options);
+                    continue;
+                }
+
+                // Determine if applying modus ponens or modus tollens
+                bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
+
+                // Apply move_mpt
+                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
+
+                if (move_applied) {
+                    // After applying the move, run cleanup_moves automatically
+                    cleanup_moves(tab_ctx, tab_ctx.upto);
+
+                    // Check if done
+                    check_done(tab_ctx);
+                } else {
+                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+                }
+                
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+#if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+#endif
+
+                // Before next prompt, re-print the summary of options
+                print_summary(manual_active_options);
+                continue;
+            }
+        }
+    }
 }
 
 // Function to handle semi-automatic mode
@@ -1101,6 +1183,9 @@ int main(int argc, char** argv) {
                             option_t::OPTION_NEGATED_IMPLICATION,
                             option_t::OPTION_CONDITIONAL_PREMISE,
                             option_t::OPTION_MATERIAL_EQUIVALENCE,
+                            option_t::OPTION_SPLIT_DISJUNCTION,
+                            option_t::OPTION_LIBRARY_FILTER,
+                            option_t::OPTION_LOAD_THEOREM,
                             option_t::OPTION_EXIT_MANUAL,
                             option_t::OPTION_QUIT
                         };
