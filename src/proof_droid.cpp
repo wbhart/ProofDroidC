@@ -939,20 +939,38 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
     }
 }
 
+// Entry point of the application
 int main(int argc, char** argv) {
-    // Check for filename argument
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
+    // Initialize variables for command-line parsing
+    bool interactive_mode = false;
+    std::string filename;
+
+    // Command-line parsing using std::string for safer comparisons
+    if (argc == 3 && std::string(argv[1]) == "-i") {
+        // Interactive mode: ./proof_droid -i filename.thm
+        interactive_mode = true;
+        filename = argv[2];
+    }
+    else if (argc == 2) {
+        // Automatic mode: ./proof_droid filename.thm
+        interactive_mode = false;
+        filename = argv[1];
+    }
+    else {
+        // Invalid usage
+        std::cerr << "Usage:\n";
+        std::cerr << "  " << argv[0] << " -i <filename.thm>  (Interactive mode)\n";
+        std::cerr << "  " << argv[0] << " <filename.thm>     (Automatic mode)\n";
         return 1;
     }
 
     std::cout << "Welcome to ProofDroid for C version 0.1!" << std::endl << std::endl;
 
     // Open the specified file
-    std::cout << "Reading " << argv[1] << "..." << std::endl << std::endl;
-    std::ifstream infile(argv[1]);
+    std::cout << "Reading " << filename << "..." << std::endl << std::endl;
+    std::ifstream infile(filename);
     if (!infile) {
-        std::cerr << "Error opening file: " << argv[1] << std::endl;
+        std::cerr << "Error opening file: " << filename << std::endl;
         return 1;
     }
 
@@ -1010,11 +1028,11 @@ int main(int argc, char** argv) {
 
             // Create a tabline struct with target=true and set justification
             tabline_t tabline(negated); // The formula field holds the negated formula
-            tabline.negation = ast; // The negation field holds the original formula
+            tabline.negation = ast;      // The negation field holds the original formula
             tabline.target = true;
             tabline.active = true;
 
-            // **Added:** Set justification for Target
+            // Set justification for Target
             tabline.justification = { Reason::Target, {} };
 
             // Add to the tableau
@@ -1026,175 +1044,247 @@ int main(int argc, char** argv) {
             tabline.target = false;
             tabline.active = true;
 
-            // **Added:** Set justification for Hypothesis
+            // Set justification for Hypothesis
             tabline.justification = { Reason::Hypothesis, {} };
 
             tab_ctx.tableau.push_back(tabline);
         }
     }
 
-    // Initialize active options: quit, manual, and semi-automatic
-    std::vector<option_t> active_options = {
-        option_t::OPTION_QUIT,
-        option_t::OPTION_MANUAL,
-        option_t::OPTION_SEMI_AUTOMATIC,
-        option_t::OPTION_AUTOMATIC
-    };
+    infile.close(); // Close the input file
 
-    // Display the initial tableau
-    print_tableau(tab_ctx);
-    std::cout << std::endl;
+    if (interactive_mode) {
+        // Interactive Mode: Present options to the user
 
-    // Display the current options
-    print_options(active_options);
+        // Display the initial tableau
+        print_tableau(tab_ctx);
+        std::cout << std::endl;
 
-    // Enter interactive mode
-    std::cout << "> ";
-    while (getline(std::cin, line)) {
-        if (line.empty()) {
+        // Initialize active options: quit, manual, semi-automatic, and automatic
+        std::vector<option_t> active_options = {
+            option_t::OPTION_QUIT,
+            option_t::OPTION_MANUAL,
+            option_t::OPTION_SEMI_AUTOMATIC,
+            option_t::OPTION_AUTOMATIC
+        };
+
+        // Display the current options
+        print_options(active_options);
+
+        // Enter interactive mode
+        std::cout << "> ";
+        while (getline(std::cin, line)) {
+            if (line.empty()) {
+                std::cout << "> ";
+                continue; // Prompt again
+            }
+
+            option_t selected_option;
+            bool found = get_option_from_key(line, active_options, selected_option);
+
+            if (!found) {
+                std::cout << std::endl << "Unknown command." << std::endl;
+            }
+            else {
+                switch (selected_option) {
+                    case option_t::OPTION_MANUAL: {
+                        // Define active options within manual mode
+                        std::vector<option_t> manual_active_options = {
+                            option_t::OPTION_SKOLEMIZE,
+                            option_t::OPTION_MODUS_PONENS,
+                            option_t::OPTION_MODUS_TOLLENS,
+                            option_t::OPTION_CONJ_IDEM,
+                            option_t::OPTION_DISJ_IDEM,
+                            option_t::OPTION_SPLIT_CONJUNCTION,
+                            option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
+                            option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
+                            option_t::OPTION_NEGATED_IMPLICATION,
+                            option_t::OPTION_CONDITIONAL_PREMISE,
+                            option_t::OPTION_MATERIAL_EQUIVALENCE,
+                            option_t::OPTION_EXIT_MANUAL,
+                            option_t::OPTION_QUIT
+                        };
+
+                        // Turn free variables into parameters (constant variables)
+                        parameterize_all(tab_ctx);
+                        
+                        // Set up initial hydras
+                        tab_ctx.initialize_hydras();
+                        std::vector<int> targets = tab_ctx.get_hydra();
+                        tab_ctx.select_targets(targets);
+
+                        // Enter manual mode with the current manual_active_options
+                        manual_mode(tab_ctx, manual_active_options);
+
+                        // After exiting manual mode, display the tableau and options again
+                        print_tableau(tab_ctx);
+
+                        // Reset active_options to include 'm', 'sa', 'a', and 'q'
+                        active_options = {
+                            option_t::OPTION_QUIT,
+                            option_t::OPTION_MANUAL,
+                            option_t::OPTION_SEMI_AUTOMATIC,
+                            option_t::OPTION_AUTOMATIC
+                        };
+                        break;
+                    }
+                    case option_t::OPTION_SEMI_AUTOMATIC: {
+                        // Define active options within semi-automatic mode
+                        std::vector<option_t> semi_auto_active_options = {
+                            option_t::OPTION_MODUS_PONENS,
+                            option_t::OPTION_MODUS_TOLLENS,
+                            option_t::OPTION_SPLIT_DISJUNCTION,
+                            option_t::OPTION_LIBRARY_FILTER,
+                            option_t::OPTION_LOAD_THEOREM,
+                            option_t::OPTION_EXIT_SEMIAUTO,
+                            option_t::OPTION_QUIT
+                        };
+
+                        parameterize_all(tab_ctx);
+
+                        // Set up initial hydras
+                        tab_ctx.initialize_hydras();
+                        std::vector<int> targets = tab_ctx.get_hydra();
+                        tab_ctx.select_targets(targets);
+                        
+                        // Enter semi-automatic mode with the current semi_auto_active_options
+                        semi_automatic_mode(tab_ctx, semi_auto_active_options);
+
+                        // After exiting semi-automatic mode, display the tableau and options again
+                        print_tableau(tab_ctx);
+
+                        // Reset active_options to include 'm', 'sa', 'a', and 'q'
+                        active_options = {
+                            option_t::OPTION_QUIT,
+                            option_t::OPTION_MANUAL,
+                            option_t::OPTION_SEMI_AUTOMATIC,
+                            option_t::OPTION_AUTOMATIC
+                        };
+                        break;
+                    }
+                    case option_t::OPTION_AUTOMATIC: {
+                        // Automatic Mode within Interactive Mode
+                        context_t module_ctx;
+                        // For now, hard code single module load
+                        load_module(module_ctx, tab_ctx, "set");
+
+                        parameterize_all(tab_ctx);
+
+                        // Set up initial hydras
+                        tab_ctx.initialize_hydras();
+                        std::vector<int> targets = tab_ctx.get_hydra();
+                        tab_ctx.select_targets(targets);
+                        
+                        cleanup_moves(tab_ctx, 0); // Starting from line 0
+
+                        // Get constants for the tableau
+                        tab_ctx.get_constants();
+
+                        // Call the automate function
+                        bool success = automate(tab_ctx);
+
+                        if (success) {
+                            tab_ctx.reanimate();
+                        }
+
+                        std::cout << std::endl;
+
+                        // After automation, display the tableau again
+                        print_tableau(tab_ctx);
+
+                        // Do NOT print additional messages or exit
+                        break;
+                    }
+                    case option_t::OPTION_QUIT:
+                        // Exit the application
+                        goto exit_loop;
+                    default:
+                        std::cout << "Unhandled option." << std::endl;
+                        break;
+                }
+            }
+
+            // After handling the command, display the current options again
+            std::cout << std::endl;
+            print_options(active_options);
             std::cout << "> ";
-            continue; // Prompt again
         }
 
-        option_t selected_option;
-        bool found = get_option_from_key(line, active_options, selected_option);
+        std::cout << std::endl;
 
-        if (!found) {
-            std::cout << std::endl << "Unknown command." << std::endl;
-        }
-        else {
-            switch (selected_option) {
-                case option_t::OPTION_MANUAL: {
-                    // Define active options within manual mode
-                    std::vector<option_t> manual_active_options = {
-                        option_t::OPTION_SKOLEMIZE,
-                        option_t::OPTION_MODUS_PONENS,
-                        option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_CONJ_IDEM,
-                        option_t::OPTION_DISJ_IDEM,
-                        option_t::OPTION_SPLIT_CONJUNCTION,
-                        option_t::OPTION_SPLIT_CONJUNCTIVE_IMPLICATION,
-                        option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION,
-                        option_t::OPTION_NEGATED_IMPLICATION,
-                        option_t::OPTION_CONDITIONAL_PREMISE,
-                        option_t::OPTION_MATERIAL_EQUIVALENCE,
-                        option_t::OPTION_EXIT_MANUAL,
-                        option_t::OPTION_QUIT
-                    };
+    exit_loop:
+        // Clean up parser context
+        parser_destroy(ctx);
 
-                    // Turn free variables into parameters (constant variables)
-                    parameterize_all(tab_ctx);
-                    
-                    // set up initial hydras
-                    tab_ctx.initialize_hydras();
-                    std::vector<int> targets = tab_ctx.get_hydra();
-                    tab_ctx.select_targets(targets);
-
-                    // Enter manual mode with the current manual_active_options
-                    manual_mode(tab_ctx, manual_active_options);
-
-                    // After exiting manual mode, display the tableau and options again
-                    print_tableau(tab_ctx);
-
-                    // Reset active_options to include 'm', 'sa', and 'q'
-                    active_options = {
-                        option_t::OPTION_QUIT,
-                        option_t::OPTION_MANUAL,
-                        option_t::OPTION_SEMI_AUTOMATIC
-                    };
-                    break;
-                }
-                case option_t::OPTION_SEMI_AUTOMATIC: {
-                    // Define active options within semi-automatic mode
-                    std::vector<option_t> semi_auto_active_options = {
-                        option_t::OPTION_MODUS_PONENS,
-                        option_t::OPTION_MODUS_TOLLENS,
-                        option_t::OPTION_SPLIT_DISJUNCTION,
-                        option_t::OPTION_LIBRARY_FILTER,
-                        option_t::OPTION_LOAD_THEOREM,
-                        option_t::OPTION_EXIT_SEMIAUTO,
-                        option_t::OPTION_QUIT
-                    };
-
-                    parameterize_all(tab_ctx);
-
-                    // set up initial hydras
-                    tab_ctx.initialize_hydras();
-                    std::vector<int> targets = tab_ctx.get_hydra();
-                    tab_ctx.select_targets(targets);
-                    
-                    // Enter semi-automatic mode with the current semi_auto_active_options
-                    semi_automatic_mode(tab_ctx, semi_auto_active_options);
-
-                    // After exiting semi-automatic mode, display the tableau and options again
-                    print_tableau(tab_ctx);
-
-                    // Reset active_options to include 'm', 'sa', and 'q'
-                    active_options = {
-                        option_t::OPTION_QUIT,
-                        option_t::OPTION_MANUAL,
-                        option_t::OPTION_SEMI_AUTOMATIC
-                    };
-                    break;
-                }
-                case option_t::OPTION_AUTOMATIC: {
-                    context_t module_ctx;
-                    // For now, hard code single module load
-                    load_module(module_ctx, tab_ctx, "set");
-
-                    parameterize_all(tab_ctx);
-
-                    // set up initial hydras
-                    tab_ctx.initialize_hydras();
-                    std::vector<int> targets = tab_ctx.get_hydra();
-                    tab_ctx.select_targets(targets);
-                    
-                    cleanup_moves(tab_ctx, 0); // Starting from line 0
-
-                    // Get constants for the tableau
-                    tab_ctx.get_constants();
-
-                    // Call the automate function
-                    automate(tab_ctx);
-
-                    std::cout << std::endl;
-
-                    // After automation, display the tableau and options again
-                    print_tableau(tab_ctx);
-
-                    break;
-                }
-                case option_t::OPTION_QUIT:
-                    // Exit the application
-                    goto exit_loop;
-                default:
-                    std::cout << "Unhandled option." << std::endl;
-                    break;
+        // Clean up memory by deleting all node pointers in the tableau
+        for (auto& tabline : tab_ctx.tableau) {
+            if (tabline.target && tabline.negation) {
+                delete tabline.negation;
+            }
+            if (tabline.formula) {
+                delete tabline.formula;
             }
         }
 
-        // After handling the command, display the current options again
+        return 0;
+    }
+    else {
+        // Non-Interactive Mode: Run automatic mode immediately
+
+        // Display the initial tableau
+        print_tableau(tab_ctx);
         std::cout << std::endl;
-        print_options(active_options);
-        std::cout << "> ";
-    }
 
-    std::cout << std::endl;
+        // Perform automatic mode steps
+        context_t module_ctx;
+        // For now, hard code single module load
+        load_module(module_ctx, tab_ctx, "set");
 
-exit_loop:
-    // Clean up parser context
-    parser_destroy(ctx);
-    infile.close();
+        parameterize_all(tab_ctx);
 
-    // Clean up memory by deleting all node pointers in the tableau
-    for (auto& tabline : tab_ctx.tableau) {
-        if (tabline.target && tabline.negation) {
-            delete tabline.negation;
+        // Set up initial hydras
+        tab_ctx.initialize_hydras();
+        std::vector<int> targets = tab_ctx.get_hydra();
+        tab_ctx.select_targets(targets);
+        
+        cleanup_moves(tab_ctx, 0); // Starting from line 0
+
+        // Get constants for the tableau
+        tab_ctx.get_constants();
+
+        // Call the automate function
+        bool success = automate(tab_ctx);
+
+        // Set all lines to active for final display
+        tab_ctx.reanimate();
+
+        // After automation, display the tableau again
+        print_tableau(tab_ctx);
+        std::cout << std::endl;
+
+        // Perform cleanup
+        parser_destroy(ctx);
+
+        // Clean up memory by deleting all node pointers in the tableau
+        for (auto& tabline : tab_ctx.tableau) {
+            if (tabline.target && tabline.negation) {
+                delete tabline.negation;
+            }
+            if (tabline.formula) {
+                delete tabline.formula;
+            }
         }
-        if (tabline.formula) {
-            delete tabline.formula;
+
+        // Exit with appropriate return value based on automation success
+        if (success) {
+            // Optional: Uncomment the next line if you want to print a success message
+            // std::cout << "Automatic mode completed successfully." << std::endl;
+            return 0; // Success
+        }
+        else {
+            // Optional: Uncomment the next line if you want to print a failure message
+            // std::cout << "Automatic mode failed to prove the theorem." << std::endl;
+            return 1; // Failure
         }
     }
-
-    return 0;
 }

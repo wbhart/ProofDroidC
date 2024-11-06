@@ -1265,3 +1265,11 @@ void context_t::kill_duplicates(size_t start_index) {
         }
     }
 }
+
+void context_t::reanimate() {
+    for (size_t i = 0; i < tableau.size(); ++i) {
+        tabline_t& tabline = tableau[i];
+
+        tabline.active = true;
+    }
+}

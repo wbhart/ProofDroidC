@@ -2,11 +2,7 @@ Critical:
 
 * Give way to specify when to stop reading library
 
-* Make test suite that proves all theorems
-
 * Print move count
-
-* When all targets are proved, reanimate all hypotheses and targets before printing final tableau
 
 * Set 1 leaks
 

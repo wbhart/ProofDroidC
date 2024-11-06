@@ -132,6 +132,9 @@ public:
     // Purges all hypotheses that can only be used to prove dead targets
     void purge_dead();
 
+    // Set all lines of the tableau to active, for final display
+    void reanimate();
+
     // Array of tableau lines
     std::vector<tabline_t> tableau;
 
