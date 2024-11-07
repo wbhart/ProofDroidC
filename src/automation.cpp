@@ -73,7 +73,7 @@ bool trial_modus_tollens(context_t& ctx, const tabline_t& impl_tabline, const ta
 // Loads a theorem from the module tableau to the main tableau.
 // Updates main_line_idx by reference if the theorem is loaded.
 // Returns true if the theorem was loaded, false otherwise.
-void load_theorem(context_t& ctx, tabline_t& mod_tabline, size_t& main_line_idx)
+void load_theorem(context_t& ctx, tabline_t& mod_tabline, size_t& main_line_idx, LIBRARY kind)
 {
     if (main_line_idx == -static_cast<size_t>(1)) {
         // Copy the theorem's tabline from the module to the main tableau
@@ -81,7 +81,11 @@ void load_theorem(context_t& ctx, tabline_t& mod_tabline, size_t& main_line_idx)
 
         // Set the justification based on the kind
         if (mod_tabline.formula->is_implication()) {
-            copied_tabline.justification = { Reason::Theorem, {} };
+            if (kind == LIBRARY::Theorem) {
+                copied_tabline.justification = { Reason::Theorem, {} };
+            } else {
+                copied_tabline.justification = { Reason::Definition, {} };
+            }
         } else {
             copied_tabline.justification = { Reason::Special, {} };
         }
@@ -165,7 +169,7 @@ bool automate(context_t& ctx) {
                             bool tab_contained = consts_subset(tabc, mod_consts);
                             
                             if (tab_contained) {
-                                load_theorem(ctx, mod_tabline, main_line_idx);
+                                load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Theorem);
 
 #if DEBUG_MOVES
                                 std::cout << "Level 1: load " << main_line_idx + 1 << std::endl;
@@ -486,7 +490,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mp_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {tar_idx};
@@ -527,7 +531,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mt_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {tar_idx};
@@ -632,7 +636,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mp_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {unit_idx};
@@ -672,7 +676,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mt_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {unit_idx};
@@ -775,7 +779,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mp_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Theorem);
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {unit_idx};
@@ -815,7 +819,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mt_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Theorem);
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {unit_idx};
@@ -920,7 +924,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mp_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Theorem);
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {tar_idx};
@@ -961,7 +965,7 @@ bool automate(context_t& ctx) {
 
                                     if (trial_mt_success) {
                                         // Load the theorem into the main tableau
-                                        load_theorem(ctx, mod_tabline, main_line_idx);
+                                        load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Theorem);
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {tar_idx};

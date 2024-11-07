@@ -1,7 +1,5 @@
 Critical:
 
-* Figure out why definitions are printed as Thm in reason in Library Premises
-
 * Give way to specify when to stop reading library
 
 * Print move count
