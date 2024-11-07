@@ -490,7 +490,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             bool skolemized = skolemize_all(tab_ctx, 0);
             if (skolemized) {
                 // Check if done
-                check_done(tab_ctx);
+                check_done(tab_ctx, false);
             }
 
             std::cout << std::endl;
@@ -663,11 +663,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 bool move_applied = move_sd(tab_ctx, disjunction_line);
 
                 if (move_applied) {
-                    // After applying the move, run cleanup_moves automatically
-                    cleanup_moves(tab_ctx, tab_ctx.upto);
-
                     // Check if done
-                    check_done(tab_ctx);
+                    check_done(tab_ctx, false);
                 } else {
                     std::cerr << "Error: Split disjunction could not be applied." << std::endl;
                 }
@@ -736,11 +733,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
 
                 if (move_applied) {
-                    // After applying the move, run cleanup_moves automatically
-                    cleanup_moves(tab_ctx, tab_ctx.upto);
-
                     // Check if done
-                    check_done(tab_ctx);
+                    check_done(tab_ctx, false);
                 } else {
                     std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
                 }

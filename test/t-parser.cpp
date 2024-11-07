@@ -52,7 +52,7 @@ int main() {
         "A = \\emptyset",
         "() = f(g(\\emptyset))",
         "S \\cup T = \\emptyset",
-        "S \\cup T \\times (A \\cap B) = \\emptyset",
+        "(S \\cup T) \\times (A \\cap B) = \\emptyset",
         "(S \\cup T) \\times (A \\cap B) = \\emptyset",
         "A \\setminus B = f(U)",
         "A \\subseteq B",

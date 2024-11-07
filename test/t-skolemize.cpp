@@ -100,7 +100,7 @@ int main() {
 
     std::vector<TestCase> test_cases = {
         // Test 1: Simple existential quantifier with no universals
-        {"\\exists x P(x)", "P(x_0())"},
+        {"\\exists x P(x)", "P(x_0)"},
 
         // Test 2: Existential quantifier with one universal
         {"\\forall y \\exists x P(x, y)", "P(x_0(y), y)"},

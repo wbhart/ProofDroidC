@@ -1,5 +1,7 @@
 Critical:
 
+* Figure out why definitions are printed as Thm in reason in Library Premises
+
 * Give way to specify when to stop reading library
 
 * Print move count
@@ -11,6 +13,8 @@ Critical:
 * Should consts_ltor/rtol apply when there are no shared vars in impl (non-library forwards reasoning)
 
 * We don't need to compute tarc and tabc for level 2 and 3
+
+* Factor out handle_move_split_disjunction in proof_droid and use in manual/semiautomatic mode
 
 * In print_tableau, only print restrictions that correspond to active targets
 
