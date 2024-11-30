@@ -51,6 +51,7 @@ struct variable_data {
     VariableKind var_kind;
     bool bound;
     bool shared;
+    bool structure;
     int arity;
     std::string name;
 };
@@ -63,7 +64,7 @@ public:
     std::vector<node*> children;
 
     node(node_type t, const std::string& name)
-        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, false, 0, name}), children() {}
+        : type(VARIABLE), symbol(SYMBOL_NONE), vdata(new variable_data{INDIVIDUAL, false, false, false, 0, name}), children() {}
 
     node(node_type t)
         : type(t), symbol(SYMBOL_NONE), vdata(nullptr), children() {}
@@ -212,6 +213,8 @@ public:
                         oss << children[1]->to_string(format);  // Print the argument
                         oss << ")";
                     }
+                } else if (children[0]->is_predicate() && children[0]->vdata->structure) {
+                    oss << children[1]->to_string(format) << ":" << children[0]->to_string(format);
                 } else {
                     // If the operator is a variable or application
                     oss << children[0]->to_string(format) << "("; // Print the operator
@@ -244,9 +247,11 @@ private:
 
     // Helper function to parenthesize based on precedence and associativity
     std::string parenthesize(const node *child, OutputFormat format, const std::string& childPosition) const {
-        PrecedenceInfo parentPrecInfo = type == APPLICATION ? getPrecedenceInfo(children[0]->symbol) : getPrecedenceInfo(symbol);
-        PrecedenceInfo childPrecInfo = child->type == APPLICATION ?
-                getPrecedenceInfo(child->children[0]->symbol) : getPrecedenceInfo(child->symbol);
+        symbol_enum parent_symbol = type == APPLICATION ? children[0]->symbol : symbol;
+        symbol_enum child_symbol = child->type == APPLICATION ? child->children[0]->symbol : child->symbol;
+
+        PrecedenceInfo parentPrecInfo = getPrecedenceInfo(parent_symbol);
+        PrecedenceInfo childPrecInfo = getPrecedenceInfo(child_symbol);
 
         // If the child is a simple variable or constant, return it as is
         if (child->type == VARIABLE || child->type == CONSTANT ||
@@ -261,9 +266,12 @@ private:
         }
 
         if (childPrecInfo.precedence == parentPrecInfo.precedence) {
-            if ((parentPrecInfo.associativity == Associativity::LEFT && childPosition == "right") ||
+            if ((parent_symbol != child_symbol) ||
+                (parentPrecInfo.associativity == Associativity::LEFT && childPosition == "right") ||
                 (parentPrecInfo.associativity == Associativity::RIGHT && childPosition == "left")) {
                 return "(" + child->to_string(format) + ")";
+            } else {
+                return child->to_string(format);
             }
         }
 

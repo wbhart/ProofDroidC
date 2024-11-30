@@ -11,6 +11,11 @@ typedef enum {
     SYMBOL_AND,
     SYMBOL_OR,
     SYMBOL_NOT,
+    SYMBOL_LEQ,
+    SYMBOL_LT,
+    SYMBOL_ADD,
+    SYMBOL_MUL,
+    SYMBOL_EXP,
     SYMBOL_EQUALS,
     SYMBOL_SUBSET,
     SYMBOL_SUBSETEQ,
@@ -22,7 +27,9 @@ typedef enum {
     SYMBOL_CUP,
     SYMBOL_TIMES,
     SYMBOL_SETMINUS,
-    SYMBOL_EMPTYSET
+    SYMBOL_EMPTYSET,
+    SYMBOL_ONE,
+    SYMBOL_MONE
 } symbol_enum;
 
 #endif // SYMBOL_ENUM_H

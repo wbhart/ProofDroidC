@@ -42,6 +42,8 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_TOP, {0, Associativity::NONE, Fixity::NONE, "\\top", "⊤"} },
     { SYMBOL_BOT, {0, Associativity::NONE, Fixity::NONE, "\\bot", "⊥"} },
     { SYMBOL_EQUALS, {4, Associativity::NONE, Fixity::INFIX, "=", "="} },
+    { SYMBOL_LEQ, {4, Associativity::NONE, Fixity::INFIX, "\\leq", "≤"} },
+    { SYMBOL_LT, {4, Associativity::NONE, Fixity::INFIX, "<", "<"} },
     { SYMBOL_SUBSET, {3, Associativity::NONE, Fixity::INFIX, "\\subset", "⊂"} },
     { SYMBOL_SUBSETEQ, {3, Associativity::NONE, Fixity::INFIX, "\\subseteq", "⊆"} },
     { SYMBOL_ELEM, {3, Associativity::NONE, Fixity::INFIX, "\\in", "∈"}},
@@ -49,8 +51,13 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_CUP, {2, Associativity::LEFT, Fixity::INFIX, "\\cup", "∪"} },
     { SYMBOL_SETMINUS, {2, Associativity::LEFT, Fixity::INFIX, "\\setminus", "∖"} },
     { SYMBOL_TIMES, {2, Associativity::LEFT, Fixity::INFIX, "\\times", "×"} },
+    { SYMBOL_ADD, {3, Associativity::LEFT, Fixity::INFIX, "+", "+"} },
+    { SYMBOL_MUL, {2, Associativity::LEFT, Fixity::INFIX, "*", "*"} },
+    { SYMBOL_EXP, {1, Associativity::RIGHT, Fixity::INFIX, "^", "^"} },
     { SYMBOL_POWERSET, {0, Associativity::NONE, Fixity::FUNCTIONAL, "\\mathcal{P}", "𝒫"} },
-    { SYMBOL_EMPTYSET, {0, Associativity::NONE, Fixity::NONE, "\\emptyset", "∅"} }
+    { SYMBOL_EMPTYSET, {0, Associativity::NONE, Fixity::NONE, "\\emptyset", "∅"} },
+    { SYMBOL_ONE, {0, Associativity::NONE, Fixity::NONE, "1", "1"} },
+    { SYMBOL_MONE, {0, Associativity::NONE, Fixity::NONE, "1", "-1"} }
 };
 
 // Function to retrieve precedence information based on the enum

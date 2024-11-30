@@ -237,11 +237,11 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
 
     // 5. Collect all variables from conjuncts and unit clauses
     std::set<std::string> vars_conjuncts;
-    vars_used(vars_conjuncts, implication);
+    vars_used(vars_conjuncts, implication, false);
 
     std::set<std::string> vars_units;
     for (const auto& unit : unit_clauses) {
-        vars_used(vars_units, unit, false);
+        vars_used(vars_units, unit, true);
     }
 
     // 6. Find common variables
@@ -398,14 +398,14 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
             all_targets = false;
         }
 
-        if (!check_assumptions(implication_tabline.assumptions, current_tabline.assumptions)) {
+        if (!assumptions_compatible(implication_tabline.assumptions, current_tabline.assumptions)) {
             if (!silent) {
                 std::cerr << "Error: line " << line + 1 << " has incompatible assumptions.\n";
             }
             return false;
         }
 
-        if (!check_restrictions(implication_tabline.restrictions, current_tabline.restrictions)) {
+        if (!restrictions_compatible(implication_tabline.restrictions, current_tabline.restrictions)) {
             if (!silent) {
                 std::cerr << "Error: line " << line + 1 << " has incompatible target restrictions.\n";
             }
@@ -1848,7 +1848,7 @@ bool cleanup_definition(context_t& tab_ctx, size_t start_line) {
     bool moved = false, moved1;
     size_t start = start_line;
     size_t current_size = tab_ctx.tableau.size();
-            
+
     while (start < current_size) {
         // Apply moves in the specified order
 

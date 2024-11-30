@@ -94,7 +94,7 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst,
         }
         
         switch (node1->children[0]->type) {
-         case VARIABLE:
+        case VARIABLE:
             if (node1->children[0]->vdata->var_kind != node2->children[0]->vdata->var_kind ||
                 node1->children[0]->name() != node2->children[0]->name()) {
                 return std::nullopt; // Functions/predicates must have the same name

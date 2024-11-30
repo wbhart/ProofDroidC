@@ -77,16 +77,12 @@ bool hydra::assumption_exists(const std::vector<int>& new_assumption) {
 
     // Check if the new assumption already exists in 'proved'
     for (const auto& existing_assm : proved) {
-        if (existing_assm.size() != sorted_new.size()) {
-            continue; // Different sizes cannot be identical
-        }
-
         // Create sorted copies for comparison
         std::vector<int> sorted_existing = existing_assm;
         std::sort(sorted_existing.begin(), sorted_existing.end());
 
-        if (sorted_existing == sorted_new) {
-            // Assumption already exists, do not add
+        if (std::includes((sorted_new).begin(), sorted_new.end(), sorted_existing.begin(), sorted_existing.end())) {
+            // *it is a subset of sorted_new, so we return false immediately
             return true;
         }
     }

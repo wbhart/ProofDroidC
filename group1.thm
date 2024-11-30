@@ -1,0 +1,8 @@
+G:Group
+H:Set
+H \subseteq G
+GroupAxiom1(H)
+\exists x (x \in H)
+\forall g \forall h (g \in H \wedge h \in H \implies g*h \in H)
+GroupAxiom3(H)
+* H \leq G

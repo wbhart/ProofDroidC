@@ -1,5 +1,18 @@
 Critical:
 
+* Parser broken for SetOp
+
+* T-theorems get expanded out even when not useful, which also takes many moves
+
+* Add NUMBER to parser and remove ONE and MONE (also from symbol_enum and precedence)
+
+* We now only exit recurse (in completion check) when the updated assumptions are
+  new, so why check this again at a later point in completion checking. We only need
+  to check whether it is now unconditionally proved.
+
+* Does load_module really need to take the module_ctx as an argument or can it create
+  one internally and attach it
+
 * Give way to specify when to stop reading library
 
 * Print move count

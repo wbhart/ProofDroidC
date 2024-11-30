@@ -246,13 +246,12 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
             if (depth >= unifications_lists.size()) {
                 return; // Prevent out-of-bounds access
             }
-
+        
             // Iterate through all unifications for the current target
             for (size_t k = 0; k < unifications_lists[depth].size(); ++k) {
                 const std::pair<int, int>& unif_pair = unifications_lists[depth][k];
-                int first_line_idx = unif_pair.first;
-                int second_line_idx = unif_pair.second;
-
+                auto [first_line_idx, second_line_idx] = unif_pair;
+                
                 // Bounds checking for first_line_idx and second_line_idx
                 if (first_line_idx < 0 || first_line_idx >= static_cast<int>(ctx.tableau.size()) ||
                     second_line_idx < 0 || second_line_idx >= static_cast<int>(ctx.tableau.size())) {

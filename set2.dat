@@ -1,0 +1,44 @@
+definition
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X = Y \iff X \subseteq Y \wedge Y \subseteq X)))
+
+theorem
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X = Y \iff (\forall x (x \in X \iff x \in Y)))))
+
+definition
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X \subseteq Y \iff \forall x (x \in X \implies x \in Y))))
+
+theorem
+\forall X \forall Y \forall Z (X:Set \implies (Y:Set \implies (Z:Set \implies (X \subseteq Y \wedge Y \subseteq Z \implies X \subseteq Z))))
+
+theorem
+\forall X \forall Y (X:Set \implies (Y:Set \implies (\forall x (X \subseteq Y \wedge x \in X \implies x \in Y))))
+
+definition
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X \subset Y \iff X \subseteq Y \wedge X \neq Y)))
+
+theorem
+\forall x \neg(x \in \emptyset)
+
+theorem
+\forall X (X:Set \implies ((\forall x \neg(x \in X)) \implies X = \emptyset))
+
+theorem
+\forall X (X:Set \implies (\emptyset \subseteq X))
+
+theorem
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X \subset Y \iff X \subseteq Y \wedge X \neq Y)))
+
+theorem
+\forall X (X:Set \implies (\emptyset \subset X \implies \exists x (x \in X)))
+
+definition
+\forall X \forall Y (X:Set \implies (Y:Set \implies (\forall x (x \in X \cap Y \iff x \in X \wedge x \in Y))))
+
+definition
+\forall X \forall Y (X:Set \implies (Y:Set \implies (\forall x (x \in X \cup Y \iff x \in X \vee x \in Y))))
+
+theorem
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X \cap Y \subseteq X)))
+
+theorem
+\forall X \forall Y (X:Set \implies (Y:Set \implies (X \cap Y \subseteq Y)))

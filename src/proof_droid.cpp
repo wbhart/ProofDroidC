@@ -1243,9 +1243,10 @@ int main(int argc, char** argv) {
                     }
                     case option_t::OPTION_AUTOMATIC: {
                         // Automatic Mode within Interactive Mode
-                        context_t module_ctx;
-                        // For now, hard code single module load
-                        load_module(module_ctx, tab_ctx, "set");
+                        context_t module_ctx, module_ctx2;
+                        // For now, hard code module loads
+                        load_module(module_ctx, tab_ctx, "group");
+                        load_module(module_ctx2, tab_ctx, "set2");
 
                         parameterize_all(tab_ctx);
 
@@ -1322,9 +1323,10 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
 
         // Perform automatic mode steps
-        context_t module_ctx;
-        // For now, hard code single module load
-        load_module(module_ctx, tab_ctx, "set");
+        context_t module_ctx, module_ctx2;
+        // For now, hard code module loads
+        load_module(module_ctx, tab_ctx, "group");
+        load_module(module_ctx2, tab_ctx, "set2");
 
         parameterize_all(tab_ctx);
 

@@ -98,6 +98,7 @@ SimpleFormula
    / f:NeqPredicate { $$ = f; }
    / f:SubsetPredicate { $$ = f; }
    / f:ElemPredicate { $$ = f; }
+   / f:LeqPredicate { $$ = f; }
    / f:Predicate { $$ = f; }
    / f:Negation { $$ = f; }
    / f:TOP { $$ = f; }
@@ -146,8 +147,26 @@ ElemPredicate
         $$ = new node(APPLICATION, children);
   }
 
+LeqPredicate
+  <- t1:Term _ o:LEQ _ t2:Term {
+        std::vector<node*> children;
+        children.push_back(o);  // Push the elem operator node
+        children.push_back(t1);  // Push the first term
+        children.push_back(t2);  // Push the second term
+        $$ = new node(APPLICATION, children);
+  }
+
 Predicate
   <- f:Application { f->children[0]->vdata->var_kind = PREDICATE; $$ = f; }
+   / i:Variable _ COLON _ s:Variable {
+        std::vector<node*> children;
+        children.push_back(s);  // Insert the structure name
+        children.push_back(i);  // Insert the variable name
+        s->vdata->var_kind = PREDICATE;
+        s->vdata->structure = true; 
+        
+        $$ = new node(APPLICATION, children);
+  }
 
 Negation
   <- o:NEG _ f:SimpleFormula {
@@ -156,20 +175,24 @@ Negation
   }
 
 Term
-  <- t1:SimpleTerm { $$ = t1; }
-     ( _ o:SetOp _ t2:SimpleTerm {
+  <- t1:ExpOp { $$ = t1; }
+     ( _ o:Op1 _ t2:ExpOp {
          std::vector<node*> children;
-         children.push_back(o); // Push the operator node
+         children.push_back(o); // Push the op
          children.push_back($$); // Push the left argument
          children.push_back(t2); // Push the right argument
          $$ = new node(APPLICATION, children);
        })*
 
-SetOp
-  <- o:CAP { $$ = o; }
-   / o:CUP { $$ = o; }
-   / o:SETMINUS { $$ = o; }
-   / o:TIMES { $$ = o; }
+ExpOp
+  <- t1:SimpleTerm _ o:EXP _ t2:SimpleTerm {
+        std::vector<node*> children;
+        children.push_back(o);  // Use the EXP node directly
+        children.push_back(t1);  // Add the left term (argument)
+        children.push_back(t2);  // Add the right term (argument)
+        $$ = new node(APPLICATION, children);
+    }
+   / t:SimpleTerm { $$ = t; }
 
 SimpleTerm
   <- t:Application { $$ = t; }
@@ -178,6 +201,8 @@ SimpleTerm
    / t:Parenthesized { $$ = t; }
    / t:Tuple { $$ = t; }
    / t:EMPTYSET { $$ = t; }
+   / t:ONE { $$ = t; }
+   / t:MONE { $$ = t; }
 
 Parenthesized
   <- OPEN _ t:Term _ CLOSE { $$ = t; }
@@ -228,13 +253,20 @@ UnaryOp
         children.push_back(t);  // Add the term (argument)
         $$ = new node(APPLICATION, children);
     }
-
+    
 TermList
   <- head:Term {
         $$ = new node(TUPLE, std::vector<node*>());  // Initialize an empty vector
         $$->children.push_back(head);  // Add the head term to the children
     }
     (_ COMMA _ t:Term { $$->children.push_back(t); })*
+
+Op1
+  <- o:CAP { $$ = o; }
+   / o:CUP { $$ = o; }
+   / o:SETMINUS { $$ = o; }
+   / o:TIMES { $$ = o; }
+   / o:MUL { $$ = o; }
 
 TOP
   <- '\\top' { $$ = new node(CONSTANT, SYMBOL_TOP); }
@@ -278,6 +310,15 @@ EQUALS
 NEQ
   <- '\\neq'
 
+LEQ
+  <- '\\leq' { $$ = new node(BINARY_PRED, SYMBOL_LEQ); }
+
+MUL
+  <- '*' { $$ = new node(BINARY_OP, SYMBOL_MUL); }
+
+EXP
+  <- '^' { $$ = new node(BINARY_OP, SYMBOL_EXP); }
+
 NEG
   <- '\\neg' { $$ = new node(LOGICAL_UNARY, SYMBOL_NOT); }
 
@@ -296,6 +337,12 @@ IFF
 EMPTYSET
   <- '\\emptyset' { $$ = new node(CONSTANT, SYMBOL_EMPTYSET); }
 
+ONE
+  <- '1' { $$ = new node(CONSTANT, SYMBOL_ONE); }
+
+MONE
+  <- '-1' { $$ = new node(CONSTANT, SYMBOL_MONE); }
+
 OPEN
   <- '('
 
@@ -304,6 +351,9 @@ CLOSE
 
 COMMA
   <- ','
+
+COLON
+  <- ':'
 
 Variable
   <- [a-zA-Z] [a-zA-Z0-9_]* { $$ = new node(VARIABLE, std::string($0)); }

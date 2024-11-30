@@ -5,7 +5,7 @@
 #include <iostream>
 
 variable_data* deep_copy(variable_data* vdata) {
-    return new variable_data{vdata->var_kind, vdata->bound, vdata->shared, vdata->arity, vdata->name};
+    return new variable_data{vdata->var_kind, vdata->bound, vdata->shared, vdata->structure, vdata->arity, vdata->name};
 }
 
 // Helper function to deep copy a node
@@ -259,8 +259,9 @@ void mark_shared(node* current, const std::set<std::string>& var_names) {
 
 void vars_used(std::set<std::string>& variables, const node* root, bool include_params, bool include_bound) {
     // If the current node is a VARIABLE, add its name to the set
-    if (root->is_variable() && (include_params || (root->vdata->var_kind != PARAMETER && root->vdata->var_kind != FUNCTION)) &&
-                               (include_bound || !root->vdata->bound)) {
+    if (root->type == VARIABLE && (root->vdata->var_kind == INDIVIDUAL || root->vdata->var_kind == PARAMETER) &&
+            (include_params || (root->vdata->var_kind != PARAMETER && root->vdata->var_kind != FUNCTION)) &&
+            (include_bound || !root->vdata->bound)) {
         variables.insert(root->name());
     }
 

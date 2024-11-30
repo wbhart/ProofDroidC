@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 0 // whether to print tableau
+#define DEBUG_TABLEAU 1 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 #define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph
@@ -450,7 +450,7 @@ bool automate(context_t& ctx) {
         std::shared_ptr<hydra> current_leaf_hydra = ctx.current_hydra.back();
 
         // Iterate over each current target
-        for (const int tar_idx : current_leaf_hydra->target_indices) {
+        for (const int tar_idx : current_leaf_hydra->target_indices) {       
             for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
                 for (auto& digest_entry : mod_ctx.digest) { // for each digest record
                     size_t entry = -static_cast<size_t>(1);
@@ -594,7 +594,7 @@ bool automate(context_t& ctx) {
 
         // Level 7 of the Waterfall (safe hypothesis expansion)
         // ----------------------------------------------------------
-
+        
         // Iterate over each unit in the units list
         for (const int unit_idx : units) {
             for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
@@ -635,7 +635,6 @@ bool automate(context_t& ctx) {
                                     bool trial_mp_success = trial_modus_ponens(ctx, mod_tabline, unit_tabline, true);
 
                                     if (trial_mp_success) {
-                                        // Load the theorem into the main tableau
                                         load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
 
                                         // Attempt to apply Modus Ponens
@@ -643,9 +642,9 @@ bool automate(context_t& ctx) {
                                         bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
 
                                         if (move_success) {
-#if DEBUG_MOVES
+        #if DEBUG_MOVES
                                             std::cout << "Level 7: mp " << main_line_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
-#endif
+        #endif
                                             move_made = true;
 
                                             unit_tabline.lib_applied.push_back(mod_pair);
@@ -677,15 +676,15 @@ bool automate(context_t& ctx) {
                                     if (trial_mt_success) {
                                         // Load the theorem into the main tableau
                                         load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Definition);
-
+                                        
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {unit_idx};
                                         bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
 
                                         if (move_success) {
-#if DEBUG_MOVES
+        #if DEBUG_MOVES
                                             std::cout << "Level 7: mt " << main_line_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
-#endif
+        #endif
                                             move_made = true;
 
                                             unit_tabline.lib_applied.push_back(mod_pair);
@@ -722,13 +721,9 @@ bool automate(context_t& ctx) {
                     }
                 }
 
-                if (move_made) {
+                if (move_made) { 
                     break; // A move was made; restart the waterfall from the beginning
                 }
-            }
-
-            if (move_made) { 
-                break; // A move was made; restart the waterfall from the beginning
             }
         }
 
