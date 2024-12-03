@@ -108,13 +108,6 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
         subst[existential_var] = skolem_func;
     }
 
-    // Detach children to prevent deletion when deleting the quantifier node
-    formula->children.clear();
-
-    // Delete the existential quantifier node and no longer used variable
-    delete formula;
-    delete var_node;
-
     // Return the modified formula \phi(skolem_func)
     return phi;
 }
@@ -124,7 +117,10 @@ node* skolemize(context_t& ctx, node* formula, const std::vector<std::string>& u
 node* skolem_form(context_t& ctx, node* formula) {
     Substitution subst; // Initialize empty substitution map
     std::vector<std::string> universals; // List of universally quantified variables
-
+    node* special_implications = nullptr; // implications coming from special quantifiers
+    node* inner_node = nullptr; // current inside implication
+    node* inner_formula; // inner formula \phi
+            
     if (formula->type == QUANTIFIER) {
         // Increment count of cleanup moves
         ctx.cleanup++;
@@ -132,33 +128,53 @@ node* skolem_form(context_t& ctx, node* formula) {
 
     // Process quantifiers until the outermost node is no longer a quantifier
     while (formula->type == QUANTIFIER) {
+        node* var_node = formula->children[0];
         if (formula->symbol == SYMBOL_FORALL) {
             // Extract the universal variable
-            node* var_node = formula->children[0];
             std::string u = var_node->name();
             universals.push_back(u);
-
-            // Set formula to the inner formula \phi
-            node* inner_formula = formula->children[1];
-
-            // Unbind all occurrences of variable
-            unbind_var(inner_formula, var_node->name());
-
-            formula->children.clear(); // Detach children to prevent deletion
-            delete var_node; // Delete no longer used variable
-            delete formula; // Delete the forall node
-
-            formula = inner_formula; // Update formula to inner formula
-        }
-        else if (formula->symbol == SYMBOL_EXISTS) {
+        } else if (formula->symbol == SYMBOL_EXISTS) {
             // Skolemize the existential quantifier with current universals
-            node* inner_phi = skolemize(ctx, formula, universals, subst);
-            formula = inner_phi; // Update formula to the result of skolemize
-        }
-        else {
+            skolemize(ctx, formula, universals, subst);
+        } else {
             // Unsupported quantifier symbol; handle as needed
             break;
         }
+        
+        // Peel off any special implications and
+        // set formula to the inner formula \phi
+        if (formula->is_special_binder()) {
+            node* implication = formula->children[1];
+            
+            // add implication to special_implications
+            if (special_implications == nullptr) {
+                special_implications = implication;
+            } else {
+                inner_node->children.pop_back();
+                inner_node->children.push_back(implication);
+            }
+            inner_node = implication;
+            
+            inner_formula = implication->children[1];
+        } else {
+            inner_formula = formula->children[1];
+        }
+
+        // Unbind all occurrences of variable
+        unbind_var(inner_formula, var_node->name());
+
+        formula->children.clear(); // Detach children to prevent deletion
+        delete var_node; // Delete no longer used variable
+        delete formula; // Delete the forall node
+
+        formula = inner_formula; // Update formula to inner formula
+    }
+
+    // Reattach all the special implications
+    if (special_implications != nullptr) {
+        inner_node->children.pop_back();
+        inner_node->children.push_back(formula);
+        formula = special_implications;
     }
 
     if (!subst.empty()) {

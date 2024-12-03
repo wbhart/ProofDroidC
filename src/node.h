@@ -93,7 +93,7 @@ public:
                 (type == VARIABLE && vdata->var_kind == PREDICATE) ||
                 (type == CONSTANT && (symbol == SYMBOL_TOP || symbol == SYMBOL_BOT)));
     }
-    
+
     bool is_variable() const {
         return (type == VARIABLE && vdata->var_kind == INDIVIDUAL);
     }
@@ -126,6 +126,24 @@ public:
     
     bool is_equivalence() const {
         return (type == LOGICAL_BINARY && symbol == SYMBOL_IFF);
+    }
+    
+    bool is_application() const {
+        return (type == APPLICATION);
+    }
+    
+    bool is_special_predicate() const {
+        return (type == VARIABLE && vdata->var_kind == PREDICATE &&
+                    vdata->structure);
+    }
+
+    bool is_special_implication() const {
+        return (is_implication() && children[0]->is_application() &&
+                children[0]->children[0]->is_special_predicate());
+    }
+
+    bool is_special_binder() const {
+        return (type == QUANTIFIER && children[1]->is_special_implication());
     }
     
     // Function to get the variable name if the node is of type VARIABLE
@@ -192,9 +210,25 @@ public:
                 }
                 break;
             case LOGICAL_BINARY:
-                oss << parenthesize(children[0], format, "left") + " ";
-                oss << (format == REPR ? precInfo.repr : precInfo.unicode);
-                oss << " " << parenthesize(children[1], format, "right");
+                if (is_special_implication()) {
+                    // print special constraints in square brackets
+                    node* special = children[0];
+                    node* formula = children[1];
+                    oss << "[";
+                    oss << special->children[1]->to_string(format) << ":" << special->children[0]->to_string(format);
+                    while (formula->is_special_implication()) {
+                        special = formula->children[0];
+                        formula = formula->children[1];
+                        oss << ", ";
+                        oss << special->children[1]->to_string(format) << ":" << special->children[0]->to_string(format);
+                    }
+                    oss << "] ";
+                    oss << formula->to_string(format);
+                } else {
+                    oss << parenthesize(children[0], format, "left") + " ";
+                    oss << (format == REPR ? precInfo.repr : precInfo.unicode);
+                    oss << " " << parenthesize(children[1], format, "right");
+                }
                 break;
             case APPLICATION:
                 if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP ||
@@ -235,7 +269,14 @@ public:
                 break;
             case QUANTIFIER:
                 oss << (format == REPR ? precInfo.repr + " " : precInfo.unicode);
-                oss << children[0]->to_string(format) << " " << parenthesize(children[1], format, "true");
+                if (is_special_binder()) {
+                    node* special = children[1]->children[0];
+                    oss << special->children[1]->to_string(format) << ":" << special->children[0]->to_string(format) << " ";
+                    oss << parenthesize(children[1]->children[1], format, "true");
+                } else {
+                    oss << children[0]->to_string(format) << " ";
+                    oss << parenthesize(children[1], format, "true");
+                }
                 break;
             default:
                 break;

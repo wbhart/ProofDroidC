@@ -52,7 +52,20 @@ Formula
    / f:AndFormula { $$ = f; }
 
 Quantifier
-  <- q:QuantifierOp _ v:Variable _ f:SimpleFormula {
+  <- q:QuantifierOp _ c:ColonPredicate _ f:SimpleFormula {
+      // construct the implication
+      node* o = new node(LOGICAL_BINARY, SYMBOL_IMPLIES);
+      o->children.push_back(c); // Push the left formula
+      o->children.push_back(f); // Push the right formula
+      // create the binder
+      node* v = deep_copy(c->children[1]);
+      q->children.push_back(v); // Push the variable
+      q->children.push_back(o); // Push the implication
+      bind_var(q, v->name());
+      $$ = q;
+
+  }
+  / q:QuantifierOp _ v:Variable _ f:SimpleFormula {
       // bind variable here
       q->children.push_back(v); // Push the variable
       q->children.push_back(f); // Push the formula
@@ -158,7 +171,10 @@ LeqPredicate
 
 Predicate
   <- f:Application { f->children[0]->vdata->var_kind = PREDICATE; $$ = f; }
-   / i:Variable _ COLON _ s:Variable {
+  / c:ColonPredicate { $$ = c; }
+
+ColonPredicate
+  <- i:Variable _ COLON _ s:Variable {
         std::vector<node*> children;
         children.push_back(s);  // Insert the structure name
         children.push_back(i);  // Insert the variable name
