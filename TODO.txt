@@ -1,5 +1,7 @@
 Critical:
 
+* Binary (symbol) predicates parse and are printed/used as APPLICATIONS
+
 * Add case to skolemization for when moves introduce new special quantifiers
   inside special implications from previous skolemization/moves
 

@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 0 // whether to print tableau
+#define DEBUG_TABLEAU 1 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 #define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph

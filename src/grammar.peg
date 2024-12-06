@@ -65,6 +65,23 @@ Quantifier
       $$ = q;
 
   }
+  / q:QuantifierOp _ v:Variable _ e:ELEM _ s:SimpleTerm _ f:SimpleFormula {
+      // Create the element predicate
+      std::vector<node*> children;
+      children.push_back(e);  // Push the elem operator node
+      children.push_back(v);  // Push the variable
+      children.push_back(s);  // Push the second term
+      node* elem_pred = new node(APPLICATION, children);
+      // Create the implication
+      node* o = new node(LOGICAL_BINARY, SYMBOL_IMPLIES);
+      o->children.push_back(elem_pred); // Push the element predicate
+      o->children.push_back(f); // Push the formula
+      // bind variable here
+      q->children.push_back(deep_copy(v)); // Push the variable
+      q->children.push_back(o); // Push the implication
+      bind_var(q, v->name());
+      $$ = q;
+  }
   / q:QuantifierOp _ v:Variable _ f:SimpleFormula {
       // bind variable here
       q->children.push_back(v); // Push the variable

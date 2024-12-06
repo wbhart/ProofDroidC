@@ -14,7 +14,7 @@ definition
 \forall G (GroupAxiom2(G) \iff G:Set \wedge 1 \in G)
 
 definition
-\forall X (GroupAxiom3(G) \iff G:Set \wedge (\forall g (g \in G \implies g^(-1) \in G)))
+\forall X (GroupAxiom3(G) \iff G:Set \wedge (\forall g \in G (g^(-1) \in G)))
 
 definition
 \forall G (G:Group \iff G:Set \wedge GroupAxiom1(G) \wedge GroupAxiom2(G) \wedge GroupAxiom3(G))
@@ -23,4 +23,4 @@ definition
 \forall G \forall H (H \leq G \iff G:Group \wedge H \subseteq G \wedge H:Group)
 
 definition
-\forall G (GroupAxiom1(G) \iff \forall a \forall b \forall c (a \in G \wedge b \in G \wedge c \in G \implies (a*b)*c = a*(b*c)))
+\forall G (GroupAxiom1(G) \iff \forall a \in G \forall b \in G \forall c \in G ((a*b)*c = a*(b*c)))

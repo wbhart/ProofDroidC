@@ -146,6 +146,15 @@ public:
         return (type == QUANTIFIER && children[1]->is_special_implication());
     }
     
+    bool is_element_quantifier() const {
+        return (type == QUANTIFIER && children[1]->is_implication() &&
+                children[1]->children[0]->type == APPLICATION &&
+                children[1]->children[0]->children[0]->type == BINARY_PRED &&
+                children[1]->children[0]->children[0]->symbol == SYMBOL_ELEM &&
+                children[1]->children[0]->children[1]->type == VARIABLE &&
+                children[0]->name() == children[1]->children[0]->children[1]->name());
+    }
+    
     bool is_term() const {
         return ((type == VARIABLE && vdata->var_kind != PREDICATE && vdata->var_kind != METAVAR)
              || (type == APPLICATION && children[0]->is_term())
@@ -279,6 +288,9 @@ public:
                 if (is_special_binder()) {
                     node* special = children[1]->children[0];
                     oss << special->children[1]->to_string(format) << ":" << special->children[0]->to_string(format) << " ";
+                    oss << parenthesize(children[1]->children[1], format, "true");
+                } else if (is_element_quantifier()) {
+                    oss << children[1]->children[0]->to_string(format) << " ";
                     oss << parenthesize(children[1]->children[1], format, "true");
                 } else {
                     oss << children[0]->to_string(format) << " ";
