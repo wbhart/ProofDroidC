@@ -1,5 +1,21 @@
 Critical:
 
+* Add case to skolemization for when moves introduce new special quantifiers
+  inside special implications from previous skolemization/moves
+
+* Deal with special implications in check_completion
+
+* Does trial_modus_ponens in automation need to check special predicates?
+
+* Do we need a level in the waterfall for special units?
+
+* Split up impl_tabline.ltor into var check and term size check fields and make
+  extra forwards reasoning waterfall level still do var check
+
+* Pass special_lines in proof_droid and automate
+
+* Check/combine restrictions/assumptions for special predicates in move_mpt
+
 * Parser broken for SetOp
 
 * T-theorems get expanded out even when not useful, which also takes many moves

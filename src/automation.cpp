@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_TABLEAU 0 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 #define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph
@@ -22,11 +22,14 @@ bool consts_subset(const std::vector<std::string>& consts1, const std::vector<st
 // Returns true if trial unification is successful, false otherwise.
 bool trial_modus_ponens(context_t& ctx, const tabline_t& impl_tabline, const tabline_t& unit_tabline, bool forward)
 {
-    node * antecedent = forward ? deep_copy(impl_tabline.formula->children[0]) :
-                                  negate_node(deep_copy(impl_tabline.formula->children[1]));
+    node* impl_formula = unwrap_special(impl_tabline.formula);
+    node* antecedent = forward ? deep_copy(impl_formula->children[0]) :
+                                  negate_node(deep_copy(impl_formula)->children[1]);
+
+    node* unit_formula = unwrap_special(unit_tabline.formula);
 
     // Find common variables between unit_formula and impl_formula's antecedent
-    std::set<std::string> common_vars = find_common_variables(unit_tabline.formula, antecedent);
+    std::set<std::string> common_vars = find_common_variables(unit_formula, antecedent);
 
     // Rename variables to prevent capture
     std::vector<std::pair<std::string, std::string>> rename_list;
@@ -37,7 +40,7 @@ bool trial_modus_ponens(context_t& ctx, const tabline_t& impl_tabline, const tab
 
     // Attempt unification between the antecedent of the implication and the unit's formula
     Substitution subst;
-    bool success = unify(antecedent, unit_tabline.formula, subst).has_value();
+    bool success = unify(antecedent, unit_formula, subst).has_value();
 
     delete antecedent; // Clean up the copied formula
 
@@ -119,6 +122,7 @@ bool automate(context_t& ctx) {
     std::vector<std::string> tarc;              // All constants from active target lines
     std::vector<size_t> impls;                  // Indices of active implication hypotheses
     std::vector<size_t> units;                  // Indices of active non-implication hypotheses
+    std::vector<size_t> specials;               // Indices of active special predicates
 
     bool move_made = false; // whether a move was made at any step
 
@@ -145,9 +149,19 @@ bool automate(context_t& ctx) {
         tarc.clear();
         impls.clear();
         units.clear();
+        specials.clear();
         
         // Accumulate constants and indices using get_tableau_constants
-        ctx.get_tableau_constants(tabc, tarc, impls, units);
+        ctx.get_tableau_constants(tabc, tarc, impls, units, specials);
+
+        /*
+        // Heuristic: sort units by maximum term depth
+        std::sort(units.begin(), units.end(), [&ctx](size_t a, size_t b) {
+            tabline_t& aline = ctx.tableau[a];
+            tabline_t& bline = ctx.tableau[b];
+            return max_term_depth(unwrap_special(aline.formula)) < max_term_depth(unwrap_special(bline.formula));
+        });
+        */
 
         move_made = false; // Flag to check if any move was made in this iteration
 
@@ -264,7 +278,7 @@ bool automate(context_t& ctx) {
 
                 if (all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Ponens
-                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -275,7 +289,7 @@ bool automate(context_t& ctx) {
 
                 if (!move_success && all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Tollens since Modus Ponens failed
-                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -351,8 +365,8 @@ bool automate(context_t& ctx) {
                 
                 if (all_contained_left && consts_ltor && impl_tabline.ltor) {
                     // Attempt Modus Ponens
-                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
-
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
+                    
 #if DEBUG_MOVES
                     if (move_success) {
                         std::cout << "Level 3: mp " << impl_idx + 1 << " " << unit_idx + 1 << std::endl << std::endl;
@@ -362,7 +376,7 @@ bool automate(context_t& ctx) {
 
                 if (!move_success && all_contained_right && consts_rtol && impl_tabline.rtol) {
                     // Attempt Modus Tollens since Modus Ponens failed
-                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -494,8 +508,8 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {tar_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
-
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, true, true); // ponens=true, silent=true
+                                        
                                         if (move_success) {
 #if DEBUG_MOVES
                                             std::cout << "Level 6: mp " << main_line_idx + 1 << " " << tar_idx + 1 << std::endl << std::endl;
@@ -535,7 +549,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {tar_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
                                         if (move_success) {
 #if DEBUG_MOVES
@@ -639,7 +653,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {unit_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
                                         if (move_success) {
         #if DEBUG_MOVES
@@ -679,7 +693,7 @@ bool automate(context_t& ctx) {
                                         
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {unit_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
                                         if (move_success) {
         #if DEBUG_MOVES
@@ -778,7 +792,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {unit_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
                                         if (move_success) {
 #if DEBUG_MOVES
@@ -818,7 +832,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {unit_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
                                         if (move_success) {
 #if DEBUG_MOVES
@@ -923,7 +937,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Ponens
                                         std::vector<int> other_lines = {tar_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, true, true); // ponens=true, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
                                         if (move_success) {
 #if DEBUG_MOVES
@@ -964,7 +978,7 @@ bool automate(context_t& ctx) {
 
                                         // Attempt to apply Modus Tollens
                                         std::vector<int> other_lines = {tar_idx};
-                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, false, true); // ponens=false, silent=true
+                                        bool move_success = move_mpt(ctx, main_line_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
                                         if (move_success) {
 #if DEBUG_MOVES
@@ -1047,9 +1061,9 @@ bool automate(context_t& ctx) {
                 std::vector<int> other_lines = { unit_idx };
                 bool move_success = false;
                 
-                if (all_contained_left && impl_tabline.ltor) {
+                if (all_contained_left) {
                     // Attempt Modus Ponens
-                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -1060,7 +1074,7 @@ bool automate(context_t& ctx) {
 
                 if (!move_success && all_contained_right && impl_tabline.rtol) {
                     // Attempt Modus Tollens since Modus Ponens failed
-                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -1130,7 +1144,7 @@ bool automate(context_t& ctx) {
 
                 if (all_contained_right && impl_tabline.rtol) {
                     // Attempt Modus Ponens
-                    move_success = move_mpt(ctx, impl_idx, other_lines, true, true); // ponens=true, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {
@@ -1141,7 +1155,7 @@ bool automate(context_t& ctx) {
 
                 if (!move_success && all_contained_left  && impl_tabline.ltor) {
                     // Attempt Modus Tollens since Modus Ponens failed
-                    move_success = move_mpt(ctx, impl_idx, other_lines, false, true); // ponens=false, silent=true
+                    move_success = move_mpt(ctx, impl_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
 #if DEBUG_MOVES
                     if (move_success) {

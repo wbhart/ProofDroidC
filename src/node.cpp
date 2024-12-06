@@ -617,6 +617,7 @@ void node_get_constants(std::vector<std::string>& constants, const node* formula
 }
 
 // Return true if all variables on right side of implication are found on the left side
+// and max_term_size of right side is at most that of the left side
 void left_to_right(bool& ltor, bool& rtol, const node* implication) {
     // Extract left (premise) and right (conclusion) sub-nodes
     const node* premise = implication->children[0];
@@ -629,25 +630,120 @@ void left_to_right(bool& ltor, bool& rtol, const node* implication) {
     std::set<std::string> conclusion_vars;
     vars_used(conclusion_vars, conclusion, false, false);
 
-    ltor = true;
+    size_t left_term_depth = max_term_depth(premise);
+    size_t right_term_depth = max_term_depth(conclusion);
+
+    ltor = right_term_depth <= left_term_depth;
     
-    // Check if all variables in conclusion are present in premise
-    for (const auto& var : conclusion_vars) {
-        if (premise_vars.find(var) == premise_vars.end()) {
-            // Variable in conclusion not found in premise
-            ltor = false;
-            break;
+    if (ltor) {
+        // Check if all variables in conclusion are present in premise
+        for (const auto& var : conclusion_vars) {
+            if (premise_vars.find(var) == premise_vars.end()) {
+                // Variable in conclusion not found in premise
+                ltor = false;
+                break;
+            }
         }
     }
 
-    rtol = true;
+    rtol = left_term_depth <= right_term_depth;
     
-    // Check if all variables in conclusion are present in premise
-    for (const auto& var : premise_vars) {
-        if (conclusion_vars.find(var) == conclusion_vars.end()) {
-            // Variable in conclusion not found in premise
-            rtol = false;
-            break;
+    if (rtol) {
+        // Check if all variables in conclusion are present in premise
+        for (const auto& var : premise_vars) {
+            if (conclusion_vars.find(var) == conclusion_vars.end()) {
+                // Variable in conclusion not found in premise
+                rtol = false;
+                break;
+            }
         }
     }
+}
+
+// Given a formula which is wrapped in special implications, remove the
+// special implications and return the matrix. Does not deep copy.
+node* unwrap_special(node* formula) {
+    node* matrix = formula;
+
+    while (matrix->is_special_implication()) {
+         matrix = matrix->children[1]; // unpeel one special implication
+    }
+
+    return matrix;
+}
+
+// Given a formula which is wrapped in special implications, return the matrix
+// of the formula and add the special predicates to the list
+node* split_special(std::vector<node*>& specials, node * formula) {
+    std::vector<node*> special_list; // list of specials
+    node* matrix = formula;
+
+    while (matrix->is_special_implication()) {
+        specials.push_back(matrix->children[0]); // save special predicate
+        matrix = matrix->children[1]; // unpeel one special implication
+    }
+
+    return matrix;
+}
+
+// Prepend a list of given special predicates to a formula as implications
+// In each case, the variable should actually be used in the formula
+// The special predicates are deep copied internally. The user is responsible
+// for cleanup of the originals and the new formula
+node* reapply_special(std::vector<node*>& special_predicates, node* formula) {
+    std::set<std::string> vars;
+    vars_used(vars, formula, false, false); // Get all unbound variables used
+    
+    // Apply special predicates in reverse list order
+    for (int i = special_predicates.size() - 1; i >= 0; --i) {
+        node* special = special_predicates[i];
+
+        // Check this variable is actually used
+        if (vars.find(special->children[1]->vdata->name) == vars.end()) {
+            continue;
+        }
+
+        // Make copy of special
+        special = deep_copy(special);
+
+        // Add special implication to formula
+        std::vector<node*> children;
+        children.push_back(special);
+        children.push_back(formula);
+        formula = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
+    }
+
+    return formula;
+}
+
+// Return the expression depth of a formula
+size_t formula_depth(const node* formula) {
+    size_t max_depth = 0;
+
+    for (node* child : formula->children) {
+        size_t depth = formula_depth(child);
+        if (depth > max_depth) {
+            max_depth = depth;
+        }
+    }
+
+    return max_depth + 1;
+}
+
+// Return the maximum term depth of a formula
+size_t max_term_depth(const node* formula) {
+    if (formula->is_term()) {
+        return formula_depth(formula);
+    }
+
+    size_t max_depth = 0;
+
+    for (node* child : formula->children) {
+        size_t depth = max_term_depth(child);
+        if (depth > max_depth) {
+            max_depth = depth;
+        }
+    }
+
+    return max_depth;
 }

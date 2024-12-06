@@ -133,17 +133,24 @@ public:
     }
     
     bool is_special_predicate() const {
-        return (type == VARIABLE && vdata->var_kind == PREDICATE &&
-                    vdata->structure);
+        return (is_application() && children[0]->type == VARIABLE &&
+                 children[0]->vdata->var_kind == PREDICATE &&
+                 children[0]->vdata->structure);
     }
 
     bool is_special_implication() const {
-        return (is_implication() && children[0]->is_application() &&
-                children[0]->children[0]->is_special_predicate());
+        return (is_implication() && children[0]->is_special_predicate());
     }
 
     bool is_special_binder() const {
         return (type == QUANTIFIER && children[1]->is_special_implication());
+    }
+    
+    bool is_term() const {
+        return ((type == VARIABLE && vdata->var_kind != PREDICATE && vdata->var_kind != METAVAR)
+             || (type == APPLICATION && children[0]->is_term())
+             || (type == CONSTANT) || (type == UNARY_OP)
+             || (type == BINARY_OP) || (type == TUPLE));
     }
     
     // Function to get the variable name if the node is of type VARIABLE
@@ -347,5 +354,15 @@ bool equal(const node* a, const node* b);
 void node_get_constants(std::vector<std::string>& constants, const node* formula);
 
 void left_to_right(bool& ltor, bool& rtol, const node* implication);
+
+node* unwrap_special(node* formula);
+
+node* split_special(std::vector<node*>& specials, node * formula);
+
+node* reapply_special(std::vector<node*>& special_predicates, node* formula);
+
+size_t formula_depth(const node* formula);
+
+size_t max_term_depth(const node* formula);
 
 #endif // NODE_H

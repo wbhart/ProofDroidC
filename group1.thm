@@ -3,6 +3,7 @@ H:Set
 H \subseteq G
 GroupAxiom1(H)
 \exists x (x \in H)
-\forall g \forall h (g \in H \wedge h \in H \implies g*h \in H)
+\forall X:Set (\forall g ((g^(-1)*g \in X) \implies 1 \in X))
+\forall g (g \in H \implies \forall h (h \in H \implies g*h \in H))
 GroupAxiom3(H)
 * H \leq G

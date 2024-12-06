@@ -20,7 +20,7 @@ definition
 \forall G (G:Group \iff G:Set \wedge GroupAxiom1(G) \wedge GroupAxiom2(G) \wedge GroupAxiom3(G))
 
 definition
-\forall G \forall H (H \leq G \iff G:Group \wedge H:Set \wedge H \subseteq G \wedge H:Group)
+\forall G \forall H (H \leq G \iff G:Group \wedge H \subseteq G \wedge H:Group)
 
 definition
 \forall G (GroupAxiom1(G) \iff \forall a \forall b \forall c (a \in G \wedge b \in G \wedge c \in G \implies (a*b)*c = a*(b*c)))

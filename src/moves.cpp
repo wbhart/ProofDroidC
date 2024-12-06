@@ -161,7 +161,7 @@ node* skolem_form(context_t& ctx, node* formula) {
         }
 
         // Unbind all occurrences of variable
-        unbind_var(inner_formula, var_node->name());
+        unbind_var(formula, var_node->name());
 
         formula->children.clear(); // Detach children to prevent deletion
         delete var_node; // Delete no longer used variable
@@ -237,7 +237,7 @@ void cleanup_conjuncts(std::vector<node*> conjuncts) {
     conjuncts.clear();
 }
 
-node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
+node* modus_ponens(Substitution& combined_subst, context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
     // 1. Verify that the first formula is an implication
     if (!(implication->is_implication())) {
         std::cerr << "Error: The first formula is not an implication." << std::endl;
@@ -293,8 +293,6 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
     }
 
     // 8. Collect all substitutions
-    Substitution combined_subst; // Assume Substitution is a map from variable names to node*
-
     for (size_t i = 0; i < conjuncts.size(); ++i) {
         node* conjunct = conjuncts[i];
         node* unit = unit_clauses[i];
@@ -310,7 +308,6 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
             }
             cleanup_conjuncts(conjuncts);
             delete implication_copy;
-            cleanup_subst(combined_subst);
             return nullptr;
         }
 
@@ -325,7 +322,6 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
                     }
                     cleanup_conjuncts(conjuncts);
                     delete implication_copy;
-                    cleanup_subst(combined_subst);
                     return nullptr;
                 }
                 // Else, same substitution; no action needed
@@ -350,23 +346,21 @@ node* modus_ponens(context_t& ctx_var, node* implication, const std::vector<node
         }
         // Clean up and exit
         delete implication_copy;
-        cleanup_subst(combined_subst);
         return nullptr;
     }
     
     // 10. Clean up combined_subst and implication_copy
-    cleanup_subst(combined_subst);
     delete implication_copy;
 
     return substituted_consequent;
 }
 
-node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
+node* modus_tollens(Substitution& combined_subst, context_t& ctx_var, node* implication, const std::vector<node*>& unit_clauses, bool silent) {
     // 1. Negate the implication: A -> B becomes ¬B -> ¬A
     node* negated_implication = contrapositive(implication);
 
     // 2. Apply modus ponens with the negated implication and the provided unit clauses
-    node* result = modus_ponens(ctx_var, negated_implication, unit_clauses, silent);
+    node* result = modus_ponens(combined_subst, ctx_var, negated_implication, unit_clauses, silent);
 
     // 3. Clean up the negated implication
     delete negated_implication;
@@ -375,7 +369,7 @@ node* modus_tollens(context_t& ctx_var, node* implication, const std::vector<nod
     return result;
 }
 
-bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, bool ponens, bool silent) {
+bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, const std::vector<size_t>& special_lines, bool ponens, bool silent) {
     // Step 1: Validate implication_line is within bounds
     if (implication_line < 0 || implication_line >= static_cast<int>(ctx.tableau.size())) {
         std::cerr << "Error: implication line " << implication_line + 1 << " is out of bounds.\n";
@@ -391,7 +385,10 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         return false;
     }
 
-    node* implication = implication_tabline.formula;
+    // list of special predicates peeled off implication and units
+    std::vector<node*> special_predicates;
+
+    node* implication = split_special(special_predicates, implication_tabline.formula);
     if (!implication->is_implication()) {
         std::cerr << "Error: Line " << implication_line + 1 << " does not contain a valid implication.\n";
         return false;
@@ -445,21 +442,22 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
     // Step 5: Extract unit clauses from other_lines
     std::vector<node*> unit_clauses;
     for (int line : other_lines) {
-        node* clause = ctx.tableau[line].formula;
+        node* clause = split_special(special_predicates, ctx.tableau[line].formula);
         unit_clauses.push_back(clause);
     }
 
     // Step 6: Apply the appropriate inference rule
     node* result = nullptr;
     Reason justification_reason;
+    Substitution subst;
 
     if (forward ^ !ponens) {
         // Apply modus ponens
-        result = modus_ponens(ctx, implication, unit_clauses, silent);
+        result = modus_ponens(subst, ctx, implication, unit_clauses, silent);
     }
     else {
         // Apply modus tollens
-        result = modus_tollens(ctx, implication, unit_clauses, silent);
+        result = modus_tollens(subst, ctx, implication, unit_clauses, silent);
     }
 
     justification_reason = (ponens ? Reason::ModusPonens : Reason::ModusTollens);
@@ -469,18 +467,102 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         if (!silent) {
                 std::cerr << "Error: modus " << (ponens ? "ponens" : "tollens") << " failed to infer a result.\n";
         }
+        special_predicates.clear();
+        cleanup_subst(subst);
         return false;
     }
 
-    // Step 8: Create a new tabline for the result
+    // Step 8: Apply substitutions to special predicates
+    for (size_t i = 0; i < special_predicates.size(); ++i) {
+        special_predicates[i] = substitute(deep_copy(special_predicates[i]), subst);
+    }
+    
+    // Step 9: Check special predicates against supplied list
+    bool special_found = true;
+    for (node* special : special_predicates) {
+        special_found = false;
+        
+        for (int special_line : special_lines) {
+            Substitution special_subst;
+            tabline_t& special_tabline = ctx.tableau[special_line];
+            
+            // Try to unify with tableau special predicate
+            std::optional<Substitution> maybe_subst = unify(special_tabline.formula, special, special_subst, false);
+
+            // If unification succeeded we found the special predicate in the tableau
+            if (maybe_subst.has_value()) {
+                special_found = true;
+                break;
+            }
+        }
+
+        if (!special_found) {
+            break;
+        }
+    }
+
+    if (!special_found) {
+        if (!silent) {
+            std::cerr << "Error: predicated structure constraints are not satisfied in modus " << (ponens ? "ponens" : "tollens") << ".\n";
+        }
+        
+        // Clean up
+        for (node* special : special_predicates) {
+            delete special;
+        }
+        special_predicates.clear();
+        cleanup_subst(subst);
+
+        return false;
+    }
+    
+    // Step 10: Wrap the result with the new special implications
+    std::set<std::string> vars;
+    vars_used(vars, result, false, false); // Get all unbound variables used
+    std::set<std::string> special_strings; // Strings of special predicates we already included
+
+    while (!special_predicates.empty()) {
+        node* special = special_predicates.back();
+        special_predicates.pop_back();
+
+        // Delete any special predicates that are not applied to variables
+        if (!special->children[1]->is_variable()) {
+            delete special;
+            continue;
+        }
+
+        // Check this variable is actually used
+        if (vars.find(special->children[1]->vdata->name) == vars.end()) {
+            delete special;
+            continue;
+        }
+
+        std::string special_str = special->to_string(UNICODE);
+
+        // Check we don't already have this special predicate
+        if (special_strings.find(special_str) != vars.end()) {
+            delete special;
+            continue;
+        } else {
+            // We don't have this special predicate
+            special_strings.insert(special_str); // insert the string for this one
+
+            // Add special implication to formula
+            std::vector<node*> children;
+            children.push_back(special);
+            children.push_back(result);
+            result = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children);
+        }
+    }
+
+    // Step 11: Create a new tabline for the result
     tabline_t new_tabline(result);
 
     if (forward) {
         // Insert as a hypothesis
         new_tabline.target = false;
         new_tabline.formula = disjunction_to_implication(new_tabline.formula);
-    }
-    else {
+    } else {
         // Insert as a target
         new_tabline.target = true;
 
@@ -489,13 +571,13 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         new_tabline.negation = neg_result;
     }
 
-    // Step 9: Set the justification
+    // Step 12: Set the justification
     std::vector<int> justification_lines;
     justification_lines.push_back(implication_line);
     justification_lines.insert(justification_lines.end(), other_lines.begin(), other_lines.end());
     new_tabline.justification = { justification_reason, justification_lines };
 
-    // Step 10: Set the assumptions and restrictions
+    // Step 13: Set the assumptions and restrictions
     new_tabline.assumptions = implication_tabline.assumptions;
     for (int line : other_lines) {
         new_tabline.assumptions = combine_assumptions(new_tabline.assumptions,
@@ -512,7 +594,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
         implication_tabline.split = true; // Ensure this line is not split, as it has been used
     }
 
-    // Step 11: Append the new tabline to the tableau
+    // Step 14: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
 
     if (!forward) {
@@ -523,7 +605,10 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     // Increment count of reasoning moves
     ctx.reasoning++;
-    
+
+    // Clean up
+    cleanup_subst(subst);
+
     return true;
 }
 
@@ -584,10 +669,13 @@ bool move_di(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+    
         // Check if the formula is a disjunctive idempotent
-        if ((tabline.target && conjunctive_idempotence(tabline.formula))
-            || (!tabline.target && disjunctive_idempotence(tabline.formula))
-            || (!tabline.target && implicative_idempotence(tabline.formula))) {
+        if ((tabline.target && conjunctive_idempotence(formula))
+            || (!tabline.target && disjunctive_idempotence(formula))
+            || (!tabline.target && implicative_idempotence(formula))) {
             // Formula is of the form P ∨ P or P ∧ P
 
             // Increment count of cleanup moves
@@ -599,19 +687,21 @@ bool move_di(context_t& tab_ctx, size_t start) {
             tabline.dead = true;
 
             // Store the original formula node and its children
-            node* original_formula = tabline.formula;
+            node* original_formula = formula;
             node* P = original_formula->children[1];
 
             if (!tabline.target) {
+                P = reapply_special(special_predicates, deep_copy(P));
+
                 // Original is a hypothesis, new tablines are hypotheses
-                tabline_t new_tabline_P(deep_copy(P));
+                tabline_t new_tabline_P(P);
                 
                 // Copy restrictions and assumptions
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
                 // Set justification to DisjunctiveIdempotence or ConjunctiveIdempotence
-                Reason justification = tabline.formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
+                Reason justification = formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
                 new_tabline_P.justification = { justification, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
@@ -620,15 +710,17 @@ bool move_di(context_t& tab_ctx, size_t start) {
             else {
                 // Original is a target, new tablines are targets
                 node* neg_P = negate_node(deep_copy(P), true);
-
-                tabline_t new_tabline_P(deep_copy(P), neg_P);
+                neg_P = reapply_special(special_predicates, neg_P);
+                node* new_P = reapply_special(special_predicates, deep_copy(P));
+                
+                tabline_t new_tabline_P(new_P, neg_P);
 
                 // Copy restrictions and assumptions
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
                 // Set justification to DisjunctiveIdempotence or ConjunctiveIdempotence
-                Reason justification = tabline.formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
+                Reason justification = formula->is_disjunction() ? Reason::DisjunctiveIdempotence : Reason::ConjunctiveIdempotence;
                 new_tabline_P.justification = { justification, { static_cast<int>(i) } };
 
                 // Append new targets to the tableau
@@ -642,6 +734,8 @@ bool move_di(context_t& tab_ctx, size_t start) {
 
             moved = true;
         }
+
+        special_predicates.clear();
 
         i++;
     }
@@ -661,9 +755,12 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+    
         // Check if the formula is a conjunctive idempotent
-        if ((tabline.target && disjunctive_idempotence(tabline.formula))
-            || (!tabline.target && conjunctive_idempotence(tabline.formula))) {
+        if ((tabline.target && disjunctive_idempotence(formula))
+            || (!tabline.target && conjunctive_idempotence(formula))) {
             // Formula is of the form P ∧ P or P ∨ P
 
             // Increment count of cleanup moves
@@ -675,19 +772,21 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             tabline.dead = true;
 
             // Store the original formula node and its children
-            node* original_formula = tabline.formula;
+            node* original_formula = formula;
             node* P = original_formula->children[0];
 
             if (!tabline.target) {
+                P = reapply_special(special_predicates, deep_copy(P));
+
                 // Original is a hypothesis, new tablines are hypotheses
-                tabline_t new_tabline_P(deep_copy(P));
+                tabline_t new_tabline_P(P);
                 
                 // Copy restrictions and assumptions
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
                 // Set justification to ConjunctiveIdempotence or DisjunctiveIdempotence
-                Reason justification = tabline.formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
+                Reason justification = formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
                 new_tabline_P.justification = { justification, { static_cast<int>(i) } };
                 
                 // Append new hypotheses to the tableau
@@ -695,16 +794,18 @@ bool move_ci(context_t& tab_ctx, size_t start) {
             }
             else {
                 // Original is a target, new tablines are targets
+                node* new_P = reapply_special(special_predicates, deep_copy(P));
                 node* neg_P = negate_node(deep_copy(P), true);
+                neg_P = reapply_special(special_predicates, neg_P);
 
-                tabline_t new_tabline_P(deep_copy(P), neg_P);
+                tabline_t new_tabline_P(new_P, neg_P);
 
                 // Copy restrictions and assumptions
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
                 
                 // Set justification to ConjunctiveIdempotence or DisjunctiveIdempotence
-                Reason justification = tabline.formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
+                Reason justification = formula->is_conjunction() ? Reason::ConjunctiveIdempotence : Reason::DisjunctiveIdempotence;
                 new_tabline_P.justification = { justification, { static_cast<int>(i) } };
 
                 // Append new targets to the tableau
@@ -718,6 +819,8 @@ bool move_ci(context_t& tab_ctx, size_t start) {
 
             moved = true;
         }
+
+        special_predicates.clear();
 
         i++;
     }
@@ -743,9 +846,12 @@ bool move_sc(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+
         // Check if the formula is active and a conjunction or disjunction
-        if (tabline.active && ((!tabline.target && tabline.formula->is_conjunction()) ||
-            (tabline.target && tabline.formula->is_disjunction()))) {
+        if (tabline.active && ((!tabline.target && formula->is_conjunction()) ||
+            (tabline.target && formula->is_disjunction()))) {
             
             // Increment count of cleanup moves
             tab_ctx.cleanup++;
@@ -755,13 +861,16 @@ bool move_sc(context_t& tab_ctx, size_t start) {
             tabline.dead = true;
 
             // Proceed with splitting the conjunction/disjunction
-            node* P = tabline.formula->children[0];
-            node* Q = tabline.formula->children[1];
+            node* P = formula->children[0];
+            node* Q = formula->children[1];
 
             if (!tabline.target) {
                 // Original is a hypothesis, new tablines are hypotheses
-                tabline_t new_tabline_P(deep_copy(P));
-                tabline_t new_tabline_Q(deep_copy(Q));
+                P = reapply_special(special_predicates, deep_copy(P));
+                Q = reapply_special(special_predicates, deep_copy(Q));
+
+                tabline_t new_tabline_P(P);
+                tabline_t new_tabline_Q(Q);
 
                 new_tabline_P.assumptions = tabline.assumptions;
                 new_tabline_P.restrictions = tabline.restrictions;
@@ -781,8 +890,14 @@ bool move_sc(context_t& tab_ctx, size_t start) {
                 node* neg_P = negate_node(deep_copy(P), true);
                 node* neg_Q = negate_node(deep_copy(Q), true);
 
-                tabline_t new_tabline_P(deep_copy(P), neg_P);
-                tabline_t new_tabline_Q(deep_copy(Q), neg_Q);
+                neg_P = reapply_special(special_predicates, neg_P);
+                neg_Q = reapply_special(special_predicates, neg_Q);
+
+                node* new_P = reapply_special(special_predicates, deep_copy(P));
+                node* new_Q = reapply_special(special_predicates, deep_copy(Q));
+
+                tabline_t new_tabline_P(new_P, neg_P);
+                tabline_t new_tabline_Q(new_Q, neg_Q);
 
                 // Copy restrictions and assumptions
                 new_tabline_P.assumptions = tabline.assumptions;
@@ -810,6 +925,8 @@ bool move_sc(context_t& tab_ctx, size_t start) {
             moved = true;
         }
 
+        special_predicates.clear();
+
         i++;
     }
 
@@ -829,11 +946,14 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+    
         if (!tabline.target) {
             // **Hypothesis Case:** Look for formulas of the form (P ∨ Q) → R
-            if (tabline.formula->is_implication()) {
-                node* left = tabline.formula->children[0];  // (P ∨ Q)
-                node* right = tabline.formula->children[1]; // R
+            if (formula->is_implication()) {
+                node* left = formula->children[0];  // (P ∨ Q)
+                node* right = formula->children[1]; // R
 
                 if (left->is_disjunction()) {
                     node* P = left->children[0];
@@ -874,6 +994,8 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                             // Create new implication P → R
                             node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
                             
+                            P_imp_R = reapply_special(special_predicates, P_imp_R);
+
                             // Create new tabline as hypothesis
                             tabline_t new_tabline_P_imp(P_imp_R);
                             
@@ -896,6 +1018,8 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                             // Create new implication Q → R
                             node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
 
+                            Q_imp_R = reapply_special(special_predicates, Q_imp_R);
+                            
                             // Create new tabline as hypothesis
                             tabline_t new_tabline_Q_imp(Q_imp_R);
 
@@ -921,9 +1045,9 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
         }
         else {
             // **Target Case:** Look for formulas of the form (P ∨ Q) ∧ ¬R, which represent ¬((P ∨ Q) → R)
-            if (tabline.formula->is_conjunction()) {
-                node* left = tabline.formula->children[0];  // (P ∨ Q)
-                node* right = tabline.formula->children[1]; // ¬R
+            if (formula->is_conjunction()) {
+                node* left = formula->children[0];  // (P ∨ Q)
+                node* right = formula->children[1]; // ¬R
 
                 // Check if left is a disjunction and right is a negation
                 if (left->is_disjunction()) {
@@ -967,9 +1091,12 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         if (!equal(P_copy, R_copy1)) {
                             // Create new implication P → R
                             node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy, R_copy1 });
-
+                            node* neg_P_imp_R = negate_node(deep_copy(P_imp_R));
+                            P_imp_R = reapply_special(special_predicates, P_imp_R);
+                            neg_P_imp_R = reapply_special(special_predicates, neg_P_imp_R);
+                            
                             // Create new tablines as target
-                            tabline_t new_tabline_neg_P_imp(negate_node(deep_copy(P_imp_R)), P_imp_R);
+                            tabline_t new_tabline_neg_P_imp(neg_P_imp_R, P_imp_R);
                             
                             // Copy restrictions and assumptions
                             new_tabline_neg_P_imp.assumptions = tabline.assumptions;
@@ -988,9 +1115,12 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
                         if (!equal(Q_copy, R_copy2)) {
                             // Create new implication Q → R
                             node* Q_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ Q_copy, R_copy2 });
-
+                            node* neg_Q_imp_R = negate_node(deep_copy(Q_imp_R));
+                            Q_imp_R = reapply_special(special_predicates, Q_imp_R);
+                            neg_Q_imp_R = reapply_special(special_predicates, neg_Q_imp_R);
+                            
                             // Create new tablines as target
-                            tabline_t new_tabline_neg_Q_imp(negate_node(deep_copy(Q_imp_R)), Q_imp_R);
+                            tabline_t new_tabline_neg_Q_imp(neg_Q_imp_R, Q_imp_R);
 
                             // Copy restrictions and assumptions
                             new_tabline_neg_Q_imp.assumptions = tabline.assumptions;
@@ -1027,6 +1157,8 @@ bool move_sdi(context_t& tab_ctx, size_t start) {
             }
         }
 
+        special_predicates.clear();
+
         i++;
     }
 
@@ -1046,11 +1178,14 @@ bool move_sci(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+    
         if (!tabline.target) {
             // **Hypothesis Case:** Look for formulas of the form P → (Q ∧ R)
-            if (tabline.formula->is_implication()) {
-                node* antecedent = tabline.formula->children[0];  // P
-                node* consequent = tabline.formula->children[1];  // (Q ∧ R)
+            if (formula->is_implication()) {
+                node* antecedent = formula->children[0];  // P
+                node* consequent = formula->children[1];  // (Q ∧ R)
 
                 if (consequent->is_conjunction()) {
                     node* Q = consequent->children[0];
@@ -1097,6 +1232,7 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         if (!equal(P_copy1, Q_copy)) {
                             // Create new implications P → Q
                             node* P_imp_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy1, Q_copy });
+                            P_imp_Q = reapply_special(special_predicates, P_imp_Q);
                             
                             // Create new tabline as hypothesis
                             tabline_t new_tabline_P_imp_Q(P_imp_Q);
@@ -1119,7 +1255,8 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         if (!equal(P_copy2, R_copy)) {
                             // Create new implications P → R
                             node* P_imp_R = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, std::vector<node*>{ P_copy2, R_copy });
-
+                            P_imp_R = reapply_special(special_predicates, P_imp_R);
+                            
                             // Create new tabline as hypothesis
                             tabline_t new_tabline_P_imp_R(P_imp_R);
 
@@ -1146,9 +1283,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
         }
         else {
             // **Target Case:** Look for formulas of the form P ∧ (Q ∨ R)
-            if (tabline.formula->is_conjunction()) {
-                node* P = tabline.formula->children[0];             // P
-                node* disjunct = tabline.formula->children[1];      // (Q ∨ R)
+            if (formula->is_conjunction()) {
+                node* P = formula->children[0];             // P
+                node* disjunct = formula->children[1];      // (Q ∨ R)
 
                 if (disjunct->is_disjunction()) {
                     node* Q = disjunct->children[0];
@@ -1198,9 +1335,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         if (!equal(P_copy1, Q_copy)) {
                             // Create new conjunction P ∧ Q
                             node* P_and_Q = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy1, Q_copy });
-                            
-                            // negate node
                             node* neg_P_and_Q = negate_node(deep_copy(P_and_Q), true);
+                            P_and_Q = reapply_special(special_predicates, P_and_Q);
+                            neg_P_and_Q = reapply_special(special_predicates, neg_P_and_Q);
                             
                             // Create new tabline as targets
                             tabline_t new_tabline_neg_P_and_Q(P_and_Q, neg_P_and_Q);
@@ -1222,9 +1359,9 @@ bool move_sci(context_t& tab_ctx, size_t start) {
                         if (!equal(P_copy2, R_copy)) {
                             // Create new conjunction P ∧ R
                             node* P_and_R = new node(LOGICAL_BINARY, SYMBOL_AND, std::vector<node*>{ P_copy2, R_copy });
-
-                            // negate node
                             node* neg_P_and_R = negate_node(deep_copy(P_and_R), true);
+                            P_and_R = reapply_special(special_predicates, P_and_R);
+                            neg_P_and_R = reapply_special(special_predicates, neg_P_and_R);
 
                             // Create new tabline as targets
                             tabline_t new_tabline_neg_P_and_R(P_and_R, neg_P_and_R);
@@ -1264,6 +1401,8 @@ bool move_sci(context_t& tab_ctx, size_t start) {
             }
         }
 
+        special_predicates.clear();
+
         i++;
     }
 
@@ -1283,10 +1422,13 @@ bool move_ni(context_t& tab_ctx, size_t start) {
             continue;
         }
 
+        std::vector<node*> special_predicates;
+        node* formula = split_special(special_predicates, tabline.formula);
+    
         if (!tabline.target) {
             // **Hypothesis Case:** Look for formulas of the form ¬(P → Q)
-            if (tabline.formula->is_negation()) {
-                node* inner = tabline.formula->children[0];
+            if (formula->is_negation()) {
+                node* inner = formula->children[0];
                 if (inner->is_implication()) {
                     node* P = inner->children[0];
                     node* Q = inner->children[1];
@@ -1318,7 +1460,10 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                         node* P_copy = deep_copy(P);
                         node* Q_copy = deep_copy(Q);
                         node* neg_Q_copy = negate_node(deep_copy(Q));
-
+                        P_copy = reapply_special(special_predicates, P_copy);
+                        Q_copy = reapply_special(special_predicates, Q_copy);
+                        neg_Q_copy = reapply_special(special_predicates, neg_Q_copy);
+                            
                         // Create new hypothesis P
                         tabline_t new_hypothesis_P(P_copy);
                         new_hypothesis_P.target = false;
@@ -1351,12 +1496,12 @@ bool move_ni(context_t& tab_ctx, size_t start) {
         }
         else {
             // **Target Case:** Look for formulas of the form P → Q
-            if (tabline.formula->is_implication()) {
+            if (formula->is_implication()) {
                 // Increment count of cleanup moves
                 tab_ctx.cleanup++;
         
-                node* P = tabline.formula->children[0];
-                node* Q = tabline.formula->children[1];
+                node* P = formula->children[0];
+                node* Q = formula->children[1];
 
                 // Deep copy P and Q
                 node* P_copy = deep_copy(P);
@@ -1364,7 +1509,11 @@ bool move_ni(context_t& tab_ctx, size_t start) {
                 P_copy = disjunction_to_implication(P_copy);
                 node* neg_P_copy = negate_node(deep_copy(P));
                 node* neg_Q_copy = negate_node(deep_copy(Q), true);
-
+                P_copy = reapply_special(special_predicates, P_copy);
+                Q_copy = reapply_special(special_predicates, Q_copy);
+                neg_P_copy = reapply_special(special_predicates, neg_P_copy);
+                neg_Q_copy = reapply_special(special_predicates, neg_Q_copy);
+                        
                 // Create new target tablines
                 tabline_t new_tabline_neg_P(neg_P_copy, P_copy); // Assuming constructor takes formula and negation
                 tabline_t new_tabline_neg_Q(Q_copy, neg_Q_copy);
@@ -1399,6 +1548,8 @@ bool move_ni(context_t& tab_ctx, size_t start) {
             }
         }
 
+        special_predicates.clear();
+
         i++;
     }
 
@@ -1419,13 +1570,16 @@ bool move_me(context_t& tab_ctx, size_t start) {
         }
 
         if (!tabline.target) {
+            std::vector<node*> special_predicates;
+            node* formula = split_special(special_predicates, tabline.formula);
+    
             // **Target Case:** Look for formulas of the form P ↔ Q
-            if (tabline.formula->is_equivalence()) {
+            if (formula->is_equivalence()) {
                 // Increment count of cleanup moves
                 tab_ctx.cleanup++;
 
-                node* P = tabline.formula->children[0];
-                node* Q = tabline.formula->children[1];
+                node* P = formula->children[0];
+                node* Q = formula->children[1];
 
                 // Deep copy P and Q
                 node* P_copy1 = deep_copy(P);
@@ -1439,6 +1593,8 @@ bool move_me(context_t& tab_ctx, size_t start) {
                 children2.push_back(P_copy2);
                 node* P_implies_Q = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children1);
                 node* Q_implies_P = new node(LOGICAL_BINARY, SYMBOL_IMPLIES, children2);
+                P_implies_Q = reapply_special(special_predicates, P_implies_Q);
+                Q_implies_P = reapply_special(special_predicates, Q_implies_P);
                 
                 // Create new target tablines
                 tabline_t new_tabline_P_implies_Q(P_implies_Q);
@@ -1464,15 +1620,20 @@ bool move_me(context_t& tab_ctx, size_t start) {
 
                 moved = true;
             }
+
+            special_predicates.clear();
         }
         else {
+            std::vector<node*> special_predicates;
+            node* negation = split_special(special_predicates, tabline.negation);
+            
             // **Target Case:** Look for formulas of the form P ↔ Q
-            if (tabline.negation->is_equivalence()) {
+            if (negation->is_equivalence()) {
                 // Increment count of cleanup moves
                 tab_ctx.cleanup++;
         
-                node* P = tabline.negation->children[0];
-                node* Q = tabline.negation->children[1];
+                node* P = negation->children[0];
+                node* Q = negation->children[1];
 
                 // Deep copy P and Q
                 node* P_copy1 = deep_copy(P);
@@ -1500,7 +1661,11 @@ bool move_me(context_t& tab_ctx, size_t start) {
 
                 node* neg1 = negate_node(deep_copy(P_implies_Q));
                 node* neg2 = negate_node(deep_copy(Q_implies_P));
-
+                P_implies_Q = reapply_special(special_predicates, P_implies_Q);
+                Q_implies_P = reapply_special(special_predicates, Q_implies_P);
+                neg1 = reapply_special(special_predicates, neg1);
+                neg2 = reapply_special(special_predicates, neg2);
+                
                 // Create new target tablines
                 tabline_t new_tabline_P_implies_Q(neg1, P_implies_Q);
                 tabline_t new_tabline_Q_implies_P(neg2, Q_implies_P);
@@ -1533,6 +1698,8 @@ bool move_me(context_t& tab_ctx, size_t start) {
 
                 moved = true;
             }
+
+            special_predicates.clear();
         }
 
         i++;
@@ -1555,14 +1722,20 @@ bool conditional_premise(context_t& tab_ctx, int index) {
         return false;
     }
 
+    std::vector<node*> special_predicates;
+    node* negation = split_special(special_predicates, tabline.negation);
+    
     // Check if the negated field is an implication
-    if (!tabline.negation->is_implication()) {
+    if (!negation->is_implication()) {
         std::cerr << "Error: The target is not an implication." << std::endl;
+        
+        special_predicates.clear();
+        
         return false;
     }
 
     // Extract P and Q from the implication
-    node* implication = tabline.negation; // Since it's a negated formula
+    node* implication = negation; // Since it's a negated formula
     node* P = implication->children[0];
     node* Q = implication->children[1];
 
@@ -1576,7 +1749,10 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     P_copy = disjunction_to_implication(P_copy);
     Q_copy = disjunction_to_implication(Q_copy);
     node* neg_Q_copy = negate_node(deep_copy(Q)); // For the new target Q
-
+    P_copy = reapply_special(special_predicates, P_copy);
+    Q_copy = reapply_special(special_predicates, Q_copy);
+    neg_Q_copy = reapply_special(special_predicates, neg_Q_copy);
+                
     // Create new hypothesis P
     tabline_t new_hypothesis(P_copy);
     new_hypothesis.target = false;
@@ -1611,6 +1787,8 @@ bool conditional_premise(context_t& tab_ctx, int index) {
     tab_ctx.restrictions_replace(index, tab_ctx.tableau.size() - 1);
     tab_ctx.select_targets();
 
+    special_predicates.clear();
+
     return true;
 }
 
@@ -1622,7 +1800,7 @@ bool move_cp(context_t& tab_ctx, size_t start) {
 
         if (tabline.active && tabline.target) {
             // Ensure the negation field exists and is an implication
-            if (tabline.negation && tabline.negation->is_implication()) {
+            if (tabline.negation && unwrap_special(tabline.negation)->is_implication()) {
                 // Increment count of cleanup moves
                 tab_ctx.cleanup++;
 
@@ -1651,18 +1829,27 @@ bool move_sd(context_t& tab_ctx, size_t line) {
         return false;
     }
 
-    if (!tabline.formula->is_implication()) {
+    std::vector<node*> special_predicates;
+    node* formula = split_special(special_predicates, tabline.formula);
+        
+    if (!formula->is_implication()) {
         std::cerr << "Error: formula is not a disjunction." << std::endl;
+        
+        special_predicates.clear();
+
         return false;
     }
 
     // get disjunction node
-    node* disjunction = tabline.formula;
+    node* disjunction = formula;
 
     std::set<std::string> common_vars;
     common_vars = find_common_variables(disjunction->children[0], disjunction->children[1]);
     if (!common_vars.empty()) {
         std::cerr << "Error: disjunction has shared variables." << std::endl;
+        
+        special_predicates.clear();
+
         return false;
     }
     
@@ -1673,7 +1860,10 @@ bool move_sd(context_t& tab_ctx, size_t line) {
     node* P_copy = negate_node(deep_copy(disjunction->children[0]));
     node* P_neg = deep_copy(disjunction->children[0]);
     node* Q_copy = deep_copy(disjunction->children[1]);
-
+    P_copy = reapply_special(special_predicates, P_copy);
+    P_neg = reapply_special(special_predicates, P_neg);
+    Q_copy = reapply_special(special_predicates, Q_copy);
+    
     // make new tablines
     tabline_t hyp1(P_copy);
     tabline_t hyp2a(P_neg);
@@ -1705,6 +1895,8 @@ bool move_sd(context_t& tab_ctx, size_t line) {
     tab_ctx.tableau.push_back(hyp1);
     tab_ctx.tableau.push_back(hyp2a);
     tab_ctx.tableau.push_back(hyp2b);
+
+    special_predicates.clear();
 
     return true;
 }

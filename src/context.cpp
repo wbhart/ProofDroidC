@@ -1024,12 +1024,15 @@ void context_t::get_constants() {
 
                 tabline_t& tabline = tableau[line_idx];
 
+                // Remove special implications to retrieve matrix
+                node* formula = unwrap_special(tabline.formula);
+
                 // Compute constants using node_get_constants
-                if (tabline.formula->is_implication()) {
-                    node_get_constants(tabline.constants1, tabline.formula->children[0]);
-                    node_get_constants(tabline.constants2, tabline.formula->children[1]);
+                if (formula->is_implication()) {
+                    node_get_constants(tabline.constants1, formula->children[0]);
+                    node_get_constants(tabline.constants2, formula->children[1]);
                 } else {
-                    node_get_constants(tabline.constants1, tabline.formula);
+                    node_get_constants(tabline.constants1, formula);
                 }
             }
         }
@@ -1040,12 +1043,15 @@ void context_t::get_constants() {
             tabline_t& tabline = tableau[i];
             // No need to check for null, as per design
 
+            // Remove special implications to retrieve matrix
+            node* formula = unwrap_special(tabline.formula);
+
             // Compute constants using node_get_constants
-            if (!tabline.target && tabline.formula->is_implication()) {
-                node_get_constants(tabline.constants1, tabline.formula->children[0]);
-                node_get_constants(tabline.constants2, tabline.formula->children[1]);
+            if (!tabline.target && formula->is_implication()) {
+                node_get_constants(tabline.constants1, formula->children[0]);
+                node_get_constants(tabline.constants2, formula->children[1]);
             } else {
-                node_get_constants(tabline.constants1, tabline.formula);
+                node_get_constants(tabline.constants1, formula);
             }
         }
     }
@@ -1065,9 +1071,12 @@ void context_t::get_ltor() {
 
                 tabline_t& tabline = tableau[line_idx];
 
+                // Remove special implications to retrieve matrix
+                node* formula = unwrap_special(tabline.formula);
+
                 // Compute constants using node_get_constants
-                if (tabline.formula->is_implication() || tabline.formula->is_disjunction()) {
-                    left_to_right(tabline.ltor, tabline.rtol, tabline.formula);
+                if (formula->is_implication() || formula->is_disjunction()) {
+                    left_to_right(tabline.ltor, tabline.rtol, formula);
                 }
             }
         }
@@ -1078,9 +1087,12 @@ void context_t::get_ltor() {
             tabline_t& tabline = tableau[i];
             // No need to check for null, as per design
 
+            // Remove special implications to retrieve matrix
+            node* formula = unwrap_special(tabline.formula);
+
             // Compute constants using node_get_constants
-            if (!tabline.target && (tabline.formula->is_implication())) {
-                left_to_right(tabline.ltor, tabline.rtol, tabline.formula);
+            if (!tabline.target && (formula->is_implication())) {
+                left_to_right(tabline.ltor, tabline.rtol, formula);
             }
         }
     }
@@ -1099,7 +1111,8 @@ void context_t::get_tableau_constants(
     std::vector<std::string>& all_constants,
     std::vector<std::string>& target_constants,
     std::vector<size_t>& implication_indices,
-    std::vector<size_t>& unit_indices) const
+    std::vector<size_t>& unit_indices,
+    std::vector<size_t>& special_indices) const
 {
     // Iterate through each line in the tableau
     for (size_t i = 0; i < tableau.size(); ++i) {
@@ -1110,19 +1123,24 @@ void context_t::get_tableau_constants(
             continue;
         }
         
+        // Remove special implications to retrieve matrix
+        node* formula = unwrap_special(tabline.formula);
+
         if (tabline.target) {
             // Accumulate constants from active target lines
-            node_get_constants(target_constants, tabline.formula);
+            node_get_constants(target_constants, formula);
         }
         else if (!tabline.is_theorem() && !tabline.is_definition()) {
             // Accumulate constants from active lines that are neither theorems nor definitions
-            node_get_constants(all_constants, tabline.formula);
+            node_get_constants(all_constants, formula);
             
             // Check if the formula is an implication
-            if (tabline.formula->is_implication()) {
+            if (formula->is_implication()) {
                 implication_indices.push_back(i);
             }
-            else {
+            else if (formula->is_special_predicate()) {
+                special_indices.push_back(i);
+            } else {
                 unit_indices.push_back(i);
             }
         }
@@ -1299,5 +1317,22 @@ void context_t::print_statistics(const std::string filename, bool log) {
         
         // Close the file
         log_file.close();        
+    }
+}
+
+void get_special_predicates(std::vector<size_t>& special_lines, context_t& ctx)
+{
+    std::vector<tabline_t>& tableau = ctx.tableau;
+
+    for (size_t i = 0; i < tableau.size(); ++i) {
+        tabline_t& tabline = tableau[i];
+
+        if (!tabline.target && tabline.active) {
+            node* formula = tabline.formula;
+
+            if (formula->is_special_predicate()) {
+                special_lines.push_back(i);
+            }
+        }
     }
 }

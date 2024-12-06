@@ -386,6 +386,8 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
 
 // Function to handle manual mode
 void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_options) {
+    std::vector<size_t> special_lines;
+
     std::cout << "\nWelcome to manual mode." << std::endl;
 
     // Print detailed list of commands based on active options
@@ -400,6 +402,9 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
     std::string input_line;
     while (true) {
+        special_lines.clear();
+        get_special_predicates(special_lines, tab_ctx);
+
         std::cout << "> ";
         if (!getline(std::cin, input_line)) {
             std::cout << std::endl;
@@ -730,7 +735,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
 
                 // Apply move_mpt
-                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
+                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, special_lines, ponens);
 
                 if (move_applied) {
                     // Check if done
@@ -757,6 +762,8 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
 
 // Function to handle semi-automatic mode
 void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_auto_active_options) {
+    std::vector<size_t> special_lines; // lines of the tableau that are active special predicates
+    
     std::cout << "\nWelcome to semi-automatic mode." << std::endl << std::endl;
 
     // Print detailed list of commands based on active options
@@ -773,6 +780,9 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
 
     std::string input_line;
     while (true) {
+        special_lines.clear();
+        get_special_predicates(special_lines, tab_ctx);
+
         std::cout << "> ";
         if (!getline(std::cin, input_line)) {
             std::cout << std::endl;
@@ -985,7 +995,7 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
             bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
 
             // Apply move_mpt
-            bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, ponens);
+            bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, special_lines, ponens);
 
             if (move_applied) {
                 // After applying the move, run cleanup_moves automatically

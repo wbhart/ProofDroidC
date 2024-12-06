@@ -75,7 +75,7 @@ public:
     std::vector<int> applied_units;                // Tracks applied target indices
     std::vector<std::pair<std::string, size_t>> lib_applied; // library (name, index) pairs already applied to this unit
     bool split;                                    // If a disjunction, whether it has already been split
-
+    
     // Constructor Initializer Lists to Match Declaration Order
     tabline_t(node* form) 
         : target(false), active(true), dead(false), formula(form), negation(nullptr), unifications(),
@@ -217,13 +217,17 @@ public:
     void get_tableau_constants(std::vector<std::string>& all_constants,
                                std::vector<std::string>& target_constants,
                                std::vector<size_t>& implication_indices,
-                               std::vector<size_t>& unit_indices) const;
+                               std::vector<size_t>& unit_indices,
+                               std::vector<size_t>& special_indices) const;
 
     // kill all duplicate lines starting at the given start line
     void kill_duplicates(size_t start_index);
 
     // Determine whether lines representing implications can be applied left-to-right or right-to-left
     void get_ltor();
+
+    // Whether to print internal debug messages
+    bool debug = false;
 private:
     // Maps variable base names to their latest index
     std::unordered_map<std::string, int> var_indices;
@@ -260,5 +264,8 @@ bool assumptions_compatible(const std::vector<int>& assm1, const std::vector<int
 
 // Print the tableau, showing only active lines
 void print_tableau(const context_t& tab_ctx);
+
+// Get list of lines of tableau that contain active special predicates
+void get_special_predicates(std::vector<size_t>& special_lines, context_t& ctx);
 
 #endif // CONTEXT_H

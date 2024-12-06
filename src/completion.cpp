@@ -25,7 +25,12 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
         if (!current_line.target) {
             if (current_line.negation)
                 delete current_line.negation;
-            current_line.negation = negate_node(deep_copy(current_line.formula));
+
+            std::vector<node*> special_predicates;
+            node* formula = split_special(special_predicates, current_line.formula);
+    
+            node* negation = negate_node(deep_copy(formula));
+            current_line.negation = reapply_special(special_predicates, negation);
         }
     }
 
@@ -94,7 +99,8 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
             if (restrictions_ok && assumptions_ok) {
                 Substitution subst;
 
-                std::optional<Substitution> result = unify(current_line.negation, previous_line.formula, subst, true);
+                std::optional<Substitution> result = unify(unwrap_special(current_line.negation),
+                                              unwrap_special(previous_line.formula), subst, true);
                 if (result.has_value()) {
 #if DEBUG_STEP_2
                     std::cout << "    Unification Successful between Line " << j 
@@ -305,7 +311,8 @@ bool check_done(context_t& ctx, bool apply_cleanup) {
 
                 Substitution new_subst = current_subst; // Copy current substitution
 
-                std::optional<Substitution> unif_result = unify(target_negation, hypothesis_formula, new_subst, true);
+                std::optional<Substitution> unif_result = unify(unwrap_special(target_negation),
+                                        unwrap_special(hypothesis_formula), new_subst, true);
                 if (unif_result.has_value()) {
                     if (depth + 1 == num_targets) {
                         // Check if already proved for those assumptions
