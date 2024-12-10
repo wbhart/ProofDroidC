@@ -58,6 +58,10 @@ node* modus_tollens(Substitution& combined_subst, context_t& ctx_var, node* impl
 // checked after unification by this function
 bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& other_lines, const std::vector<size_t>& special_lines, bool ponens, bool silent=false);
 
+// Rewrite the formula with index formula_line using the rewrite rule with index
+// rewrite_line in the tableau
+bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silent=false);
+
 // Function to apply disjunctive idempotence: P ∨ P -> P
 bool move_di(context_t& tab_ctx, size_t start = 0);
 
@@ -93,5 +97,8 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line = 0);
 
 // Apply only skolemize and move_me for definitions
 bool cleanup_definition(context_t& tab_ctx, size_t start_line);
+
+// Apply only skolemize for rewrites
+bool cleanup_rewrite(context_t& tab_ctx, size_t start_line);
 
 #endif // MOVES_H

@@ -4,6 +4,7 @@
 #include <set>
 #include <algorithm>
 #include <vector>
+#include <stack>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
 #define DEBUG_CLEANUP 0
@@ -608,6 +609,146 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     // Clean up
     cleanup_subst(subst);
+
+    return true;
+}
+
+// Recursive function to traverse the formula tree, find a subformula that unifies with P,
+// apply the substitution, and replace it with Q_prime.
+// Returns true if a replacement was made; otherwise, false.
+bool find_and_replace(node*& current, node* P, node* Q) {
+    // Attempt to unify the current node with P.
+    Substitution subst;
+    if (unify(P, current, subst)) {
+        // Apply substitution to Q to get Q_prime.
+        node* Q_prime = substitute(Q, subst);
+        
+        // Replace the current node with Q_prime.
+        delete current;       // Free the memory of the current node.
+        current = Q_prime;    // Assign Q_prime to the current node pointer.
+        return true;          // Indicate that a replacement has been made.
+    }
+
+    // Recursively traverse the children.
+    for (size_t i = 0; i < current->children.size(); ++i) {
+        if (find_and_replace(current->children[i], P, Q)) {
+            return true; // Replacement done; no need to continue.
+        }
+    }
+
+    return false; // No replacement made in this subtree.
+}
+
+// Function to apply a rewrite move in the tableau.
+// It rewrites a formula (hypothesis or target) using a rewrite rule of the form P = Q.
+bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silent) {
+    // Step 1: Validate line indices.
+    if (formula_line < 0 || formula_line >= static_cast<int>(ctx.tableau.size())) {
+        std::cerr << "Error: formula_line " << (formula_line + 1) << " is out of bounds.\n";
+        return false;
+    }
+
+    if (rewrite_line < 0 || rewrite_line >= static_cast<int>(ctx.tableau.size())) {
+        std::cerr << "Error: rewrite_line " << (rewrite_line + 1) << " is out of bounds.\n";
+        return false;
+    }
+
+    tabline_t& formula_tabline = ctx.tableau[formula_line];
+    tabline_t& rewrite_tabline = ctx.tableau[rewrite_line];
+
+    // Step 2: Ensure the formula line is active and not a theorem or definition.
+    if (!formula_tabline.active) {
+        std::cerr << "Error: formula_line " << (formula_line + 1) << " is not active or is a theorem/definition.\n";
+        return false;
+    }
+
+    // Step 3: Ensure the rewrite line is a hypothesis.
+    if (rewrite_tabline.target) {
+        std::cerr << "Error: rewrite_line " << (rewrite_line + 1) << " is not a hypothesis.\n";
+        return false;
+    }
+
+    // Step 4: Ensure the rewrite formula is an equality P = Q.
+    node* rewrite_formula = rewrite_tabline.formula;
+    if (!rewrite_formula->is_equality()) {
+        std::cerr << "Error: rewrite_line " << (rewrite_line + 1) << " does not contain an equality formula P = Q.\n";
+        return false;
+    }
+
+    node* P = rewrite_formula->children[1];
+    node* Q = rewrite_formula->children[2];
+
+    // Step 5: Check if assumptions and restrictions are compatible.
+    if (!assumptions_compatible(formula_tabline.assumptions, rewrite_tabline.assumptions)) {
+        if (!silent) {
+            std::cerr << "Error: formula_line and rewrite_line have incompatible assumptions.\n";
+        }
+        return false;
+    }
+
+    if (!restrictions_compatible(formula_tabline.restrictions, rewrite_tabline.restrictions)) {
+        if (!silent) {
+            std::cerr << "Error: formula_line and rewrite_line have incompatible restrictions.\n";
+        }
+        return false;
+    }
+
+    // Step 6: Create a deep copy of the formula to be rewritten.
+    node* formula_copy = deep_copy(formula_tabline.formula);
+
+    // Step 7: Determine shared variables between formula_copy and rewrite_formula.
+    std::set<std::string> vars_formula, vars_rewrite;
+    vars_used(vars_formula, formula_copy);
+    vars_used(vars_rewrite, rewrite_formula);
+
+    std::set<std::string> common_vars;
+    std::set_intersection(vars_formula.begin(), vars_formula.end(),
+                          vars_rewrite.begin(), vars_rewrite.end(),
+                          std::inserter(common_vars, common_vars.begin()));
+
+    // Step 8: Rename shared variables in formula_copy to avoid conflicts.
+    if (!common_vars.empty()) {
+        std::vector<std::pair<std::string, std::string>> rename_list = vars_rename_list(ctx, common_vars);
+        rename_vars(formula_copy, rename_list);
+    }
+
+    // Steps 9-11: Optimized Traversal, Unification, Substitution, and Replacement
+
+    // Traverse formula_copy, find a subformula that unifies with P, apply substitution, and replace it with Q'.
+    bool replaced = find_and_replace(formula_copy, P, Q);
+
+    if (!replaced) {
+        if (!silent) {
+            std::cerr << "Error: No subformula in formula_line " << (formula_line + 1)
+                    << " unifies with the left side of the rewrite rule.\n";
+        }
+        delete formula_copy;
+        return false;
+    }
+
+    // Step 12: Create a new tabline with the rewritten formula.
+    tabline_t new_tabline(formula_copy);
+
+    if (formula_tabline.target) {
+        // The formula is a target.
+        // Negate the rewritten formula and apply disjunction to implication.
+        node* negated_formula = negate_node(deep_copy(formula_copy));
+        negated_formula = disjunction_to_implication(negated_formula);
+
+        // Place negation in target
+        new_tabline.negation = negated_formula;
+    }
+
+    // Step 13: Update assumptions and restrictions.
+    new_tabline.assumptions = combine_assumptions(formula_tabline.assumptions, rewrite_tabline.assumptions);
+    new_tabline.restrictions = combine_restrictions(formula_tabline.restrictions, rewrite_tabline.restrictions);
+    new_tabline.justification = { Reason::EqualitySubst, { formula_line, rewrite_line } };
+
+    // Step 14: Add the new tabline to the tableau.
+    ctx.tableau.push_back(new_tabline);
+
+    // Step 15: Increment rewrite move count.
+    ctx.rewrite++;
 
     return true;
 }
@@ -2083,6 +2224,37 @@ bool cleanup_definition(context_t& tab_ctx, size_t start_line) {
  #if DEBUG_CLEANUP
         if (moved1) {
             std::cout << "material equivalence:" << std::endl;
+            print_tableau(tab_ctx);
+            std::cout << std::endl;
+        }
+#endif
+
+        // Update start_line to previous current_size before moves were applied
+        start = current_size;
+        // Update current_size to the new size of the tableau
+        current_size = tab_ctx.tableau.size();
+    }
+    
+    return moved;
+}
+
+bool cleanup_rewrite(context_t& tab_ctx, size_t start_line) {
+    bool moved = false, moved1;
+    size_t start = start_line;
+    size_t current_size = tab_ctx.tableau.size();
+
+    while (start < current_size) {
+        // Apply moves in the specified order
+
+        // 1. skolemize_all
+        moved1 = false;
+        if (skolemize_all(tab_ctx, start)) {
+            moved = moved1 = true;
+        }
+
+#if DEBUG_CLEANUP
+        if (moved1) {
+            std::cout << "skolemize:" << std::endl;
             print_tableau(tab_ctx);
             std::cout << std::endl;
         }

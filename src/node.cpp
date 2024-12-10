@@ -618,7 +618,7 @@ void node_get_constants(std::vector<std::string>& constants, const node* formula
 
 // Return true if all variables on right side of implication are found on the left side
 // and max_term_size of right side is at most that of the left side
-void left_to_right(bool& ltor, bool& rtol, const node* implication) {
+void left_to_right(bool& ltor, bool& rtol, bool& ltor_safe, bool& rtol_safe, const node* implication) {
     // Extract left (premise) and right (conclusion) sub-nodes
     const node* premise = implication->children[0];
     const node* conclusion = implication->children[1];
@@ -633,29 +633,29 @@ void left_to_right(bool& ltor, bool& rtol, const node* implication) {
     size_t left_term_depth = max_term_depth(premise);
     size_t right_term_depth = max_term_depth(conclusion);
 
-    ltor = right_term_depth <= left_term_depth;
+    ltor_safe = right_term_depth <= left_term_depth;
     
-    if (ltor) {
-        // Check if all variables in conclusion are present in premise
-        for (const auto& var : conclusion_vars) {
-            if (premise_vars.find(var) == premise_vars.end()) {
-                // Variable in conclusion not found in premise
-                ltor = false;
-                break;
-            }
+    ltor = true;
+    
+    // Check if all variables in conclusion are present in premise
+    for (const auto& var : conclusion_vars) {
+        if (premise_vars.find(var) == premise_vars.end()) {
+            // Variable in conclusion not found in premise
+            ltor = false;
+            break;
         }
     }
 
-    rtol = left_term_depth <= right_term_depth;
+    rtol_safe = left_term_depth <= right_term_depth;
     
-    if (rtol) {
-        // Check if all variables in conclusion are present in premise
-        for (const auto& var : premise_vars) {
-            if (conclusion_vars.find(var) == conclusion_vars.end()) {
-                // Variable in conclusion not found in premise
-                rtol = false;
-                break;
-            }
+    rtol = true;
+
+    // Check if all variables in conclusion are present in premise
+    for (const auto& var : premise_vars) {
+        if (conclusion_vars.find(var) == conclusion_vars.end()) {
+            // Variable in conclusion not found in premise
+            rtol = false;
+            break;
         }
     }
 }

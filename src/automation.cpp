@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_TABLEAU 0 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 #define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph
@@ -363,7 +363,7 @@ bool automate(context_t& ctx) {
                 std::vector<int> other_lines = { unit_idx };
                 bool move_success = false;
                 
-                if (all_contained_left && consts_ltor && impl_tabline.ltor) {
+                if (all_contained_left && consts_ltor && impl_tabline.ltor && impl_tabline.ltor_safe) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
                     
@@ -374,7 +374,7 @@ bool automate(context_t& ctx) {
 #endif
                 }
 
-                if (!move_success && all_contained_right && consts_rtol && impl_tabline.rtol) {
+                if (!move_success && all_contained_right && consts_rtol && impl_tabline.rtol && impl_tabline.rtol_safe) {
                     // Attempt Modus Tollens since Modus Ponens failed
                     move_success = move_mpt(ctx, impl_idx, other_lines, specials, false, true); // ponens=false, silent=true
 
@@ -1061,7 +1061,7 @@ bool automate(context_t& ctx) {
                 std::vector<int> other_lines = { unit_idx };
                 bool move_success = false;
                 
-                if (all_contained_left) {
+                if (all_contained_left && impl_tabline.ltor) {
                     // Attempt Modus Ponens
                     move_success = move_mpt(ctx, impl_idx, other_lines, specials, true, true); // ponens=true, silent=true
 

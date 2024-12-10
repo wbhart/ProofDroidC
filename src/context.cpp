@@ -136,6 +136,10 @@ void print_reason(const context_t& context, int index) {
             std::cout << "Thm";
             break;
 
+        case Reason::Rewrite:
+            std::cout << "Rewrite";
+            break;
+
         case Reason::Definition:
             std::cout << "Defn";
             break;
@@ -154,6 +158,18 @@ void print_reason(const context_t& context, int index) {
 
         case Reason::ModusTollens: {
             std::cout << "MT[";
+            for (size_t i = 0; i < associated_lines.size(); ++i) {
+                std::cout << associated_lines[i] + 1;
+                if (i != associated_lines.size() - 1) {
+                    std::cout << ", ";
+                }
+            }
+            std::cout << "]";
+            break;
+        }
+
+        case Reason::EqualitySubst: {
+            std::cout << "Eq[";
             for (size_t i = 0; i < associated_lines.size(); ++i) {
                 std::cout << associated_lines[i] + 1;
                 if (i != associated_lines.size() - 1) {
@@ -957,7 +973,7 @@ void print_tableau(const context_t& tab_ctx) {
     for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
         const tabline_t& tabline = tab_ctx.tableau[i];
         if (tabline.active && !tabline.target) {
-            if (!tabline.is_theorem() && !tabline.is_special() && !tabline.is_definition()) {
+            if (!tabline.is_theorem() && !tabline.is_special() && !tabline.is_definition() && !tabline.is_rewrite()) {
                 std::cout << " " << i + 1 << " "; // Line number
                 print_reason(tab_ctx, static_cast<int>(i)); // Print reason
                 std::cout << ": " << tabline.formula->to_string(UNICODE);
@@ -982,7 +998,7 @@ void print_tableau(const context_t& tab_ctx) {
         // First, print all active Hypotheses that are not theorems
         for (size_t i = 0; i < tab_ctx.tableau.size(); ++i) {
             const tabline_t& tabline = tab_ctx.tableau[i];
-            if (tabline.active && !tabline.target && (tabline.is_theorem() || tabline.is_definition() || tabline.is_special())) {
+            if (tabline.active && !tabline.target && (tabline.is_theorem() || tabline.is_definition() || tabline.is_special() || tabline.is_rewrite())) {
                 std::cout << " " << i + 1 << " "; // Line number
                 print_reason(tab_ctx, static_cast<int>(i)); // Print reason
                 std::cout << ": " << tabline.formula->to_string(UNICODE);
@@ -1076,7 +1092,8 @@ void context_t::get_ltor() {
 
                 // Compute constants using node_get_constants
                 if (formula->is_implication() || formula->is_disjunction()) {
-                    left_to_right(tabline.ltor, tabline.rtol, formula);
+                    left_to_right(tabline.ltor, tabline.rtol,
+                                  tabline.ltor_safe, tabline.rtol_safe, formula);
                 }
             }
         }
@@ -1092,7 +1109,8 @@ void context_t::get_ltor() {
 
             // Compute constants using node_get_constants
             if (!tabline.target && (formula->is_implication())) {
-                left_to_right(tabline.ltor, tabline.rtol, formula);
+                left_to_right(tabline.ltor, tabline.rtol,
+                              tabline.ltor_safe, tabline.rtol_safe, formula);
             }
         }
     }
@@ -1293,7 +1311,7 @@ void context_t::reanimate() {
 }
 
 void context_t::print_statistics(const std::string filename, bool log) {
-    std::cout << "Cleanup moves: " << cleanup << ", Reasoning moves: " << reasoning << ", Disjunction splits: " << split << ", Backtracks: " << backtrack;
+    std::cout << "Cleanup moves: " << cleanup << ", Reasoning moves: " << reasoning << ", Rewrite moves: " << rewrite << ", Disjunction splits: " << split << ", Backtracks: " << backtrack;
 
     if (log) {
         // Open proofs.log in append mode
@@ -1311,6 +1329,7 @@ void context_t::print_statistics(const std::string filename, bool log) {
         log_file << std::left << std::setw(20) << filename
                 << std::right << std::setw(10) << cleanup
                 << std::right << std::setw(10) << reasoning
+                << std::right << std::setw(10) << rewrite
                 << std::right << std::setw(10) << split
                 << std::right << std::setw(10) << backtrack
                 << std::endl;

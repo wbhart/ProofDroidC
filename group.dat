@@ -1,14 +1,17 @@
-theorem
+rewrite
 \forall g (1*g = g)
 
-theorem
+rewrite
 \forall g (g*1 = g)
 
-theorem
+rewrite
 \forall g (g^(-1)*g = 1)
 
-theorem
+rewrite
 \forall g (g*g^(-1) = 1)
+
+rewrite
+\forall a \forall b \forall c ((a*b)*c = a*(b*c))
 
 definition
 \forall G (GroupAxiom2(G) \iff G:Set \wedge 1 \in G)
@@ -17,7 +20,7 @@ definition
 \forall X (GroupAxiom3(G) \iff G:Set \wedge (\forall g \in G (g^(-1) \in G)))
 
 definition
-\forall G (G:Group \iff G:Set \wedge GroupAxiom1(G) \wedge GroupAxiom2(G) \wedge GroupAxiom3(G))
+\forall G (G:Group \iff G:Set \wedge GroupAxiom2(G) \wedge GroupAxiom3(G))
 
 definition
 \forall G \forall H (H \leq G \iff G:Group \wedge H \subseteq G \wedge H:Group)

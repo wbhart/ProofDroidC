@@ -132,6 +132,11 @@ public:
         return (type == APPLICATION);
     }
     
+    bool is_equality() const {
+        return (type == APPLICATION && children[0]->type == BINARY_PRED &&
+                children[0]->symbol == SYMBOL_EQUALS);
+    }
+    
     bool is_special_predicate() const {
         return (is_application() && children[0]->type == VARIABLE &&
                  children[0]->vdata->var_kind == PREDICATE &&
@@ -365,7 +370,7 @@ bool equal(const node* a, const node* b);
 
 void node_get_constants(std::vector<std::string>& constants, const node* formula);
 
-void left_to_right(bool& ltor, bool& rtol, const node* implication);
+void left_to_right(bool& ltor, bool& rtol, bool& ltor_safe, bool& rtol_safe, const node* implication);
 
 node* unwrap_special(node* formula);
 

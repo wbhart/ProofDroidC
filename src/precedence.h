@@ -57,7 +57,7 @@ const std::map<symbol_enum, PrecedenceInfo> precedenceTable = {
     { SYMBOL_POWERSET, {0, Associativity::NONE, Fixity::FUNCTIONAL, "\\mathcal{P}", "𝒫"} },
     { SYMBOL_EMPTYSET, {0, Associativity::NONE, Fixity::NONE, "\\emptyset", "∅"} },
     { SYMBOL_ONE, {0, Associativity::NONE, Fixity::NONE, "1", "1"} },
-    { SYMBOL_MONE, {0, Associativity::NONE, Fixity::NONE, "1", "-1"} }
+    { SYMBOL_MONE, {0, Associativity::NONE, Fixity::NONE, "-1", "-1"} }
 };
 
 // Function to retrieve precedence information based on the enum

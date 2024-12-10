@@ -22,7 +22,8 @@
 // Define the LIBRARY enum to distinguish between Theorem and Definition
 enum class LIBRARY {
     Theorem,
-    Definition
+    Definition,
+    Rewrite
 };
 
 // Structure representing an entry in the digest
@@ -40,6 +41,7 @@ struct digest_item {
 enum class Reason {
     ModusPonens,
     ModusTollens,
+    EqualitySubst,
     Target,
     Hypothesis,
     ConjunctiveIdempotence,
@@ -53,6 +55,7 @@ enum class Reason {
     ConditionalPremise,
     Theorem,
     Definition,
+    Rewrite,
     Special
 };
 
@@ -64,6 +67,8 @@ public:
     bool dead = false;                             // Whether target proved or hypothesis no longer useful
     bool ltor = false;                             // For implications, whether it can be applied left-to-right
     bool rtol = false;                             // or right-to-left, without introducing new metavars
+    bool ltor_safe = false;                        // For implications, whether they will not increase max term depth
+    bool rtol_safe = false;                        // when applied left-to-right/right-to-left
     std::vector<int> assumptions;                  // Indices of assumptions
     std::vector<int> restrictions;                 // Indices of restrictions
     std::pair<Reason, std::vector<int>> justification; // How this was proved and from which lines
@@ -105,6 +110,11 @@ public:
     bool is_definition() const {
         return justification.first == Reason::Definition;
     }
+
+    // Return whether the tabline stores a loaded rewrite
+    bool is_rewrite() const {
+        return justification.first == Reason::Rewrite;
+    }
 };
 
 class context_t {
@@ -116,6 +126,7 @@ public:
 
     // Statistics about how many of each move have been performed
     int reasoning = 0;
+    int rewrite = 0;
     int cleanup = 0;
     int split = 0;
     int backtrack = 0;

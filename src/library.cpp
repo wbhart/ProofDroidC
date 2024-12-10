@@ -86,6 +86,9 @@ bool library_load(context_t& context, const std::string& base_str) {
         else if (line_type == "theorem") {
             cleanup_moves(context, initial_upto);
         }
+        else if (line_type == "rewrite") {
+            cleanup_rewrite(context, initial_upto);
+        }
         else {
             std::cerr << "Warning: Unknown record type '" << line_type << "' in record " << record_number << "." << std::endl;
             // Optionally, handle unknown types differently
@@ -104,6 +107,9 @@ bool library_load(context_t& context, const std::string& base_str) {
                 }
                 else if (line_type == "definition") {
                     kind = LIBRARY::Definition;
+                }
+                else if (line_type == "rewrite") {
+                    kind = LIBRARY::Rewrite;
                 }
                 else {
                     // If unknown type, default or skip

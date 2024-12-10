@@ -40,7 +40,8 @@ enum class option_t {
     OPTION_CONDITIONAL_PREMISE,
     OPTION_MATERIAL_EQUIVALENCE,
     OPTION_LIBRARY_FILTER,
-    OPTION_LOAD_THEOREM
+    OPTION_LOAD_THEOREM,
+    OPTION_REWRITE
 };
 
 // Structure representing an option entry with key, short message, and detailed description
@@ -60,6 +61,7 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_SKOLEMIZE, "s", "skolemize", "Apply Skolemization and Quantifier Elimination"},
     {option_t::OPTION_MODUS_PONENS, "p", "modus ponens P → Q, P", "Apply Modus Ponens: p <implication_line> <line1> <line2> ..."},
     {option_t::OPTION_MODUS_TOLLENS, "t", "modus tollens P → Q, ¬Q", "Apply Modus Tollens: t <implication_line> <line1> <line2> ..."},
+    {option_t::OPTION_REWRITE, "r", "rewrite", "Apply Rewrite: r <formula_line> <rewrite_line>"},
     {option_t::OPTION_EXIT_MANUAL, "x", "exit manual mode", "Exit manual mode"},
     {option_t::OPTION_EXIT_SEMIAUTO, "x", "exit semi-automatic mode", "Exit semi-automatic mode"},
     {option_t::OPTION_CONJ_IDEM, "ci", "conjunctive idempotence P ∧ P", "Apply Conjunctive Idempotence"},
@@ -72,7 +74,7 @@ const std::vector<option_entry> all_options = {
     {option_t::OPTION_CONDITIONAL_PREMISE, "cp", "conditional premise (target) P → Q", "Apply Conditional Premise: cp <index>"},
     {option_t::OPTION_MATERIAL_EQUIVALENCE, "me", "material equivalence P ↔ Q", "Apply material equivalence"},
     {option_t::OPTION_LIBRARY_FILTER, "f", "library filter", "Filter library lines containing all given symbols: f <module_name> <symbol1> <symbol2> ..."},
-    {option_t::OPTION_LOAD_THEOREM, "l", "load theorems", "Load theorems from a module: l <module_name> <line_no1> <line_no2> ..."}
+    {option_t::OPTION_LOAD_THEOREM, "l", "load theorems", "Load theorems from a module: l <module_name> <line_no1> <line_no2> ..."},
 };
 
 // Function to convert a REPR-formatted string to its corresponding Unicode string.
@@ -334,7 +336,7 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
             for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) {
                 if (mod_line_idx == line_no) {
                     if (main_line_idx != -static_cast<size_t>(1)) {
-                        std::cerr << "Error: " << (entry_kind == LIBRARY::Theorem ? "Theorem" : "Definition")
+                        std::cerr << "Error: " << (entry_kind == LIBRARY::Theorem ? "Theorem" : (entry_kind == LIBRARY::Definition ? "Definition" : "Rewrite"))
                                   << " from module \"" << module_name << "\", line " << (line_no + 1)
                                   << " has already been loaded." << std::endl;
                         found = true; // Mark as found to prevent duplication
@@ -365,6 +367,9 @@ void handle_load_theorems(context_t& tab_ctx, const std::vector<std::string>& to
         }
         else if (kind == LIBRARY::Definition) {
             copied_tabline.justification = { Reason::Definition, {} };
+        }
+        else if (kind == LIBRARY::Rewrite) {
+            copied_tabline.justification = { Reason::Rewrite, {} };
         }
 
         // Append the copied tabline to the main tableau
@@ -507,7 +512,7 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             continue;
         }
 
-        // For 'p', 't', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', 'me', 'sd' handle accordingly
+        // Handle 'p', 't', 'r', 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', 'me', 'sd' handle accordingly
         if (selected_option == option_t::OPTION_MODUS_PONENS || 
             selected_option == option_t::OPTION_MODUS_TOLLENS ||
             selected_option == option_t::OPTION_CONJ_IDEM ||
@@ -520,8 +525,9 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
             selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
             selected_option == option_t::OPTION_SPLIT_DISJUNCTION ||
             selected_option == option_t::OPTION_LIBRARY_FILTER ||
-            selected_option == option_t::OPTION_LOAD_THEOREM) {
-            
+            selected_option == option_t::OPTION_LOAD_THEOREM ||
+            selected_option == option_t::OPTION_REWRITE) { // <-- Include OPTION_REWRITE
+
             // For 'ci', 'di', 'sc', 'sci', 'sdi', 'ni', 'cp', and 'me', handle without additional arguments
             if (selected_option == option_t::OPTION_CONJ_IDEM || 
                 selected_option == option_t::OPTION_DISJ_IDEM ||
@@ -530,8 +536,9 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                 selected_option == option_t::OPTION_SPLIT_DISJUNCTIVE_IMPLICATION ||
                 selected_option == option_t::OPTION_NEGATED_IMPLICATION ||
                 selected_option == option_t::OPTION_MATERIAL_EQUIVALENCE ||
-                selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
-                
+                selected_option == option_t::OPTION_CONDITIONAL_PREMISE ||
+                selected_option == option_t::OPTION_REWRITE) {
+                            
                 if (selected_option == option_t::OPTION_CONJ_IDEM) {
                     bool applied = move_ci(tab_ctx, 0); // Assuming start from 0
                     if (applied) {
@@ -574,7 +581,55 @@ void manual_mode(context_t& tab_ctx, const std::vector<option_t>& manual_active_
                         // Check if done
                         check_done(tab_ctx, false);
                     }
-                } else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
+                } else if (selected_option == option_t::OPTION_REWRITE) {
+                    // Expecting two additional arguments: <formula_line> <rewrite_line>
+                    if (tokens.size() != 3) { // 'r' + two arguments
+                        std::cerr << "Error: Insufficient arguments. Usage: r <formula_line> <rewrite_line>" << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Parse <formula_line>
+                    int formula_line;
+                    try {
+                        formula_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                    } catch (...) {
+                        std::cerr << "Error: Invalid formula_line number." << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Parse <rewrite_line>
+                    int rewrite_line;
+                    try {
+                        rewrite_line = std::stoi(tokens[2]) - 1; // Convert to 0-based index
+                    } catch (...) {
+                        std::cerr << "Error: Invalid rewrite_line number." << std::endl << std::endl;
+                        // Before next prompt, re-print the summary of options
+                        print_summary(manual_active_options);
+                        continue;
+                    }
+
+                    // Apply move_rewrite
+                    bool rewrite_applied = move_rewrite(tab_ctx, formula_line, rewrite_line);
+
+                    if (rewrite_applied) {
+                        // Check if the proof is complete
+                        check_done(tab_ctx, false);
+                    } else {
+                        std::cerr << "Error: Rewrite move could not be applied." << std::endl;
+                    }
+
+                    std::cout << std::endl;
+                    print_tableau(tab_ctx);
+                    std::cout << std::endl;
+
+                    // Before next prompt, re-print the summary of options
+                    print_summary(manual_active_options);
+                    continue;
+                }  else if (selected_option == option_t::OPTION_CONDITIONAL_PREMISE) {
                     // Handle the new 'cp' move for Conditional Premise
                     if (tokens.size() < 2) { // Expecting 'cp <index>'
                         std::cerr << "Error: Insufficient arguments. Usage: cp <index>" << std::endl << std::endl;
@@ -901,126 +956,184 @@ void semi_automatic_mode(context_t& tab_ctx, const std::vector<option_t>& semi_a
         }
 
         // Handle other commands like 'sd', 'p', 't', etc.
-        if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION) {
-            if (tokens.size() != 2) {
-                std::cerr << "Error: Need disjunction line. Usage: "
-                          << "sd <disjunction_line>"
-                          << std::endl << std::endl;
-                print_summary(semi_auto_active_options);
-                continue;
-            }
+        if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION ||
+            selected_option == option_t::OPTION_MODUS_PONENS || 
+            selected_option == option_t::OPTION_MODUS_TOLLENS ||
+            selected_option == option_t::OPTION_REWRITE) { // <-- Include OPTION_REWRITE
 
-            // Parse disjunction_line
-            size_t disjunction_line;
-            try {
-                disjunction_line = std::stoul(tokens[1]) - 1; // Convert to 0-based index
-            } catch (...) {
-                std::cerr << "Error: Invalid disjunction line number." << std::endl << std::endl;
-                // Before next prompt, re-print the summary of options
-                print_summary(semi_auto_active_options);
-                continue;
-            }
-
-            // Apply move_sd
-            bool move_applied = move_sd(tab_ctx, disjunction_line);
-
-            if (move_applied) {
-                // After applying the move, run cleanup_moves automatically
-                cleanup_moves(tab_ctx, tab_ctx.upto);
-
-                // Check if done
-                check_done(tab_ctx);
-            } else {
-                std::cerr << "Error: Split disjunction could not be applied." << std::endl;
-            }
-            
-            std::cout << std::endl;
-            print_tableau(tab_ctx);
-            std::cout << std::endl;
-
-#if DEBUG_HYDRAS
-            tab_ctx.print_hydras();
-#endif
-
-            // Before next prompt, re-print the summary of options
-            print_summary(semi_auto_active_options);
-            continue;
-        }
-        
-        // Handle 'p' and 't' commands
-        if (selected_option == option_t::OPTION_MODUS_PONENS || 
-            selected_option == option_t::OPTION_MODUS_TOLLENS) {
-            
-            if (tokens.size() < 3) { // Need at least implication_line and one other_line
-                std::cerr << "Error: Insufficient arguments. Usage: " 
-                          << command 
-                          << " <implication_line> <line1> <line2> ..." 
-                          << std::endl << std::endl;
-                // Before next prompt, re-print the summary of options
-                print_summary(semi_auto_active_options);
-                continue;
-            }
-
-            // Parse implication_line
-            int implication_line;
-            try {
-                implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
-            } catch (...) {
-                std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
-                // Before next prompt, re-print the summary of options
-                print_summary(semi_auto_active_options);
-                continue;
-            }
-
-            // Parse other_lines
-            std::vector<int> other_lines;
-            bool parse_error = false;
-            for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
-                try {
-                    int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
-                    other_lines.push_back(line_num);
-                } catch (...) {
-                    std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
-                    parse_error = true;
-                    break;
+            // Handle 'sd' command
+            if (selected_option == option_t::OPTION_SPLIT_DISJUNCTION) {
+                if (tokens.size() != 2) {
+                    std::cerr << "Error: Need disjunction line. Usage: "
+                              << "sd <disjunction_line>"
+                              << std::endl << std::endl;
+                    print_summary(semi_auto_active_options);
+                    continue;
                 }
-            }
-            if (parse_error) {
+
+                // Parse disjunction_line
+                size_t disjunction_line;
+                try {
+                    disjunction_line = std::stoul(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid disjunction line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
+
+                // Apply move_sd
+                bool move_applied = move_sd(tab_ctx, disjunction_line);
+
+                if (move_applied) {
+                    // After applying the move, run cleanup_moves automatically
+                    cleanup_moves(tab_ctx, tab_ctx.upto);
+
+                    // Check if done
+                    check_done(tab_ctx);
+                } else {
+                    std::cerr << "Error: Split disjunction could not be applied." << std::endl;
+                }
+                
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+#if DEBUG_HYDRAS
+                tab_ctx.print_hydras();
+#endif
+
                 // Before next prompt, re-print the summary of options
                 print_summary(semi_auto_active_options);
                 continue;
             }
 
-            // Determine if applying modus ponens or modus tollens
-            bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
+            // Handle 'p' and 't' commands (Modus Ponens and Modus Tollens)
+            if (selected_option == option_t::OPTION_MODUS_PONENS || 
+                selected_option == option_t::OPTION_MODUS_TOLLENS) {
+                
+                if (tokens.size() < 3) { // Need at least implication_line and one other_line
+                    std::cerr << "Error: Insufficient arguments. Usage: " 
+                              << command 
+                              << " <implication_line> <line1> <line2> ..." 
+                              << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
 
-            // Apply move_mpt
-            bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, special_lines, ponens);
+                // Parse implication_line
+                int implication_line;
+                try {
+                    implication_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid implication line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
 
-            if (move_applied) {
-                // After applying the move, run cleanup_moves automatically
-                cleanup_moves(tab_ctx, tab_ctx.upto);
+                // Parse other_lines
+                std::vector<int> other_lines;
+                bool parse_error = false;
+                for (size_t j = 2; j < tokens.size(); ++j) { // Changed loop variable to 'j' to avoid shadowing 'i'
+                    try {
+                        int line_num = std::stoi(tokens[j]) - 1; // Convert to 0-based index
+                        other_lines.push_back(line_num);
+                    } catch (...) {
+                        std::cerr << "Error: Invalid line number '" << tokens[j] << "'." << std::endl << std::endl;
+                        parse_error = true;
+                        break;
+                    }
+                }
+                if (parse_error) {
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
 
-                // Check if done
-                check_done(tab_ctx);
-            } else {
-                std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
-            }
-            
-            std::cout << std::endl;
-            print_tableau(tab_ctx);
-            std::cout << std::endl;
+                // Determine if applying modus ponens or modus tollens
+                bool ponens = (selected_option == option_t::OPTION_MODUS_PONENS);
+
+                // Apply move_mpt
+                bool move_applied = move_mpt(tab_ctx, implication_line, other_lines, special_lines, ponens);
+
+                if (move_applied) {
+                    // After applying the move, run cleanup_moves automatically
+                    cleanup_moves(tab_ctx, tab_ctx.upto);
+
+                    // Check if done
+                    check_done(tab_ctx);
+                } else {
+                    std::cerr << "Error: Modus " << (ponens ? "Ponens" : "Tollens") << " could not be applied." << std::endl;
+                }
+                
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
 
 #if DEBUG_HYDRAS
-            tab_ctx.print_hydras();
+                tab_ctx.print_hydras();
 #endif
 
-            // Before next prompt, re-print the summary of options
-            print_summary(semi_auto_active_options);
-            continue;
+                // Before next prompt, re-print the summary of options
+                print_summary(semi_auto_active_options);
+                continue;
+            }
+
+            // Handle the new 'rewrite' option
+            if (selected_option == option_t::OPTION_REWRITE) {
+                // Expecting two additional arguments: <formula_line> <rewrite_line>
+                if (tokens.size() != 3) { // 'r' + two arguments
+                    std::cerr << "Error: Insufficient arguments. Usage: r <formula_line> <rewrite_line>" << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
+
+                // Parse <formula_line>
+                int formula_line;
+                try {
+                    formula_line = std::stoi(tokens[1]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid formula_line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
+
+                // Parse <rewrite_line>
+                int rewrite_line;
+                try {
+                    rewrite_line = std::stoi(tokens[2]) - 1; // Convert to 0-based index
+                } catch (...) {
+                    std::cerr << "Error: Invalid rewrite_line number." << std::endl << std::endl;
+                    // Before next prompt, re-print the summary of options
+                    print_summary(semi_auto_active_options);
+                    continue;
+                }
+
+                // Apply move_rewrite
+                bool rewrite_applied = move_rewrite(tab_ctx, formula_line, rewrite_line, false); // Assuming 'silent' is false
+
+                if (rewrite_applied) {
+                    // Check if the proof is complete
+                    check_done(tab_ctx, false);
+                } else {
+                    std::cerr << "Error: Rewrite move could not be applied." << std::endl;
+                }
+
+                std::cout << std::endl;
+                print_tableau(tab_ctx);
+                std::cout << std::endl;
+
+                // Before next prompt, re-print the summary of options
+                print_summary(semi_auto_active_options);
+                continue;
+            }
         }
 
-        // For any other cases, re-print the summary of options
+        // If the command doesn't match any handled options, re-print the summary
         print_summary(semi_auto_active_options);
     }
 }
@@ -1179,6 +1292,7 @@ int main(int argc, char** argv) {
                             option_t::OPTION_SKOLEMIZE,
                             option_t::OPTION_MODUS_PONENS,
                             option_t::OPTION_MODUS_TOLLENS,
+                            option_t::OPTION_REWRITE,
                             option_t::OPTION_CONJ_IDEM,
                             option_t::OPTION_DISJ_IDEM,
                             option_t::OPTION_SPLIT_CONJUNCTION,
@@ -1222,6 +1336,7 @@ int main(int argc, char** argv) {
                         std::vector<option_t> semi_auto_active_options = {
                             option_t::OPTION_MODUS_PONENS,
                             option_t::OPTION_MODUS_TOLLENS,
+                            option_t::OPTION_REWRITE,
                             option_t::OPTION_SPLIT_DISJUNCTION,
                             option_t::OPTION_LIBRARY_FILTER,
                             option_t::OPTION_LOAD_THEOREM,
