@@ -81,14 +81,17 @@ void load_theorem(context_t& ctx, tabline_t& mod_tabline, size_t& main_line_idx,
     if (main_line_idx == -static_cast<size_t>(1)) {
         // Copy the theorem's tabline from the module to the main tableau
         tabline_t copied_tabline = mod_tabline;
+        node* unwrapped_formula = unwrap_special(mod_tabline.formula);
 
         // Set the justification based on the kind
-        if (mod_tabline.formula->is_implication()) {
+        if (unwrapped_formula->is_implication()) {
             if (kind == LIBRARY::Theorem) {
                 copied_tabline.justification = { Reason::Theorem, {} };
             } else {
                 copied_tabline.justification = { Reason::Definition, {} };
             }
+        } else if (unwrapped_formula->is_equality()) {
+            copied_tabline.justification = { Reason::Rewrite, {} };
         } else {
             copied_tabline.justification = { Reason::Special, {} };
         }
@@ -165,8 +168,8 @@ bool automate(context_t& ctx) {
 
         move_made = false; // Flag to check if any move was made in this iteration
 
-        // Level 1 of the Waterfall
-        // ------------------------
+        // Level 1 of the Waterfall (Load non-implication theorems)
+        // --------------------------------------------------------
 
         for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
             for (auto& digest_entry : mod_ctx.digest) { // for each digest record
@@ -209,8 +212,81 @@ bool automate(context_t& ctx) {
             continue; // A move was made; restart the waterfall from the beginning
         }
 
+        // Level 2 of the Waterfall (Equational rewriting of hypothesis)
+        // -------------------------------------------------------------
 
-        // Level 2 of the Waterfall (non-library backwards reasoning)
+        // Iterate over each unit in the units list
+        for (const int unit_idx : units) {
+            for (auto& [name, mod_ctx] : ctx.modules) { // for each loaded module
+                for (auto& digest_entry : mod_ctx.digest) { // for each digest record
+                    for (auto& [mod_line_idx, main_line_idx, entry_kind] : digest_entry) { // for each theorem in record
+                        tabline_t& unit_tabline = ctx.tableau[unit_idx];
+                        const std::vector<std::string>& unit_consts = unit_tabline.constants1;
+                        tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
+
+                        if (entry_kind == LIBRARY::Rewrite) {
+                            // Check if this rewrite has been applied already
+                            std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
+                            if (std::find(unit_tabline.lib_applied.begin(), unit_tabline.lib_applied.end(), mod_pair) != unit_tabline.lib_applied.end()) {
+                                continue; // Skip if already applied
+                            }
+
+                            const std::vector<std::string>& mod_consts1 = mod_tabline.constants1;
+                            bool all_contained_left = consts_subset(unit_consts, mod_consts1);
+                            
+                            // Check if all left constants are contained and conditions for Modus Ponens are met
+                            if (all_contained_left) {                                
+                                // Load the theorem into the main tableau
+                                load_theorem(ctx, mod_tabline, main_line_idx, LIBRARY::Rewrite);
+
+                                // Attempt to rewrite
+                                bool move_success = move_rewrite(ctx, unit_idx, main_line_idx, true); // silent=true
+
+                                if (move_success) {
+#if DEBUG_MOVES
+                                    std::cout << "Level 8: rewrite " << unit_idx + 1 << " " << main_line_idx + 1 << std::endl << std::endl;
+#endif
+                                    move_made = true;
+
+                                    // After applying the move, run cleanup_moves automatically
+                                    cleanup_moves(ctx, ctx.upto);
+
+                                    // Check if done
+                                    if (check_done(ctx)) {
+                                        return true;
+                                    }
+                                }
+                            }
+
+                            // Mark theorem as applied
+                            unit_tabline.lib_applied.push_back(mod_pair);
+                        }
+
+                        if (move_made) {
+                            break; // A move was made; restart the waterfall from the beginning
+                        }
+                    }
+
+                    if (move_made) {
+                        break; // A move was made; restart the waterfall from the beginning
+                    }
+                }
+
+                if (move_made) {
+                    break; // A move was made; restart the waterfall from the beginning
+                }
+            }
+
+            if (move_made) { 
+                break; // A move was made; restart the waterfall from the beginning
+            }
+        }
+
+        if (move_made) { 
+            continue; // Move made at this level, restart waterfall at level 1
+        }
+
+        // Level 3 of the Waterfall (non-library backwards reasoning)
         // ----------------------------------------------------------
 
         // Access the current leaf hydra (last hydra in the current_hydra path)
@@ -325,7 +401,7 @@ bool automate(context_t& ctx) {
             continue; // Move made at this level, restart waterfall at level 1
         }
         
-        // Level 3 of the Waterfall (non-library forwards reasoning)
+        // Level 4 of the Waterfall (non-library forwards reasoning)
         // ----------------------------------------------------------
         
         // Iterate over each unit in the units list
@@ -412,7 +488,7 @@ bool automate(context_t& ctx) {
             continue; // Move made at this level, restart waterfall at level 1
         }
 
-        // Level 4 of the Waterfall (tableau/disjunction splitting)
+        // Level 5 of the Waterfall (tableau/disjunction splitting)
         // ----------------------------------------------------------
 
         for (const size_t impl_idx : impls) {

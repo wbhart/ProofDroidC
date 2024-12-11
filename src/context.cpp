@@ -1047,6 +1047,9 @@ void context_t::get_constants() {
                 if (formula->is_implication()) {
                     node_get_constants(tabline.constants1, formula->children[0]);
                     node_get_constants(tabline.constants2, formula->children[1]);
+                } else if (formula->is_equality()) {
+                    node_get_constants(tabline.constants1, formula->children[1]);
+                    node_get_constants(tabline.constants2, formula->children[2]);
                 } else {
                     node_get_constants(tabline.constants1, formula);
                 }
@@ -1148,7 +1151,7 @@ void context_t::get_tableau_constants(
             // Accumulate constants from active target lines
             node_get_constants(target_constants, formula);
         }
-        else if (!tabline.is_theorem() && !tabline.is_definition()) {
+        else if (!tabline.is_theorem() && !tabline.is_definition() && !tabline.is_rewrite()) {
             // Accumulate constants from active lines that are neither theorems nor definitions
             node_get_constants(all_constants, formula);
             

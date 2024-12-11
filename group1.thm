@@ -2,7 +2,6 @@ G:Group
 H:Set
 H \subseteq G
 \exists x (x \in H)
-\forall X:Set (\forall g ((g^(-1)*g \in X) \implies 1 \in X))
 \forall g \in H \forall h \in H (g*h \in H)
 GroupAxiom3(H)
 * H \leq G

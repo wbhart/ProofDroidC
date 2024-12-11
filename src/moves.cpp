@@ -614,29 +614,37 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 }
 
 // Recursive function to traverse the formula tree, find a subformula that unifies with P,
-// apply the substitution, and replace it with Q_prime.
+// apply the substitution, replace it with Q_prime, and merge the substitution into combined_subst.
 // Returns true if a replacement was made; otherwise, false.
-bool find_and_replace(node*& current, node* P, node* Q) {
-    // Attempt to unify the current node with P.
-    Substitution subst;
-    if (unify(P, current, subst)) {
-        // Apply substitution to Q to get Q_prime.
-        node* Q_prime = substitute(Q, subst);
-        
-        // Replace the current node with Q_prime.
-        delete current;       // Free the memory of the current node.
-        current = Q_prime;    // Assign Q_prime to the current node pointer.
-        return true;          // Indicate that a replacement has been made.
+bool rewrite(Substitution& combined_subst, node*& current, node* P, node* Q) {
+    // Local substitution for the current unification attempt
+    Substitution local_subst;
+
+    // Attempt to unify P with the current node
+    if (unify(P, current, local_subst)) {
+        // Apply substitution to Q to get Q_prime
+        node* Q_prime = substitute(Q, local_subst);
+
+        // Replace the current node with Q_prime
+        delete current;       // Free the memory of the current node
+        current = Q_prime;    // Assign Q_prime to the current node pointer
+
+        // Merge local_subst into combined_subst
+        for (const auto& [key, value] : local_subst) {
+            combined_subst[key] = value;
+        }
+
+        return true;          // Indicate that a replacement has been made
     }
 
-    // Recursively traverse the children.
+    // Recursively traverse the children
     for (size_t i = 0; i < current->children.size(); ++i) {
-        if (find_and_replace(current->children[i], P, Q)) {
-            return true; // Replacement done; no need to continue.
+        if (rewrite(combined_subst, current->children[i], P, Q)) {
+            return true; // Replacement done; no need to continue
         }
     }
 
-    return false; // No replacement made in this subtree.
+    return false; // No replacement made in this subtree
 }
 
 // Function to apply a rewrite move in the tableau.
@@ -656,9 +664,9 @@ bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silen
     tabline_t& formula_tabline = ctx.tableau[formula_line];
     tabline_t& rewrite_tabline = ctx.tableau[rewrite_line];
 
-    // Step 2: Ensure the formula line is active and not a theorem or definition.
+    // Step 2: Ensure the formula line is active.
     if (!formula_tabline.active) {
-        std::cerr << "Error: formula_line " << (formula_line + 1) << " is not active or is a theorem/definition.\n";
+        std::cerr << "Error: formula_line " << (formula_line + 1) << " is not active.\n";
         return false;
     }
 
@@ -670,7 +678,7 @@ bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silen
 
     // Step 4: Ensure the rewrite formula is an equality P = Q.
     node* rewrite_formula = rewrite_tabline.formula;
-    if (!rewrite_formula->is_equality()) {
+    if (!rewrite_formula->is_equality()) { // Assuming is_equality() checks for P = Q
         std::cerr << "Error: rewrite_line " << (rewrite_line + 1) << " does not contain an equality formula P = Q.\n";
         return false;
     }
@@ -695,6 +703,10 @@ bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silen
 
     // Step 6: Create a deep copy of the formula to be rewritten.
     node* formula_copy = deep_copy(formula_tabline.formula);
+    if (!formula_copy) {
+        std::cerr << "Error: Failed to copy the formula from formula_line " << (formula_line + 1) << ".\n";
+        return false;
+    }
 
     // Step 7: Determine shared variables between formula_copy and rewrite_formula.
     std::set<std::string> vars_formula, vars_rewrite;
@@ -714,13 +726,16 @@ bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silen
 
     // Steps 9-11: Optimized Traversal, Unification, Substitution, and Replacement
 
+    // Initialize a combined substitution
+    Substitution combined_subst;
+
     // Traverse formula_copy, find a subformula that unifies with P, apply substitution, and replace it with Q'.
-    bool replaced = find_and_replace(formula_copy, P, Q);
+    bool replaced = rewrite(combined_subst, formula_copy, P, Q);
 
     if (!replaced) {
         if (!silent) {
             std::cerr << "Error: No subformula in formula_line " << (formula_line + 1)
-                    << " unifies with the left side of the rewrite rule.\n";
+                      << " unifies with the left side of the rewrite rule.\n";
         }
         delete formula_copy;
         return false;
