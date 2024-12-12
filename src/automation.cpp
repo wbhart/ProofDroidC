@@ -2,7 +2,7 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 0 // whether to print tableau
+#define DEBUG_TABLEAU 1 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
 #define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph
@@ -224,7 +224,7 @@ bool automate(context_t& ctx) {
                         const std::vector<std::string>& unit_consts = unit_tabline.constants1;
                         tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
 
-                        if (entry_kind == LIBRARY::Rewrite) {
+                        if (unit_tabline.justification.first != Reason::Special && entry_kind == LIBRARY::Rewrite) {
                             // Check if this rewrite has been applied already
                             std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};
                             if (std::find(unit_tabline.lib_applied.begin(), unit_tabline.lib_applied.end(), mod_pair) != unit_tabline.lib_applied.end()) {
@@ -833,7 +833,7 @@ bool automate(context_t& ctx) {
                         const std::vector<std::string>& unit_consts = unit_tabline.constants1;
                         tabline_t& mod_tabline = mod_ctx.tableau[mod_line_idx];
 
-                        if (entry_kind == LIBRARY::Theorem) {
+                        if (unit_tabline.justification.first != Reason::Special && entry_kind == LIBRARY::Theorem) {
                             if (mod_tabline.formula->is_implication()) { // library result is implication
                                 // Check if this theorem has been applied already
                                 std::pair<std::string, size_t> mod_pair = {name, mod_line_idx};

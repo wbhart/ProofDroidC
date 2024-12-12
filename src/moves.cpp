@@ -7,7 +7,7 @@
 #include <stack>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 0
+#define DEBUG_CLEANUP 1
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -183,7 +183,7 @@ node* skolem_form(context_t& ctx, node* formula) {
         node* skolemized_formula = substitute(formula, subst);
         cleanup_subst(subst);
         delete formula;
-
+        
         return skolemized_formula;
     } else {
         return formula;
@@ -198,10 +198,12 @@ bool skolemize_all(context_t& tab_ctx, size_t start) {
 
        // Only process active formulas
         if (tabline.active && !tabline.is_theorem() && !tabline.is_definition()) {
+            bool quantified = unwrap_special(tabline.formula)->type == QUANTIFIER;
+            
             // Apply skolem_form to the formula
             node* skolemized = skolem_form(tab_ctx, tabline.formula);
-
-            if (skolemized != tabline.formula) { // if anything changed
+            
+            if (quantified) { // if anything changed
                 moved = true;
 
                 // If the formula is a target, re-negate it

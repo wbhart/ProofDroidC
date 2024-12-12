@@ -1,5 +1,11 @@
 Critical:
 
+* Rewrite should check structure constraints
+
+* Set theorems currently fail
+
+* Waterfall level for rewriting targets
+
 * Allow * ^ to be filtered for when filtering module theorems in proof_droid.c
 
 * Binary (symbol) predicates parse and are printed/used as APPLICATIONS
