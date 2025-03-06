@@ -2,8 +2,6 @@ Critical:
 
 * Rewrite should check structure constraints
 
-* Set theorems currently fail
-
 * Waterfall level for rewriting targets
 
 * Allow * ^ to be filtered for when filtering module theorems in proof_droid.c
@@ -17,10 +15,7 @@ Critical:
 
 * Does trial_modus_ponens in automation need to check special predicates?
 
-* Do we need a level in the waterfall for special units?
-
-* Split up impl_tabline.ltor into var check and term size check fields and make
-  extra forwards reasoning waterfall level still do var check
+* Do we need a level in the waterfall for specials?
 
 * Pass special_lines in proof_droid and automate
 
