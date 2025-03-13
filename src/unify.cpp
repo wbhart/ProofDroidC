@@ -86,6 +86,22 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst,
         return subst;
     }
     
+    if ((node1->type == UNARY_PRED && node2->type == UNARY_PRED) ||
+        (node1->type == BINARY_PRED && node2->type == BINARY_PRED)) {
+        if (node1->symbol != node2->symbol) {
+            return std::nullopt; // Predicates must have the same symbol
+        }
+
+        // Unify the arguments of the applications
+        for (size_t i = 0; i < node1->children.size(); ++i) {
+            auto result = unify(node1->children[i], node2->children[i], subst, smgu);
+            if (!result.has_value()) {
+                return std::nullopt;
+            }
+        }
+        return subst;
+    }
+    
     // If both nodes are applications, check if they can be unified
     if (node1->type == APPLICATION && node2->type == APPLICATION) {
         // First children are the symbols, which should be the same, for now
@@ -102,8 +118,6 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst,
             break;
         case BINARY_OP:
         case UNARY_OP:
-        case BINARY_PRED:
-        case UNARY_PRED:
             if (node1->children[0]->symbol != node2->children[0]->symbol) {
                 return std::nullopt; // Functions must have the same name
             }

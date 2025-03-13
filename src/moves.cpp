@@ -599,7 +599,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     // Step 14: Append the new tabline to the tableau
     ctx.tableau.push_back(new_tabline);
-
+        
     if (!forward) {
         ctx.hydra_replace_list(other_lines, ctx.tableau.size() - 1);
         ctx.restrictions_replace_list(other_lines, ctx.tableau.size() - 1);
@@ -611,7 +611,7 @@ bool move_mpt(context_t& ctx, int implication_line, const std::vector<int>& othe
 
     // Clean up
     cleanup_subst(subst);
-
+    
     return true;
 }
 
@@ -2066,7 +2066,7 @@ bool cleanup_moves(context_t& tab_ctx, size_t start_line) {
 
     tab_ctx.kill_duplicates(start);
     tab_ctx.get_ltor();
-
+    
     while (start < current_size) {
         // Apply moves in the specified order
 

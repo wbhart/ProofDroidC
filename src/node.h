@@ -16,10 +16,10 @@ enum OutputFormat {
 };
 
 enum VariableKind {
-    INDIVIDUAL,
-    FUNCTION,
-    PREDICATE,
-    METAVAR, // accepts formulas
+    INDIVIDUAL, // ordinary variable, accepts terms
+    FUNCTION, // user defined function symbol
+    PREDICATE, // user defined predicate symbol
+    METAVAR, // metavariable, accepts formulas
     PARAMETER // constant variable
 };
 
@@ -133,8 +133,7 @@ public:
     }
     
     bool is_equality() const {
-        return (type == APPLICATION && children[0]->type == BINARY_PRED &&
-                children[0]->symbol == SYMBOL_EQUALS);
+        return (type == BINARY_PRED && symbol == SYMBOL_EQUALS);
     }
     
     bool is_special_predicate() const {
@@ -153,11 +152,10 @@ public:
     
     bool is_element_quantifier() const {
         return (type == QUANTIFIER && children[1]->is_implication() &&
-                children[1]->children[0]->type == APPLICATION &&
-                children[1]->children[0]->children[0]->type == BINARY_PRED &&
-                children[1]->children[0]->children[0]->symbol == SYMBOL_ELEM &&
-                children[1]->children[0]->children[1]->type == VARIABLE &&
-                children[0]->name() == children[1]->children[0]->children[1]->name());
+                children[1]->children[0]->type == BINARY_PRED &&
+                children[1]->children[0]->symbol == SYMBOL_ELEM &&
+                children[1]->children[0]->children[0]->type == VARIABLE &&
+                children[0]->name() == children[1]->children[0]->children[0]->name());
     }
     
     bool is_term() const {
@@ -175,6 +173,7 @@ public:
         throw std::logic_error("Node is not of type VARIABLE");
     }
 
+    // Set the name of a variable to the given string
     void set_name(std::string name) const {
         if (type != VARIABLE) {
            throw std::logic_error("Node is not of type VARIABLE");
@@ -214,8 +213,6 @@ public:
             case CONSTANT:
             case UNARY_OP:
             case BINARY_OP:
-            case UNARY_PRED:
-            case BINARY_PRED:
                 oss << (format == REPR ? precInfo.repr : precInfo.unicode);
                 break;
             case LOGICAL_UNARY:
@@ -252,8 +249,7 @@ public:
                 }
                 break;
             case APPLICATION:
-                if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP ||
-                    children[0]->type == BINARY_PRED || children[0]->type == UNARY_PRED) {
+                if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP) {
                     PrecedenceInfo childPrecInfo = getPrecedenceInfo(children[0]->symbol);
 
                     // Handle binary operators
@@ -278,6 +274,20 @@ public:
                         oss << children[i]->to_string(format);  // Print the arguments
                     }
                     oss << ")";
+                }
+                break;
+            case BINARY_PRED:
+                if (precInfo.fixity == Fixity::INFIX) {
+                    oss << parenthesize(children[0], format, "left") << " ";
+                    oss << (format == REPR ? precInfo.repr : precInfo.unicode) << " "; // Print the operator
+                    oss << parenthesize(children[1], format, "right");
+                }
+                break;
+            case UNARY_PRED:
+                if (precInfo.fixity == Fixity::FUNCTIONAL) {
+                        oss << (format == REPR ? precInfo.repr : precInfo.unicode) << "(";
+                        oss << children[0]->to_string(format);  // Print the argument
+                        oss << ")";
                 }
                 break;
             case TUPLE:

@@ -66,15 +66,12 @@ Quantifier
 
   }
   / q:QuantifierOp _ v:Variable _ e:ELEM _ s:SimpleTerm _ f:SimpleFormula {
-      // Create the element predicate
-      std::vector<node*> children;
-      children.push_back(e);  // Push the elem operator node
-      children.push_back(v);  // Push the variable
-      children.push_back(s);  // Push the second term
-      node* elem_pred = new node(APPLICATION, children);
+      // Create the element predicate directly
+      e->children.push_back(v);  // Push the variable directly
+      e->children.push_back(s);  // Push the second term directly
       // Create the implication
       node* o = new node(LOGICAL_BINARY, SYMBOL_IMPLIES);
-      o->children.push_back(elem_pred); // Push the element predicate
+      o->children.push_back(e); // Push the element predicate
       o->children.push_back(f); // Push the formula
       // bind variable here
       q->children.push_back(deep_copy(v)); // Push the variable
@@ -137,31 +134,24 @@ SimpleFormula
 
 EqualPredicate
   <- t1:Term _ e:EQUALS _ t2:Term {
-        std::vector<node*> children;
-        children.push_back(e);  // Push the EQUALS operator node
-        children.push_back(t1);  // Push the first term
-        children.push_back(t2);  // Push the second term
-        $$ = new node(APPLICATION, children);
+        e->children.push_back(t1);  // Push the first term directly to the EQUALS node
+        e->children.push_back(t2);  // Push the second term directly to the EQUALS node
+        $$ = e;  // Return the EQUALS node directly
     }
 
 NeqPredicate
   <- t1:Term _ NEQ _ t2:Term {
         node *e = new node(BINARY_PRED, SYMBOL_EQUALS);
-        std::vector<node*> children;
-        children.push_back(e);  // Push the EQUALS operator node
-        children.push_back(t1);  // Push the first term
-        children.push_back(t2);  // Push the second term
-        e = new node(APPLICATION, children);
+        e->children.push_back(t1);  // Push the first term directly
+        e->children.push_back(t2);  // Push the second term directly
         $$ = negate_node(e); // Negate node
     }
 
 SubsetPredicate
   <- t1:Term _ o:SUBSETOP _ t2:Term {
-        std::vector<node*> children;
-        children.push_back(o);  // Push the subset operator node
-        children.push_back(t1);  // Push the first term
-        children.push_back(t2);  // Push the second term
-        $$ = new node(APPLICATION, children);
+        o->children.push_back(t1);  // Push the first term directly
+        o->children.push_back(t2);  // Push the second term directly
+        $$ = o;  // Return the subset operator node directly
   }
 
 SUBSETOP
@@ -170,20 +160,16 @@ SUBSETOP
 
 ElemPredicate
   <- t1:Term _ o:ELEM _ t2:Term {
-        std::vector<node*> children;
-        children.push_back(o);  // Push the elem operator node
-        children.push_back(t1);  // Push the first term
-        children.push_back(t2);  // Push the second term
-        $$ = new node(APPLICATION, children);
+        o->children.push_back(t1);  // Push the first term directly
+        o->children.push_back(t2);  // Push the second term directly
+        $$ = o;  // Return the elem operator node directly
   }
 
 LeqPredicate
   <- t1:Term _ o:LEQ _ t2:Term {
-        std::vector<node*> children;
-        children.push_back(o);  // Push the elem operator node
-        children.push_back(t1);  // Push the first term
-        children.push_back(t2);  // Push the second term
-        $$ = new node(APPLICATION, children);
+        o->children.push_back(t1);  // Push the first term directly
+        o->children.push_back(t2);  // Push the second term directly
+        $$ = o;  // Return the leq operator node directly
   }
 
 Predicate

@@ -537,11 +537,19 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
 
         case UNARY_OP:
         case BINARY_OP:
-        case UNARY_PRED:
-        case BINARY_PRED:
             return (a->symbol == b->symbol);
             break;
 
+        case UNARY_PRED:
+        case BINARY_PRED:
+            if (a->symbol != b->symbol)
+                return false;
+            for (size_t i = 0; i < a->children.size(); ++i) {
+                if (!equal_helper(a->children[i], b->children[i], var_map))
+                    return false;
+            }
+            break;
+        
         case APPLICATION:
             // Compare the operator node (first child)
             if (!equal_helper(a->children[0], b->children[0], var_map))
