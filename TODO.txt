@@ -6,7 +6,7 @@ Critical:
 
 * Allow * ^ to be filtered for when filtering module theorems in proof_droid.c
 
-* Binary (symbol) predicates parse and are printed/used as APPLICATIONS
+* Binary (symbol) ops parse and are printed/used as APPLICATIONS
 
 * Add case to skolemization for when moves introduce new special quantifiers
   inside special implications from previous skolemization/moves
