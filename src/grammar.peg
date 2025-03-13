@@ -196,20 +196,16 @@ Negation
 Term
   <- t1:ExpOp { $$ = t1; }
      ( _ o:Op1 _ t2:ExpOp {
-         std::vector<node*> children;
-         children.push_back(o); // Push the op
-         children.push_back($$); // Push the left argument
-         children.push_back(t2); // Push the right argument
-         $$ = new node(APPLICATION, children);
+         o->children.push_back($$); // Push the left argument
+         o->children.push_back(t2); // Push the right argument
+         $$ = o;
        })*
 
 ExpOp
   <- t1:SimpleTerm _ o:EXP _ t2:SimpleTerm {
-        std::vector<node*> children;
-        children.push_back(o);  // Use the EXP node directly
-        children.push_back(t1);  // Add the left term (argument)
-        children.push_back(t2);  // Add the right term (argument)
-        $$ = new node(APPLICATION, children);
+        o->children.push_back(t1);  // Add the left term (argument)
+        o->children.push_back(t2);  // Add the right term (argument)
+        $$ = o; // Return the exp node directly
     }
    / t:SimpleTerm { $$ = t; }
 
@@ -267,10 +263,8 @@ Application
 
 UnaryOp
   <- p:POWERSET _ OPEN _ t:Term _ CLOSE {
-        std::vector<node*> children;
-        children.push_back(p);  // Use the POWERSET node directly
-        children.push_back(t);  // Add the term (argument)
-        $$ = new node(APPLICATION, children);
+        p->children.push_back(t);  // Add the term (argument)
+        $$ = p;
     }
     
 TermList

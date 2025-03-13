@@ -51,7 +51,8 @@ std::optional<Substitution> unify_variable(node* var, node* term, Substitution& 
 
     // Add the substitution of the variable to the term only if the term is a valid type (variable or constant)
     if (term->type == VARIABLE || term->type == CONSTANT ||
-        term->type == APPLICATION || term->type == TUPLE) {
+        term->type == APPLICATION || term->type == TUPLE ||
+        term->type == BINARY_OP || term->type == UNARY_OP) {
             subst[var_name] = term;
     } else {
         return std::nullopt;
@@ -87,7 +88,9 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst,
     }
     
     if ((node1->type == UNARY_PRED && node2->type == UNARY_PRED) ||
-        (node1->type == BINARY_PRED && node2->type == BINARY_PRED)) {
+        (node1->type == UNARY_OP && node2->type == UNARY_OP) ||
+        (node1->type == BINARY_PRED && node2->type == BINARY_PRED) ||
+        (node1->type == BINARY_OP && node2->type == BINARY_OP)) {
         if (node1->symbol != node2->symbol) {
             return std::nullopt; // Predicates must have the same symbol
         }
@@ -114,12 +117,6 @@ std::optional<Substitution> unify(node* node1, node* node2, Substitution& subst,
             if (node1->children[0]->vdata->var_kind != node2->children[0]->vdata->var_kind ||
                 node1->children[0]->name() != node2->children[0]->name()) {
                 return std::nullopt; // Functions/predicates must have the same name
-            }
-            break;
-        case BINARY_OP:
-        case UNARY_OP:
-            if (node1->children[0]->symbol != node2->children[0]->symbol) {
-                return std::nullopt; // Functions must have the same name
             }
             break;
         default:

@@ -537,9 +537,6 @@ bool equal_helper(const node* a, const node* b, std::unordered_map<std::string, 
 
         case UNARY_OP:
         case BINARY_OP:
-            return (a->symbol == b->symbol);
-            break;
-
         case UNARY_PRED:
         case BINARY_PRED:
             if (a->symbol != b->symbol)

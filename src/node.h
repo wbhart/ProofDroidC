@@ -29,13 +29,11 @@ enum node_type {
     QUANTIFIER, // node(QUANTIFIER, [node(VARIABLE, "x"), formula])
     LOGICAL_UNARY, // node(LOGICAL_UNARY, SYMBOL_NOT, [formula])
     LOGICAL_BINARY, // node(LOGICAL_BINARY, SYMBOL_AND, [formula1, formula2])
-    UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET)
-    BINARY_OP, // node(BINARY_OP, SYMBOL_CAP)
+    UNARY_OP, // node(UNARY_OP, SYMBOL_POWERSET, [term])
+    BINARY_OP, // node(BINARY_OP, SYMBOL_CAP, [term1, term2])
     UNARY_PRED, // node(UNARY_PRED, ??)
     BINARY_PRED, // node(BINARY_PRED, SYMBOL_EQUALS)
     APPLICATION, // node(APPLICATION, [node(VARIABLE, "f"), term1, term2, ...])
-                    // node(APPLICATION, [node(UNARY_OP, SYMBOL_POWERSET), term])
-                    // node(APPLICATION, [node(BINARY_OP, SYMBOL_CAP), term1, term2])
     TUPLE // node(TUPLE, [term1, term2, ...])
 };
 
@@ -211,8 +209,6 @@ public:
                 }
                 break;
             case CONSTANT:
-            case UNARY_OP:
-            case BINARY_OP:
                 oss << (format == REPR ? precInfo.repr : precInfo.unicode);
                 break;
             case LOGICAL_UNARY:
@@ -249,22 +245,7 @@ public:
                 }
                 break;
             case APPLICATION:
-                if (children[0]->type == BINARY_OP || children[0]->type == UNARY_OP) {
-                    PrecedenceInfo childPrecInfo = getPrecedenceInfo(children[0]->symbol);
-
-                    // Handle binary operators
-                    if (childPrecInfo.fixity == Fixity::INFIX && children.size() == 3) {
-                        oss << parenthesize(children[1], format, "left") << " ";
-                        oss << (format == REPR ? childPrecInfo.repr : childPrecInfo.unicode) << " "; // Print the operator
-                        oss << parenthesize(children[2], format, "right");
-                    }
-                    // Handle unary operators
-                    else if (childPrecInfo.fixity == Fixity::FUNCTIONAL || children.size() == 2) {
-                        oss << (format == REPR ? childPrecInfo.repr : childPrecInfo.unicode) << "(";
-                        oss << children[1]->to_string(format);  // Print the argument
-                        oss << ")";
-                    }
-                } else if (children[0]->is_predicate() && children[0]->vdata->structure) {
+                if (children[0]->is_predicate() && children[0]->vdata->structure) {
                     oss << children[1]->to_string(format) << ":" << children[0]->to_string(format);
                 } else {
                     // If the operator is a variable or application
@@ -277,6 +258,7 @@ public:
                 }
                 break;
             case BINARY_PRED:
+            case BINARY_OP:
                 if (precInfo.fixity == Fixity::INFIX) {
                     oss << parenthesize(children[0], format, "left") << " ";
                     oss << (format == REPR ? precInfo.repr : precInfo.unicode) << " "; // Print the operator
@@ -284,6 +266,7 @@ public:
                 }
                 break;
             case UNARY_PRED:
+            case UNARY_OP:
                 if (precInfo.fixity == Fixity::FUNCTIONAL) {
                         oss << (format == REPR ? precInfo.repr : precInfo.unicode) << "(";
                         oss << children[0]->to_string(format);  // Print the argument
