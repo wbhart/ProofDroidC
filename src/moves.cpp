@@ -7,7 +7,7 @@
 #include <stack>
 
 // Define DEBUG_CLEANUP to enable debug traces for cleanup moves
-#define DEBUG_CLEANUP 1
+#define DEBUG_CLEANUP 0
 
 // Parameterize function: changes all free individual variables to parameters
 node* parameterize(node* formula) {
@@ -685,8 +685,8 @@ bool move_rewrite(context_t& ctx, int formula_line, int rewrite_line, bool silen
         return false;
     }
 
-    node* P = rewrite_formula->children[1];
-    node* Q = rewrite_formula->children[2];
+    node* P = rewrite_formula->children[0];
+    node* Q = rewrite_formula->children[1];
 
     // Step 5: Check if assumptions and restrictions are compatible.
     if (!assumptions_compatible(formula_tabline.assumptions, rewrite_tabline.assumptions)) {

@@ -598,7 +598,7 @@ void node_get_constants(std::vector<std::string>& constants, const node* formula
         BINARY_PRED,
         CONSTANT
     };
-
+    
     // Check if the current node is of a type that can contain a constant
     if (std::find(constant_node_types.begin(), constant_node_types.end(), formula->type) != constant_node_types.end()) {
         symbol_enum sym = formula->symbol;

@@ -1450,8 +1450,8 @@ int main(int argc, char** argv) {
         // Perform automatic mode steps
         context_t module_ctx, module_ctx2;
         // For now, hard code module loads
-        //load_module(module_ctx, tab_ctx, "group");
-        load_module(module_ctx2, tab_ctx, "set");
+        load_module(module_ctx, tab_ctx, "group");
+        load_module(module_ctx2, tab_ctx, "set2");
 
         parameterize_all(tab_ctx);
 

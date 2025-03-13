@@ -1048,8 +1048,8 @@ void context_t::get_constants() {
                     node_get_constants(tabline.constants1, formula->children[0]);
                     node_get_constants(tabline.constants2, formula->children[1]);
                 } else if (formula->is_equality()) {
-                    node_get_constants(tabline.constants1, formula->children[1]);
-                    node_get_constants(tabline.constants2, formula->children[2]);
+                    node_get_constants(tabline.constants1, formula->children[0]);
+                    node_get_constants(tabline.constants2, formula->children[1]);
                 } else {
                     node_get_constants(tabline.constants1, formula);
                 }

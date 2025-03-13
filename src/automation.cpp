@@ -2,9 +2,9 @@
 
 #include "automation.h"
 
-#define DEBUG_TABLEAU 1 // whether to print tableau
+#define DEBUG_TABLEAU 0 // whether to print tableau
 #define DEBUG_LISTS 0 // whether to print lists of units, targets, impls and associated constants
-#define DEBUG_MOVES 1 // whether to print moves that are executed
+#define DEBUG_MOVES 0 // whether to print moves that are executed
 #define DEBUG_HYDRAS 0 // whether to print hydra graph
 
 // whether consts2 is a subset of consts1
@@ -380,7 +380,7 @@ bool automate(context_t& ctx) {
 
                     // Cleanup
                     cleanup_moves(ctx, ctx.upto);
-                    
+
                     // Check if the proof is done after applying the move
                     bool done = check_done(ctx, true); // apply_cleanup=true
                     if (done) {
