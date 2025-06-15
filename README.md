@@ -1,5 +1,4 @@
 # ProofDroid
 
-This is a C++ implementation of a theorem prover called ProofDroid.
+This is a prototype C++ implementation of a theorem prover called ProofDroid.
 
-Currently, there is nothing to see here.
